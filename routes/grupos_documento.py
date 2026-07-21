@@ -5,12 +5,14 @@ from datetime import datetime
 
 from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy import func
-from werkzeug.utils import secure_filename
 
 from models import db, Asignatura, GrupoDocumento, Documento, CATEGORIAS_DOCUMENTO, ETIQUETA_CATEGORIA_DOCUMENTO
 from routes.errors import ApiError
 from routes.documentos import _indexar_texto_pdf
-from utils import carpeta_categoria, carpeta_grupo, ruta_absoluta, nombre_archivo_disponible
+from utils import (
+    carpeta_categoria, carpeta_grupo, ruta_absoluta, nombre_archivo_disponible,
+    validar_archivo_subido, validar_cantidad_archivos,
+)
 
 grupos_documento_bp = Blueprint("grupos_documento", __name__)
 
@@ -193,34 +195,44 @@ def subir_documentos_categoria(asignatura_id, categoria):
     archivos = [a for a in archivos if a and a.filename]
     if not archivos:
         raise ApiError("no se ha enviado ningún archivo válido en el campo 'archivos'")
+    validar_cantidad_archivos(archivos)
 
     carpeta = carpeta_grupo(asignatura, grupo) if grupo else carpeta_categoria(asignatura, categoria)
     os.makedirs(carpeta, exist_ok=True)
 
     creados = []
-    for archivo in archivos:
-        nombre_seguro = secure_filename(archivo.filename)
-        if not nombre_seguro:
-            continue
-        nombre_final = nombre_archivo_disponible(carpeta, nombre_seguro)
-        ruta_disco = os.path.join(carpeta, nombre_final)
-        archivo.save(ruta_disco)
+    rutas_escritas = []
+    try:
+        for archivo in archivos:
+            nombre_original = os.path.basename(archivo.filename or "")[:255]
+            nombre_seguro = validar_archivo_subido(archivo)
+            nombre_final = nombre_archivo_disponible(carpeta, nombre_seguro)
+            ruta_disco = os.path.join(carpeta, nombre_final)
+            archivo.save(ruta_disco)
+            rutas_escritas.append(ruta_disco)
 
-        ruta_relativa = os.path.relpath(ruta_disco, current_app.config["DOCUMENTOS_DIR"]).replace(os.sep, "/")
-        documento = Documento(
-            asignatura_id=asignatura.id,
-            categoria=categoria,
-            grupo_documento_id=grupo.id if grupo else None,
-            nombre_archivo=nombre_final,
-            ruta_local=ruta_relativa,
-            tamano_bytes=os.path.getsize(ruta_disco),
-            fecha_subida=datetime.utcnow(),
-        )
-        db.session.add(documento)
-        db.session.flush()
-        if documento.es_pdf():
-            _indexar_texto_pdf(documento)
-        creados.append(documento)
+            ruta_relativa = os.path.relpath(ruta_disco, current_app.config["DOCUMENTOS_DIR"]).replace(os.sep, "/")
+            documento = Documento(
+                asignatura_id=asignatura.id,
+                categoria=categoria,
+                grupo_documento_id=grupo.id if grupo else None,
+                nombre_archivo=nombre_final,
+                nombre_original=nombre_original,
+                ruta_local=ruta_relativa,
+                tamano_bytes=os.path.getsize(ruta_disco),
+                fecha_subida=datetime.utcnow(),
+            )
+            db.session.add(documento)
+            db.session.flush()
+            if documento.es_pdf():
+                _indexar_texto_pdf(documento)
+            creados.append(documento)
+    except Exception:
+        db.session.rollback()
+        for ruta in rutas_escritas:
+            if os.path.exists(ruta):
+                os.remove(ruta)
+        raise
 
     if not creados:
         raise ApiError("ningún archivo tenía un nombre válido para subir")

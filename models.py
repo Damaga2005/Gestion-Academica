@@ -503,6 +503,10 @@ class Documento(db.Model):
     categoria = db.Column(db.String(20), nullable=True)
     grupo_documento_id = db.Column(db.Integer, db.ForeignKey("grupo_documento.id"), nullable=True)
     nombre_archivo = db.Column(db.String(255), nullable=False)
+    # Nombre tal cual lo envió el navegador al subir el archivo, solo para auditoría/
+    # trazabilidad: nunca se usa para construir una ruta en disco (eso es nombre_archivo
+    # tras sanear + nombre_archivo_disponible) y siempre se escapa al mostrarlo.
+    nombre_original = db.Column(db.String(255), nullable=True)
     ruta_local = db.Column(db.String(500), nullable=False)  # relativa a config.DOCUMENTOS_DIR
     tamano_bytes = db.Column(db.Integer, nullable=True)
     fecha_subida = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
@@ -546,6 +550,7 @@ class Documento(db.Model):
             "categoria": self.categoria,
             "grupo_documento_id": self.grupo_documento_id,
             "nombre_archivo": self.nombre_archivo,
+            "nombre_original": self.nombre_original,
             "tamano_bytes": self.tamano_bytes,
             "fecha_subida": self.fecha_subida.isoformat(),
             "es_pdf": self.es_pdf(),

@@ -4,6 +4,20 @@ import shutil
 import unicodedata
 
 from flask import current_app
+from werkzeug.utils import secure_filename
+
+from routes.errors import ApiError
+
+# Firmas ("magic bytes") de formatos ejecutables: se rechazan sea cual sea la
+# extensión declarada, porque un atacante puede renombrar un .exe a .pdf y el
+# navegador nunca es una fuente fiable de MIME/extensión.
+_FIRMAS_EJECUTABLES = (
+    b"MZ",  # PE/EXE, DLL (Windows)
+    b"\x7fELF",  # ELF (Linux)
+    b"\xfe\xed\xfa\xce", b"\xfe\xed\xfa\xcf",  # Mach-O 32/64 bits (macOS)
+    b"\xce\xfa\xed\xfe", b"\xcf\xfa\xed\xfe",  # Mach-O, orden de bytes inverso
+    b"\xca\xfe\xba\xbe",  # Mach-O "fat"/universal binary
+)
 
 
 def slugify(texto, max_len=60):
@@ -39,7 +53,57 @@ def carpeta_grupo(asignatura, grupo):
 
 
 def ruta_absoluta(ruta_local):
-    return os.path.join(current_app.config["DOCUMENTOS_DIR"], ruta_local)
+    """Único punto de resolución de rutas de documentos. Además de unir con
+    DOCUMENTOS_DIR, comprueba que el resultado no pueda escapar de esa carpeta
+    (defensa en profundidad: aunque hoy `ruta_local` siempre viene de la BD /
+    de nombres ya saneados, y nunca directamente de la petición del usuario)."""
+    base = os.path.realpath(current_app.config["DOCUMENTOS_DIR"])
+    destino = os.path.realpath(os.path.join(base, ruta_local))
+    if destino != base and not destino.startswith(base + os.sep):
+        raise ApiError("Ruta de documento no permitida")
+    return destino
+
+
+def validar_archivo_subido(archivo):
+    """Valida un FileStorage antes de guardarlo en disco (spec Fase de documentos):
+    nombre no vacío tras sanear, extensión permitida, tamaño máximo, y que el
+    contenido no empiece por una firma de ejecutable (independientemente de la
+    extensión declarada). Nunca confía en el nombre o el MIME que envía el
+    navegador. Devuelve el nombre de archivo ya saneado (`secure_filename`),
+    listo para usarse como componente de ruta."""
+    cfg = current_app.config
+
+    nombre_crudo = os.path.basename(archivo.filename or "")
+    nombre_seguro = secure_filename(nombre_crudo)
+    if not nombre_seguro:
+        raise ApiError(f"nombre de archivo no válido: '{archivo.filename}'")
+
+    # Solo la extensión FINAL importa: "tema.1.resumen.pdf" es válido (varios puntos,
+    # último segmento permitido); "informe.pdf.exe" se rechaza porque el último
+    # segmento ('exe') no está permitido, no por tener más de un punto.
+    extension = nombre_seguro.rsplit(".", 1)[-1].lower() if "." in nombre_seguro else ""
+    if extension not in cfg["DOCUMENTO_EXTENSIONES_PERMITIDAS"]:
+        raise ApiError(f"tipo de archivo no permitido: .{extension or '(sin extensión)'}")
+
+    stream = archivo.stream
+    stream.seek(0, os.SEEK_END)
+    tamano = stream.tell()
+    stream.seek(0)
+    if tamano > cfg["DOCUMENTO_MAX_BYTES"]:
+        raise ApiError(f"'{nombre_seguro}' supera el tamaño máximo permitido")
+
+    cabecera = stream.read(8)
+    stream.seek(0)
+    if any(cabecera.startswith(firma) for firma in _FIRMAS_EJECUTABLES):
+        raise ApiError(f"'{nombre_seguro}' parece un ejecutable: subida rechazada")
+
+    return nombre_seguro
+
+
+def validar_cantidad_archivos(archivos):
+    max_archivos = current_app.config["DOCUMENTO_MAX_ARCHIVOS_POR_SUBIDA"]
+    if len(archivos) > max_archivos:
+        raise ApiError(f"no se pueden subir más de {max_archivos} archivos a la vez")
 
 
 def nombre_archivo_disponible(carpeta, nombre_original):

@@ -3,11 +3,13 @@ import shutil
 from datetime import datetime
 
 from flask import Blueprint, request, jsonify, send_from_directory, current_app
-from werkzeug.utils import secure_filename
 
 from models import db, Documento, Apartado, PaginaTexto
 from routes.errors import ApiError
-from utils import carpeta_apartado, ruta_absoluta, nombre_archivo_disponible
+from utils import (
+    carpeta_apartado, ruta_absoluta, nombre_archivo_disponible,
+    validar_archivo_subido, validar_cantidad_archivos,
+)
 
 documentos_bp = Blueprint("documentos", __name__)
 
@@ -44,32 +46,45 @@ def subir_documentos(apartado_id):
     archivos = [a for a in archivos if a and a.filename]
     if not archivos:
         raise ApiError("no se ha enviado ningún archivo válido en el campo 'archivos'")
+    validar_cantidad_archivos(archivos)
 
     carpeta = carpeta_apartado(asignatura, apartado)
     os.makedirs(carpeta, exist_ok=True)
 
     creados = []
-    for archivo in archivos:
-        nombre_seguro = secure_filename(archivo.filename)
-        if not nombre_seguro:
-            continue
-        nombre_final = nombre_archivo_disponible(carpeta, nombre_seguro)
-        ruta_disco = os.path.join(carpeta, nombre_final)
-        archivo.save(ruta_disco)
+    rutas_escritas = []
+    try:
+        for archivo in archivos:
+            nombre_original = os.path.basename(archivo.filename or "")[:255]
+            nombre_seguro = validar_archivo_subido(archivo)
+            nombre_final = nombre_archivo_disponible(carpeta, nombre_seguro)
+            ruta_disco = os.path.join(carpeta, nombre_final)
+            archivo.save(ruta_disco)
+            rutas_escritas.append(ruta_disco)
 
-        ruta_relativa = os.path.relpath(ruta_disco, current_app.config["DOCUMENTOS_DIR"]).replace(os.sep, "/")
-        documento = Documento(
-            asignatura_id=asignatura.id,
-            apartado_id=apartado.id,
-            nombre_archivo=nombre_final,
-            ruta_local=ruta_relativa,
-            fecha_subida=datetime.utcnow(),
-        )
-        db.session.add(documento)
-        db.session.flush()  # necesitamos documento.id para indexar sus páginas
-        if documento.es_pdf():
-            _indexar_texto_pdf(documento)
-        creados.append(documento)
+            ruta_relativa = os.path.relpath(ruta_disco, current_app.config["DOCUMENTOS_DIR"]).replace(os.sep, "/")
+            documento = Documento(
+                asignatura_id=asignatura.id,
+                apartado_id=apartado.id,
+                nombre_archivo=nombre_final,
+                nombre_original=nombre_original,
+                ruta_local=ruta_relativa,
+                tamano_bytes=os.path.getsize(ruta_disco),
+                fecha_subida=datetime.utcnow(),
+            )
+            db.session.add(documento)
+            db.session.flush()  # necesitamos documento.id para indexar sus páginas
+            if documento.es_pdf():
+                _indexar_texto_pdf(documento)
+            creados.append(documento)
+    except Exception:
+        # Subida transaccional: si algo falla a mitad de un lote, no deben quedar
+        # archivos huérfanos en disco sin su fila correspondiente en la BD.
+        db.session.rollback()
+        for ruta in rutas_escritas:
+            if os.path.exists(ruta):
+                os.remove(ruta)
+        raise
 
     if not creados:
         raise ApiError("ningún archivo tenía un nombre válido para subir")
