@@ -122,5 +122,8 @@ def create_app(auto_seed=True, database_uri=None, documentos_dir=None):
 
 
 if __name__ == "__main__":
+    host = os.environ.get("GREELEC_HOST", "127.0.0.1")
+    port = int(os.environ.get("GREELEC_PORT", "5000"))
+    debug = os.environ.get("GREELEC_DEBUG", "").strip().lower() in ("1", "true", "yes")
     app = create_app()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host=host, port=port, debug=debug)

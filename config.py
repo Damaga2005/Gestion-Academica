@@ -48,3 +48,18 @@ class Config:
     # No se activa SESSION_COOKIE_SECURE: la app también se sirve por HTTP plano en la
     # red local (acceso desde el móvil, spec punto 10) y un navegador nunca envía
     # cookies "Secure" sobre HTTP sin cifrar, lo que rompería el login por sesión ahí.
+
+    # Límites de restauración de backups (.zip), para protegerse de ZIP Slip/ZIP Bomb.
+    BACKUP_MAX_TOTAL_BYTES = 5 * 1024 * 1024 * 1024  # 5 GB descomprimidos en total
+    BACKUP_MAX_MEMBER_COUNT = 200_000  # nº máximo de entradas dentro del .zip
+    BACKUP_MAX_COMPRESSION_RATIO = 100  # descomprimido/comprimido por entrada
+    BACKUP_MAX_MEMBER_BYTES = 2 * 1024 * 1024 * 1024  # 2 GB por entrada individual
+
+    # Validación de subida de documentos (Fase de seguridad de documentos).
+    DOCUMENTO_MAX_BYTES = 150 * 1024 * 1024  # 150 MB por archivo
+    DOCUMENTO_MAX_ARCHIVOS_POR_SUBIDA = 30
+    DOCUMENTO_EXTENSIONES_PERMITIDAS = (
+        "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "txt", "rtf",
+        "odt", "ods", "odp", "csv", "md", "zip",
+        "jpg", "jpeg", "png", "gif", "webp", "bmp",
+    )

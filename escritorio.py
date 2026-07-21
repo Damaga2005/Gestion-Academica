@@ -2,9 +2,9 @@
 Punto de entrada para ejecutar la app como ventana de escritorio nativa (Fase 6),
 en vez de abrirla en el navegador.
 
-El servidor Flask sigue escuchando en 0.0.0.0:5000 exactamente igual que con
-`python app.py`, así que el acceso desde el móvil por red local (Fase 4) se
-mantiene intacto aunque se use esta ventana nativa en vez del navegador.
+El servidor Flask escucha por defecto solo en 127.0.0.1 (acceso exclusivo desde
+este equipo). El acceso desde el móvil por red local es opcional: para activarlo
+hay que definir explícitamente GREELEC_HOST=0.0.0.0 en el .env, nunca por defecto.
 """
 
 import os
@@ -17,8 +17,8 @@ import webview
 from app import create_app
 from config import RESOURCE_DIR
 
-HOST = "0.0.0.0"
-PUERTO = 5000
+HOST = os.environ.get("GREELEC_HOST", "127.0.0.1")
+PUERTO = int(os.environ.get("GREELEC_PORT", "5000"))
 ICONO = os.path.join(RESOURCE_DIR, "icono.ico")
 
 
