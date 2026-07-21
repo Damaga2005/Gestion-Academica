@@ -1,0 +1,1468 @@
+const asignaturaId = window.ASIGNATURA_ID;
+let documentoAbiertoId = null;
+
+async function api(path, options = {}) {
+  const res = await fetch(path, options);
+  if (!res.ok) {
+    let mensaje = `Error ${res.status}`;
+    try {
+      const data = await res.json();
+      mensaje = data.error || mensaje;
+    } catch (e) { /* respuesta sin cuerpo JSON */ }
+    throw new Error(mensaje);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+function escapeHtml(texto) {
+  const div = document.createElement('div');
+  div.textContent = texto == null ? '' : texto;
+  return div.innerHTML;
+}
+
+function mostrarErrorCampo(id, mensaje) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = mensaje
+    ? `<svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-circle-alert"></use></svg><span>${escapeHtml(mensaje)}</span>`
+    : '';
+}
+
+// --- Skeletons de carga inicial ---
+
+function filaEsqueleto() {
+  return `
+    <div class="detalle-fila">
+      <div style="flex:1">
+        <div class="ds-skeleton ds-skeleton-title"></div>
+        <div class="ds-skeleton ds-skeleton-line"></div>
+      </div>
+    </div>
+  `;
+}
+
+function documentosEsqueleto() {
+  return `
+    <div class="apartado-bloque">
+      <div class="ds-skeleton ds-skeleton-title" style="width:180px"></div>
+      <div class="ds-skeleton" style="height:84px;margin-top:var(--ds-space-4);border-radius:var(--ds-radius-md)"></div>
+    </div>
+  `;
+}
+
+function mostrarEsqueletos() {
+  document.getElementById('evaluacion-lista').innerHTML = filaEsqueleto().repeat(2);
+  document.getElementById('recursos-lista').innerHTML = filaEsqueleto().repeat(2);
+  document.getElementById('tareas-lista').innerHTML = filaEsqueleto().repeat(2);
+  document.getElementById('documentos-explorador').innerHTML = documentosEsqueleto().repeat(2);
+}
+
+const ETIQUETA_ESTADO = {
+  superada: 'Superada',
+  cursando: 'Cursando',
+  pendiente: 'Pendiente',
+  no_superada: 'No superada',
+  no_elegida: 'No elegida',
+};
+const BADGE_POR_ESTADO = {
+  superada: 'ds-badge-success',
+  cursando: 'ds-badge-accent',
+  pendiente: 'ds-badge',
+  no_superada: 'ds-badge-danger',
+  no_elegida: 'ds-badge',
+};
+
+// --- Cabecera + Resumen (comparten la misma carga de datos) ---
+
+function progresoDe(asignatura) {
+  if (asignatura.estado === 'superada' || asignatura.estado === 'no_superada') return 100;
+  if (asignatura.estado === 'cursando') {
+    const total = asignatura.componentes.reduce((s, c) => s + c.porcentaje, 0);
+    const hecho = asignatura.componentes.filter((c) => c.nota !== null).reduce((s, c) => s + c.porcentaje, 0);
+    return total > 0 ? (hecho / total) * 100 : 0;
+  }
+  return 0;
+}
+
+async function cargarCabeceraYResumen() {
+  const asignatura = await api(`/asignaturas/${asignaturaId}`);
+
+  document.getElementById('titulo-pagina').textContent = `${asignatura.nombre} · GREELEC`;
+  document.getElementById('detalle-nombre').textContent =
+    asignatura.siglas ? `${asignatura.siglas} · ${asignatura.nombre}` : asignatura.nombre;
+  asignaturaCorta = asignatura.siglas || asignatura.nombre;
+
+  const inputSiglas = document.getElementById('resumen-siglas-input');
+  if (document.activeElement !== inputSiglas) {
+    inputSiglas.value = asignatura.siglas || '';
+  }
+
+  const badge = document.getElementById('detalle-badge-estado');
+  badge.textContent = ETIQUETA_ESTADO[asignatura.estado] || asignatura.estado;
+  badge.className = `ds-badge ${BADGE_POR_ESTADO[asignatura.estado] || ''}`;
+
+  document.getElementById('detalle-creditos').textContent =
+    `${asignatura.creditos_ects} ECTS · ${asignatura.tipo === 'optativa' ? 'Optativa' : 'Obligatoria'}`;
+
+  const selectEstado = document.getElementById('detalle-select-estado');
+  if (['superada', 'cursando', 'pendiente', 'no_superada'].includes(asignatura.estado)) {
+    selectEstado.value = asignatura.estado;
+  }
+
+  const btnQuitarEleccion = document.getElementById('btn-quitar-eleccion');
+  btnQuitarEleccion.style.display =
+    (asignatura.tipo === 'optativa' && asignatura.estado !== 'no_elegida') ? '' : 'none';
+
+  // Resumen
+  document.getElementById('resumen-tipo').textContent = asignatura.tipo === 'optativa' ? 'Optativa' : 'Obligatoria';
+  document.getElementById('resumen-nota').textContent = asignatura.nota_final != null ? asignatura.nota_final : '—';
+
+  if (asignatura.prerrequisitos.length > 0) {
+    const filaPrerrequisitos = document.getElementById('resumen-fila-prerrequisitos');
+    filaPrerrequisitos.style.display = '';
+    document.getElementById('resumen-prerrequisitos').innerHTML = asignatura.prerrequisitos.map((p) =>
+      `<span class="ds-badge ${BADGE_POR_ESTADO[p.estado] || ''}">${escapeHtml(p.nombre)}</span>`
+    ).join('');
+  }
+
+  const progreso = progresoDe(asignatura);
+  document.getElementById('resumen-progreso-texto').textContent =
+    asignatura.estado === 'cursando' ? `Progreso · ${Math.round(progreso)}% evaluado` : 'Progreso';
+  document.getElementById('resumen-progreso-barra').style.width = `${progreso}%`;
+
+  cargarCurso(asignatura.cuatrimestre_id);
+  renderEvaluacionAsignatura(asignatura);
+  renderRecursos(asignatura.recursos_externos);
+  poblarCamposProfesor(asignatura);
+
+  const notasTextarea = document.getElementById('notas-rapidas');
+  if (document.activeElement !== notasTextarea) {
+    notasTextarea.value = asignatura.notas || '';
+  }
+
+  return asignatura;
+}
+
+async function cargarCurso(cuatrimestreId) {
+  try {
+    const cuatrimestre = await api(`/cuatrimestres/${cuatrimestreId}`);
+    const anio = await api(`/anios/${cuatrimestre.anio_id}`);
+    document.getElementById('resumen-curso').textContent = `Año ${anio.numero} · Cuatrimestre ${cuatrimestre.numero}`;
+  } catch (err) {
+    document.getElementById('resumen-curso').textContent = '—';
+  }
+}
+
+// --- Siglas (autoguardado, igual que los campos de profesor) ---
+
+(function () {
+  const input = document.getElementById('resumen-siglas-input');
+  const error = document.getElementById('resumen-siglas-error');
+  const estado = document.getElementById('resumen-siglas-estado');
+  let timer = null;
+
+  input.addEventListener('input', () => {
+    estado.textContent = '';
+    mostrarErrorCampo('resumen-siglas-error', '');
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      try {
+        const asignatura = await api(`/asignaturas/${asignaturaId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ siglas: input.value.trim() || null }),
+        });
+        input.value = asignatura.siglas || '';
+        document.getElementById('detalle-nombre').textContent =
+          asignatura.siglas ? `${asignatura.siglas} · ${asignatura.nombre}` : asignatura.nombre;
+        estado.textContent = 'Guardado ✓';
+        setTimeout(() => { estado.textContent = ''; }, 2000);
+      } catch (err) {
+        mostrarErrorCampo('resumen-siglas-error', err.message);
+      }
+    }, 600);
+  });
+})();
+
+document.getElementById('detalle-select-estado').addEventListener('change', async (e) => {
+  await api(`/api/asignaturas/${asignaturaId}/estado`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ estado: e.target.value }),
+  });
+  await cargarCabeceraYResumen();
+});
+
+document.getElementById('btn-quitar-eleccion').addEventListener('click', async () => {
+  const nombre = document.getElementById('detalle-nombre').textContent;
+  if (!confirm(`¿Quitar la elección de "${nombre}"? Si viene del catálogo volverá a estar disponible como optativa por elegir. Si la creaste a mano se eliminará por completo.`)) return;
+  const res = await fetch(`/asignaturas/${asignaturaId}/quitar-eleccion`, { method: 'POST' });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    alert('Error: ' + (data.error || res.status));
+    return;
+  }
+  if (res.status === 204) {
+    window.location.href = '/vista';
+    return;
+  }
+  mostrarToast('Elección retirada', 'success');
+  await cargarCabeceraYResumen();
+});
+
+document.getElementById('btn-borrar-asignatura').addEventListener('click', async () => {
+  const nombre = document.getElementById('detalle-nombre').textContent;
+  if (!confirm(`¿Eliminar la asignatura "${nombre}"? Esta acción no se puede deshacer.`)) return;
+  await api(`/asignaturas/${asignaturaId}`, { method: 'DELETE' });
+  window.location.href = '/vista';
+});
+
+// --- Profesor ---
+
+function poblarCamposProfesor(asignatura) {
+  document.getElementById('profesor-nombre').value = asignatura.nombre_profesor || '';
+  document.getElementById('profesor-correo').value = asignatura.correo_profesor || '';
+  document.getElementById('profesor-despacho').value = asignatura.despacho_profesor || '';
+  document.getElementById('profesor-aula-virtual').value = asignatura.link_aula_virtual || '';
+  actualizarAccionesProfesor(asignatura.correo_profesor, asignatura.link_aula_virtual);
+}
+
+function actualizarAccionesProfesor(correo, aulaVirtual) {
+  const btnEmail = document.getElementById('btn-enviar-email');
+  const btnAula = document.getElementById('btn-abrir-aula');
+  if (correo) {
+    btnEmail.href = `mailto:${correo}`;
+  } else {
+    btnEmail.removeAttribute('href');
+  }
+  btnEmail.setAttribute('aria-disabled', correo ? 'false' : 'true');
+  btnEmail.style.opacity = correo ? '1' : '0.5';
+  btnEmail.style.pointerEvents = correo ? '' : 'none';
+
+  if (aulaVirtual) {
+    btnAula.href = aulaVirtual;
+  } else {
+    btnAula.removeAttribute('href');
+  }
+  btnAula.style.opacity = aulaVirtual ? '1' : '0.5';
+  btnAula.style.pointerEvents = aulaVirtual ? '' : 'none';
+}
+
+(function () {
+  const campos = ['profesor-nombre', 'profesor-correo', 'profesor-despacho', 'profesor-aula-virtual'];
+  const estado = document.getElementById('profesor-guardado-estado');
+  const correoInput = document.getElementById('profesor-correo');
+  let timer = null;
+
+  campos.forEach((id) => {
+    document.getElementById(id).addEventListener('input', () => {
+      estado.textContent = '';
+
+      if (correoInput.value && !correoInput.validity.valid) {
+        correoInput.classList.add('is-invalid');
+        mostrarErrorCampo('profesor-correo-error', 'Ese correo no tiene un formato válido.');
+        clearTimeout(timer);
+        return;
+      }
+      correoInput.classList.remove('is-invalid');
+      mostrarErrorCampo('profesor-correo-error', '');
+
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        try {
+          await api(`/asignaturas/${asignaturaId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nombre_profesor: document.getElementById('profesor-nombre').value.trim() || null,
+              correo_profesor: document.getElementById('profesor-correo').value.trim() || null,
+              despacho_profesor: document.getElementById('profesor-despacho').value.trim() || null,
+              link_aula_virtual: document.getElementById('profesor-aula-virtual').value.trim() || null,
+            }),
+          });
+          actualizarAccionesProfesor(
+            document.getElementById('profesor-correo').value.trim(),
+            document.getElementById('profesor-aula-virtual').value.trim(),
+          );
+          estado.textContent = 'Guardado ✓';
+          estado.classList.remove('es-error');
+          setTimeout(() => { estado.textContent = ''; }, 2000);
+        } catch (err) {
+          estado.textContent = 'Error al guardar: ' + err.message;
+          estado.classList.add('es-error');
+        }
+      }, 600);
+    });
+  });
+})();
+
+// --- Evaluación ---
+
+const ETIQUETA_TIPO_COMPONENTE = {
+  teoria: 'Teoría', parcial: 'Parcial', examen_final: 'Examen final', laboratorio: 'Laboratorio', otro: 'Otro',
+};
+
+// Orquestador: decide entre la vista de un único esquema (igual que siempre) y la
+// vista de comparación lado a lado (solo cuando hay más de un EsquemaEvaluacion).
+function renderEvaluacionAsignatura(asignatura) {
+  const esquemas = asignatura.esquemas || [];
+  const comparando = esquemas.length > 1;
+
+  document.getElementById('evaluacion-unico').style.display = comparando ? 'none' : '';
+  document.getElementById('evaluacion-comparacion').style.display = comparando ? '' : 'none';
+
+  if (comparando) {
+    renderComparacionEsquemas(esquemas);
+  } else {
+    // Con 0 o 1 esquema el comportamiento es exactamente el de siempre: la ruta
+    // histórica /asignaturas/<id>/componentes sigue creando el esquema único sobre
+    // la marcha si hiciera falta, así que aquí no cambia nada respecto a antes.
+    renderEvaluacion(asignatura.componentes);
+  }
+}
+
+// --- Calculadora "qué nota necesito sacar en lo que falta" (reutilizable por esquema) ---
+
+function calcularNotaNecesaria(componentes, objetivo) {
+  const pesoTotal = componentes.reduce((s, c) => s + c.porcentaje, 0);
+  if (pesoTotal <= 0) return { estado: 'sin-componentes' };
+
+  const conNota = componentes.filter((c) => c.nota !== null);
+  const pesoHecho = conNota.reduce((s, c) => s + c.porcentaje, 0);
+  const pesoFaltante = pesoTotal - pesoHecho;
+  if (pesoFaltante <= 0) return { estado: 'completo' };
+
+  const sumaHecho = conNota.reduce((s, c) => s + c.porcentaje * c.nota, 0);
+  const notaNecesaria = (objetivo * pesoTotal - sumaHecho) / pesoFaltante;
+  return { estado: 'ok', notaNecesaria, pesoFaltante };
+}
+
+function textoNotaNecesaria(resultado) {
+  if (resultado.estado === 'sin-componentes') return 'Añade componentes de evaluación para poder calcularlo.';
+  if (resultado.estado === 'completo') return 'Ya tienes nota en todo el peso de este esquema.';
+  const { notaNecesaria, pesoFaltante } = resultado;
+  if (notaNecesaria <= 0) return `Objetivo ya asegurado (te vale hasta un 0 en el ${pesoFaltante}% restante).`;
+  if (notaNecesaria > 10) return `Con las notas actuales no es posible alcanzar ese objetivo (necesitarías más de un 10 en el ${pesoFaltante}% restante).`;
+  return `Necesitas sacar de media al menos un ${notaNecesaria.toFixed(2)} en el ${pesoFaltante}% que falta.`;
+}
+
+// --- Comparación de esquemas (lado a lado) ---
+
+function renderComparacionEsquemas(esquemas) {
+  const contenedor = document.getElementById('evaluacion-comparacion');
+
+  contenedor.innerHTML = esquemas.map((esquema) => {
+    const r = esquema.resultado;
+    return `
+    <div class="esquema-card ${esquema.aplicado ? 'is-aplicado' : ''}" data-esquema-id="${esquema.id}">
+      <div class="esquema-card-header">
+        <h3 class="ds-h3">${escapeHtml(esquema.nombre)}</h3>
+        ${esquema.aplicado ? '<span class="ds-badge ds-badge-success">Se aplicaría</span>' : ''}
+        <button type="button" class="fila-icono-btn btn-borrar-esquema" title="Eliminar esquema">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
+        </button>
+      </div>
+
+      <div class="evaluacion-resumen">
+        <div>
+          <p class="ds-caption">Evaluado</p>
+          <p class="evaluacion-stat-numero">${r.porcentaje_evaluado}%</p>
+        </div>
+        <div>
+          <p class="ds-caption">Nota media ponderada</p>
+          <p class="evaluacion-stat-numero">${r.media_ponderada != null ? r.media_ponderada.toFixed(2) : '—'}</p>
+        </div>
+      </div>
+
+      <div class="esquema-componentes-lista">
+        ${esquema.componentes.length === 0 ? '<p class="sin-elementos">Sin componentes todavía.</p>' : esquema.componentes.map((c) => `
+          <div class="detalle-fila" data-id="${c.id}">
+            <div class="evaluacion-fila-nombre">
+              <span class="ds-body">${escapeHtml(c.nombre)}</span>
+              <p class="ds-caption">${ETIQUETA_TIPO_COMPONENTE[c.tipo] || c.tipo} · ${c.porcentaje}%</p>
+            </div>
+            <input type="number" class="ds-input evaluacion-fila-nota campo-nota-esquema" step="0.01" placeholder="Nota" value="${c.nota ?? ''}">
+            <div class="fila-acciones">
+              <button type="button" class="fila-icono-btn btn-borrar-componente-esquema" title="Eliminar">
+                <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
+              </button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <form class="detalle-form-anadir form-nuevo-componente-esquema">
+        <div class="ds-field">
+          <label class="ds-label">Nombre</label>
+          <input type="text" class="ds-input campo-nombre-nuevo" placeholder="Ej. Parcial 1" required>
+        </div>
+        <div class="ds-field" style="flex-basis:130px">
+          <label class="ds-label">Tipo</label>
+          <select class="ds-select campo-tipo-nuevo">
+            <option value="teoria">Teoría</option>
+            <option value="parcial">Parcial</option>
+            <option value="examen_final">Examen final</option>
+            <option value="laboratorio">Laboratorio</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+        <div class="ds-field" style="flex-basis:90px">
+          <label class="ds-label">% peso</label>
+          <input type="number" class="ds-input campo-porcentaje-nuevo" min="0" max="100" step="0.01" required>
+        </div>
+        <button type="submit" class="ds-btn ds-btn-secondary">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-plus"></use></svg>
+          Añadir
+        </button>
+      </form>
+
+      <div class="esquema-calculadora">
+        <div class="ds-field">
+          <label class="ds-label">¿Qué nota necesito? Objetivo</label>
+          <input type="number" class="ds-input campo-objetivo-esquema" min="0" max="10" step="0.1" value="5">
+        </div>
+        <p class="ds-caption esquema-calculadora-resultado"></p>
+      </div>
+    </div>
+  `;
+  }).join('');
+  reanimar(contenedor);
+
+  contenedor.querySelectorAll('.esquema-card').forEach((tarjeta) => {
+    const esquemaId = tarjeta.dataset.esquemaId;
+    const esquema = esquemas.find((e) => String(e.id) === esquemaId);
+
+    const actualizarCalculadora = () => {
+      const objetivo = parseFloat(tarjeta.querySelector('.campo-objetivo-esquema').value);
+      const resultado = calcularNotaNecesaria(esquema.componentes, Number.isNaN(objetivo) ? 5 : objetivo);
+      tarjeta.querySelector('.esquema-calculadora-resultado').textContent = textoNotaNecesaria(resultado);
+    };
+    actualizarCalculadora();
+    tarjeta.querySelector('.campo-objetivo-esquema').addEventListener('input', actualizarCalculadora);
+
+    tarjeta.querySelector('.btn-borrar-esquema').addEventListener('click', async () => {
+      if (!confirm(`¿Eliminar el esquema "${esquema.nombre}" y todos sus componentes? Esta acción no se puede deshacer.`)) return;
+      const res = await fetch(`/esquemas/${esquemaId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        mostrarToast(data.error || 'No se pudo eliminar el esquema', 'danger');
+        return;
+      }
+      mostrarToast('Esquema eliminado', 'success');
+      await cargarCabeceraYResumen();
+    });
+
+    tarjeta.querySelectorAll('.campo-nota-esquema').forEach((input) => {
+      input.addEventListener('change', async (e) => {
+        const componenteId = e.target.closest('.detalle-fila').dataset.id;
+        const valor = e.target.value.trim();
+        await api(`/componentes/${componenteId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nota: valor === '' ? null : parseFloat(valor) }),
+        });
+        await cargarCabeceraYResumen();
+      });
+    });
+
+    tarjeta.querySelectorAll('.btn-borrar-componente-esquema').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('¿Eliminar este componente de evaluación? Esta acción no se puede deshacer.')) return;
+        const componenteId = btn.closest('.detalle-fila').dataset.id;
+        await api(`/componentes/${componenteId}`, { method: 'DELETE' });
+        await cargarCabeceraYResumen();
+        mostrarToast('Componente eliminado', 'success');
+      });
+    });
+
+    tarjeta.querySelector('.form-nuevo-componente-esquema').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nombre = tarjeta.querySelector('.campo-nombre-nuevo').value.trim();
+      const tipo = tarjeta.querySelector('.campo-tipo-nuevo').value;
+      const porcentaje = parseFloat(tarjeta.querySelector('.campo-porcentaje-nuevo').value);
+      if (!nombre || Number.isNaN(porcentaje)) return;
+      const boton = e.target.querySelector('button[type="submit"]');
+      boton.classList.add('is-loading');
+      try {
+        await api(`/esquemas/${esquemaId}/componentes`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre, tipo, porcentaje }),
+        });
+        await cargarCabeceraYResumen();
+      } catch (err) {
+        mostrarToast(err.message, 'danger');
+      } finally {
+        boton.classList.remove('is-loading');
+      }
+    });
+  });
+}
+
+document.getElementById('btn-anadir-esquema').addEventListener('click', async () => {
+  const nombre = prompt('Nombre del nuevo esquema (ej. "Fórmula alternativa"):');
+  if (!nombre || !nombre.trim()) return;
+  try {
+    await api(`/asignaturas/${asignaturaId}/esquemas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre: nombre.trim() }),
+    });
+    mostrarToast('Esquema añadido', 'success');
+    await cargarCabeceraYResumen();
+  } catch (err) {
+    mostrarToast(err.message, 'danger');
+  }
+});
+
+function renderEvaluacion(componentes) {
+  const contenedor = document.getElementById('evaluacion-lista');
+  const totalPeso = componentes.reduce((s, c) => s + c.porcentaje, 0);
+  const pesoEvaluado = componentes.filter((c) => c.nota !== null).reduce((s, c) => s + c.porcentaje, 0);
+  const porcentajeEvaluado = totalPeso > 0 ? Math.round((pesoEvaluado / totalPeso) * 100) : 0;
+  document.getElementById('evaluacion-porcentaje').textContent = `${porcentajeEvaluado}%`;
+
+  const conNota = componentes.filter((c) => c.nota !== null);
+  const mediaWrap = document.getElementById('evaluacion-media-wrap');
+  if (conNota.length > 0) {
+    const pesoConNota = conNota.reduce((s, c) => s + c.porcentaje, 0);
+    const media = pesoConNota > 0
+      ? conNota.reduce((s, c) => s + c.porcentaje * c.nota, 0) / pesoConNota
+      : 0;
+    document.getElementById('evaluacion-media').textContent = media.toFixed(2);
+    mediaWrap.style.display = '';
+  } else {
+    mediaWrap.style.display = 'none';
+  }
+
+  if (componentes.length === 0) {
+    contenedor.innerHTML = '<p class="sin-elementos">Sin componentes de evaluación todavía.</p>';
+    return;
+  }
+
+  contenedor.innerHTML = componentes.map((c) => `
+    <div class="detalle-fila" data-id="${c.id}">
+      <div class="evaluacion-fila-nombre">
+        <span class="ds-body">${escapeHtml(c.nombre)}</span>
+        <p class="ds-caption">${ETIQUETA_TIPO_COMPONENTE[c.tipo] || c.tipo} · ${c.porcentaje}%</p>
+      </div>
+      <input type="number" class="ds-input evaluacion-fila-nota campo-nota" step="0.01" placeholder="Nota" value="${c.nota ?? ''}">
+      <div class="fila-acciones">
+        <button type="button" class="fila-icono-btn btn-borrar-componente" title="Eliminar">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
+        </button>
+      </div>
+    </div>
+  `).join('');
+  reanimar(contenedor);
+
+  contenedor.querySelectorAll('.detalle-fila').forEach((fila) => {
+    const id = fila.dataset.id;
+    fila.querySelector('.campo-nota').addEventListener('change', async (e) => {
+      const valor = e.target.value.trim();
+      await api(`/componentes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nota: valor === '' ? null : parseFloat(valor) }),
+      });
+      await cargarCabeceraYResumen();
+    });
+    fila.querySelector('.btn-borrar-componente').addEventListener('click', async () => {
+      if (!confirm('¿Eliminar este componente de evaluación? Esta acción no se puede deshacer.')) return;
+      await api(`/componentes/${id}`, { method: 'DELETE' });
+      await cargarCabeceraYResumen();
+      mostrarToast('Componente eliminado', 'success');
+    });
+  });
+}
+
+document.getElementById('form-nuevo-componente').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  mostrarErrorCampo('componente-error', '');
+  const nombre = document.getElementById('componente-nombre').value.trim();
+  const tipo = document.getElementById('componente-tipo').value;
+  const porcentaje = parseFloat(document.getElementById('componente-porcentaje').value);
+  if (!nombre || Number.isNaN(porcentaje)) {
+    mostrarErrorCampo('componente-error', 'Indica un nombre y un porcentaje válido.');
+    return;
+  }
+  const boton = e.submitter || e.target.querySelector('button[type="submit"]');
+  boton.classList.add('is-loading');
+  try {
+    await api(`/asignaturas/${asignaturaId}/componentes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre, tipo, porcentaje }),
+    });
+    e.target.reset();
+    await cargarCabeceraYResumen();
+  } catch (err) {
+    mostrarErrorCampo('componente-error', err.message);
+  } finally {
+    boton.classList.remove('is-loading');
+  }
+});
+
+// --- Recursos ---
+
+function renderRecursos(recursos) {
+  const contenedor = document.getElementById('recursos-lista');
+  if (recursos.length === 0) {
+    contenedor.innerHTML = '<p class="sin-elementos">Sin recursos todavía.</p>';
+    return;
+  }
+
+  contenedor.innerHTML = recursos.map((r) => `
+    <div class="detalle-fila" data-id="${r.id}">
+      <div class="recurso-fila-icono">
+        <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-external-link"></use></svg>
+      </div>
+      <div class="recurso-fila-info">
+        <span class="ds-body">${escapeHtml(r.nombre)}</span>
+        ${r.tipo ? `<p class="ds-caption">${escapeHtml(r.tipo)}</p>` : ''}
+      </div>
+      <div class="fila-acciones">
+        <a class="fila-icono-btn" href="${escapeHtml(r.url)}" target="_blank" rel="noopener" title="Abrir">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-external-link"></use></svg>
+        </a>
+        <button type="button" class="fila-icono-btn btn-borrar-recurso" title="Eliminar">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
+        </button>
+      </div>
+    </div>
+  `).join('');
+  reanimar(contenedor);
+
+  contenedor.querySelectorAll('.btn-borrar-recurso').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.closest('.detalle-fila').dataset.id;
+      if (!confirm('¿Eliminar este recurso?')) return;
+      await api(`/recursos-externos/${id}`, { method: 'DELETE' });
+      await cargarCabeceraYResumen();
+      mostrarToast('Recurso eliminado', 'success');
+    });
+  });
+}
+
+document.getElementById('form-nuevo-recurso').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  mostrarErrorCampo('recurso-error', '');
+  const nombre = document.getElementById('recurso-nombre').value;
+  const url = document.getElementById('recurso-url').value.trim();
+  if (!url) {
+    mostrarErrorCampo('recurso-error', 'Indica un enlace.');
+    return;
+  }
+  const boton = e.submitter || e.target.querySelector('button[type="submit"]');
+  boton.classList.add('is-loading');
+  try {
+    await api(`/asignaturas/${asignaturaId}/recursos-externos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre, url }),
+    });
+    e.target.reset();
+    await cargarCabeceraYResumen();
+  } catch (err) {
+    mostrarErrorCampo('recurso-error', err.message);
+  } finally {
+    boton.classList.remove('is-loading');
+  }
+});
+
+// --- Notas rápidas (autosave) ---
+
+(function () {
+  const textarea = document.getElementById('notas-rapidas');
+  const estado = document.getElementById('notas-guardado-estado');
+  if (!textarea) return;
+
+  let timer = null;
+  textarea.addEventListener('input', () => {
+    estado.textContent = '';
+    estado.classList.remove('es-error');
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      try {
+        await api(`/asignaturas/${asignaturaId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notas: textarea.value }),
+        });
+        estado.textContent = 'Guardado ✓';
+        setTimeout(() => { estado.textContent = ''; }, 2000);
+      } catch (err) {
+        estado.textContent = 'Error al guardar: ' + err.message;
+        estado.classList.add('es-error');
+      }
+    }, 600);
+  });
+})();
+
+// --- Tareas ---
+
+function calcularCountdown(fechaIso) {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const fecha = new Date(fechaIso + 'T00:00:00');
+  const dias = Math.round((fecha - hoy) / 86400000);
+  if (dias < 0) return `Atrasada ${-dias} día${-dias !== 1 ? 's' : ''}`;
+  if (dias === 0) return 'Hoy';
+  return `Faltan ${dias} día${dias !== 1 ? 's' : ''}`;
+}
+
+const ETIQUETA_TIPO_TAREA = { examen: 'Examen', entrega: 'Entrega', tarea_general: 'Tarea', tutoria: 'Tutoría' };
+
+async function cargarTareas() {
+  const tareas = await api(`/tareas?asignatura_id=${asignaturaId}`);
+  const contenedor = document.getElementById('tareas-lista');
+
+  if (tareas.length === 0) {
+    contenedor.innerHTML = '<p class="sin-elementos">Sin tareas todavía.</p>';
+    return;
+  }
+
+  const ordenadas = [...tareas].sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+  contenedor.innerHTML = ordenadas.map((t) => `
+    <div class="detalle-fila" data-id="${t.id}">
+      <input type="checkbox" class="tarea-fila-check" ${t.completada ? 'checked' : ''}>
+      <div class="tarea-fila-titulo ${t.completada ? 'completada' : ''}">
+        <span class="ds-body">${escapeHtml(t.titulo)}</span>
+        <p class="ds-caption">${t.fecha}${t.completada ? '' : ' · ' + calcularCountdown(t.fecha)}</p>
+      </div>
+      <div class="tarea-fila-badges">
+        <span class="ds-badge">${ETIQUETA_TIPO_TAREA[t.tipo] || 'Tarea'}</span>
+      </div>
+      <div class="fila-acciones">
+        <button type="button" class="fila-icono-btn btn-borrar-tarea" title="Eliminar">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
+        </button>
+      </div>
+    </div>
+  `).join('');
+  reanimar(contenedor);
+
+  contenedor.querySelectorAll('.detalle-fila').forEach((fila) => {
+    const id = fila.dataset.id;
+    fila.querySelector('.tarea-fila-check').addEventListener('change', async (e) => {
+      await api(`/tareas/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completada: e.target.checked }),
+      });
+      await cargarTareas();
+    });
+    fila.querySelector('.btn-borrar-tarea').addEventListener('click', async () => {
+      if (!confirm('¿Eliminar esta tarea? Esta acción no se puede deshacer.')) return;
+      await api(`/tareas/${id}`, { method: 'DELETE' });
+      await cargarTareas();
+      mostrarToast('Tarea eliminada', 'success');
+    });
+  });
+}
+
+document.getElementById('form-nueva-tarea').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  mostrarErrorCampo('tarea-error', '');
+  const titulo = document.getElementById('tarea-titulo').value.trim();
+  const fecha = document.getElementById('tarea-fecha').value;
+  const tipo = document.getElementById('tarea-tipo').value;
+  if (!titulo || !fecha) {
+    mostrarErrorCampo('tarea-error', 'Indica un título y una fecha.');
+    return;
+  }
+  const boton = e.submitter || e.target.querySelector('button[type="submit"]');
+  boton.classList.add('is-loading');
+  try {
+    await api('/tareas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titulo, fecha, tipo, asignatura_id: asignaturaId }),
+    });
+    e.target.reset();
+    await cargarTareas();
+  } catch (err) {
+    mostrarErrorCampo('tarea-error', err.message);
+  } finally {
+    boton.classList.remove('is-loading');
+  }
+});
+
+// --- Documentos: categorías fijas + subgrupos libres ---
+
+const CATEGORIAS_DOCUMENTO_LISTA = [
+  { categoria: 'teoria', etiqueta: 'Teoría' },
+  { categoria: 'examenes', etiqueta: 'Exámenes' },
+  { categoria: 'laboratorios', etiqueta: 'Laboratorios' },
+  { categoria: 'otros', etiqueta: 'Otros' },
+];
+
+let vistaDocumentos = localStorage.getItem('documentos-vista') || 'lista';
+let categoriaActual = null; // null = raíz (las 4 categorías)
+let grupoActual = null;     // {id, nombre} o null
+let ARBOL_DOCUMENTOS = [];
+let GRUPOS_CATEGORIA_ACTUAL = [];
+let DOCUMENTOS_SIN_CLASIFICAR = [];
+let DOCUMENTOS_GRUPO_ACTUAL = [];
+let asignaturaCorta = '';
+
+document.querySelectorAll('#documentos-vista-toggle .filtro-chip').forEach((b) => {
+  b.classList.toggle('is-active', b.dataset.vista === vistaDocumentos);
+});
+
+function formatoTamano(bytes) {
+  if (bytes == null) return '—';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+async function cargarDocumentosRaiz() {
+  ARBOL_DOCUMENTOS = await api(`/asignaturas/${asignaturaId}/documentos/arbol`);
+  renderDocumentos();
+}
+
+async function cargarDocumentosCategoria() {
+  const [grupos, sinClasificar] = await Promise.all([
+    api(`/asignaturas/${asignaturaId}/grupos?categoria=${categoriaActual}`),
+    api(`/asignaturas/${asignaturaId}/categorias/${categoriaActual}/documentos`),
+  ]);
+  GRUPOS_CATEGORIA_ACTUAL = grupos;
+  DOCUMENTOS_SIN_CLASIFICAR = sinClasificar;
+  renderDocumentos();
+}
+
+async function cargarDocumentosGrupo() {
+  DOCUMENTOS_GRUPO_ACTUAL = await api(
+    `/asignaturas/${asignaturaId}/categorias/${categoriaActual}/documentos?grupo_id=${grupoActual.id}`
+  );
+  renderDocumentos();
+}
+
+async function recargarVistaActual() {
+  if (categoriaActual === null) await cargarDocumentosRaiz();
+  else if (grupoActual === null) await cargarDocumentosCategoria();
+  else await cargarDocumentosGrupo();
+}
+
+function renderDocumentos() {
+  renderBreadcrumbsDocumentos();
+  actualizarToolbarDocumentos();
+  if (categoriaActual === null) renderCategorias();
+  else if (grupoActual === null) renderCategoriaAbierta();
+  else renderGrupoAbierto();
+  actualizarFiltroEtiquetas();
+}
+
+// --- Breadcrumbs: "SIGLAS > Documentos > Categoría > Subgrupo" ---
+
+function renderBreadcrumbsDocumentos() {
+  const nav = document.getElementById('documentos-breadcrumbs');
+  const partes = [];
+  if (asignaturaCorta) partes.push(`<span class="documentos-breadcrumb-item documentos-breadcrumb-item--fijo">${escapeHtml(asignaturaCorta)}</span>`);
+  partes.push(`<span class="documentos-breadcrumb-sep">›</span>`);
+  partes.push(`<button type="button" class="documentos-breadcrumb-item" data-nivel="raiz">Documentos</button>`);
+
+  if (categoriaActual) {
+    const etiqueta = CATEGORIAS_DOCUMENTO_LISTA.find((c) => c.categoria === categoriaActual).etiqueta;
+    partes.push(`<span class="documentos-breadcrumb-sep">›</span>`);
+    partes.push(`<button type="button" class="documentos-breadcrumb-item${grupoActual ? '' : ' is-actual'}" data-nivel="categoria">${escapeHtml(etiqueta)}</button>`);
+  }
+  if (grupoActual) {
+    partes.push(`<span class="documentos-breadcrumb-sep">›</span>`);
+    partes.push(`<span class="documentos-breadcrumb-item is-actual">${escapeHtml(grupoActual.nombre)}</span>`);
+  }
+  nav.innerHTML = partes.join('');
+
+  const raiz = nav.querySelector('[data-nivel="raiz"]');
+  if (raiz) raiz.addEventListener('click', () => { categoriaActual = null; grupoActual = null; cargarDocumentosRaiz(); });
+  const cat = nav.querySelector('[data-nivel="categoria"]');
+  if (cat) cat.addEventListener('click', () => { grupoActual = null; cargarDocumentosCategoria(); });
+}
+
+function actualizarToolbarDocumentos() {
+  const enRaiz = categoriaActual === null;
+  document.getElementById('form-nuevo-grupo').style.display = (categoriaActual && !grupoActual) ? '' : 'none';
+  document.getElementById('documentos-btn-subir').style.display = enRaiz ? 'none' : '';
+  document.getElementById('filtro-etiqueta').closest('.ds-field').style.display = enRaiz ? 'none' : '';
+}
+
+// --- Nivel raíz: las 4 categorías fijas ---
+
+function renderCategorias() {
+  const cont = document.getElementById('documentos-explorador');
+  cont.className = `documentos-explorador documentos-explorador--${vistaDocumentos}`;
+  cont.innerHTML = `<div class="documentos-carpetas-grid">${ARBOL_DOCUMENTOS.map((cat) => `
+    <button type="button" class="documento-carpeta" data-categoria="${cat.categoria}">
+      <svg class="ds-icon documento-carpeta-icono"><use href="/static/vendor/lucide/sprite.svg#lucide-folder"></use></svg>
+      <span class="documento-carpeta-nombre">${escapeHtml(cat.etiqueta)}</span>
+      <span class="ds-caption">${cat.total_documentos} documento${cat.total_documentos !== 1 ? 's' : ''}</span>
+    </button>
+  `).join('')}</div>`;
+  reanimar(cont);
+
+  cont.querySelectorAll('.documento-carpeta').forEach((btn) => {
+    const categoria = btn.dataset.categoria;
+    btn.addEventListener('click', () => { categoriaActual = categoria; grupoActual = null; cargarDocumentosCategoria(); });
+    registrarDropzone(btn, { categoria, grupoId: null });
+  });
+}
+
+// --- Nivel categoría: subgrupos (carpetas) + documentos sin clasificar ---
+
+function renderCategoriaAbierta() {
+  const cont = document.getElementById('documentos-explorador');
+  cont.className = `documentos-explorador documentos-explorador--${vistaDocumentos}`;
+
+  const carpetas = GRUPOS_CATEGORIA_ACTUAL.map((g) => `
+    <div class="documento-carpeta" data-grupo-id="${g.id}" data-grupo-nombre="${escapeHtml(g.nombre)}" tabindex="0" role="button">
+      <svg class="ds-icon documento-carpeta-icono"><use href="/static/vendor/lucide/sprite.svg#lucide-folder"></use></svg>
+      <span class="documento-carpeta-nombre">${escapeHtml(g.nombre)}</span>
+      <span class="ds-caption">${g.total_documentos} documento${g.total_documentos !== 1 ? 's' : ''}</span>
+      <div class="documento-carpeta-acciones">
+        <button type="button" class="fila-icono-btn btn-renombrar-grupo" data-id="${g.id}" title="Renombrar">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-tag"></use></svg>
+        </button>
+        <button type="button" class="fila-icono-btn btn-borrar-grupo" data-id="${g.id}" data-nombre="${escapeHtml(g.nombre)}" title="Eliminar subgrupo">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  cont.innerHTML = `
+    ${carpetas ? `<div class="documentos-carpetas-grid">${carpetas}</div>` : ''}
+    <h3 class="ds-h3 documentos-sin-clasificar-titulo" id="documentos-sin-clasificar-zona">Sin clasificar</h3>
+    <div class="documentos-lista-archivos" id="documentos-lista-sin-clasificar"></div>
+  `;
+
+  renderListaDocumentos(document.getElementById('documentos-lista-sin-clasificar'), DOCUMENTOS_SIN_CLASIFICAR);
+  reanimar(cont);
+
+  cont.querySelectorAll('.documento-carpeta[data-grupo-id]').forEach((tarjeta) => {
+    const grupoId = parseInt(tarjeta.dataset.grupoId, 10);
+    tarjeta.addEventListener('click', (e) => {
+      if (e.target.closest('.documento-carpeta-acciones')) return;
+      grupoActual = { id: grupoId, nombre: tarjeta.dataset.grupoNombre };
+      cargarDocumentosGrupo();
+    });
+    registrarDropzone(tarjeta, { categoria: categoriaActual, grupoId });
+  });
+  cont.querySelectorAll('.btn-renombrar-grupo').forEach((btn) => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); renombrarGrupo(parseInt(btn.dataset.id, 10)); });
+  });
+  cont.querySelectorAll('.btn-borrar-grupo').forEach((btn) => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); confirmarBorrarGrupo(parseInt(btn.dataset.id, 10), btn.dataset.nombre); });
+  });
+
+  registrarDropzone(document.getElementById('documentos-sin-clasificar-zona'), { categoria: categoriaActual, grupoId: null });
+  registrarDropzoneFondo(cont, { categoria: categoriaActual, grupoId: null });
+}
+
+// --- Nivel subgrupo: solo sus documentos ---
+
+function renderGrupoAbierto() {
+  const cont = document.getElementById('documentos-explorador');
+  cont.className = `documentos-explorador documentos-explorador--${vistaDocumentos}`;
+  cont.innerHTML = `<div class="documentos-lista-archivos" id="documentos-lista-grupo"></div>`;
+  renderListaDocumentos(document.getElementById('documentos-lista-grupo'), DOCUMENTOS_GRUPO_ACTUAL);
+  reanimar(cont);
+  registrarDropzoneFondo(cont, { categoria: categoriaActual, grupoId: grupoActual.id });
+}
+
+// --- Lista/cuadrícula de documentos (reutilizada en "sin clasificar" y dentro de un subgrupo) ---
+
+function renderListaDocumentos(contenedor, documentos) {
+  if (!contenedor) return;
+  if (documentos.length === 0) {
+    contenedor.innerHTML = '<p class="sin-elementos">Sin documentos aquí todavía. Arrastra archivos o usa "Subir archivos".</p>';
+    return;
+  }
+  contenedor.innerHTML = documentos.map((doc) => {
+    const urlArchivo = `/documentos/${doc.id}/archivo`;
+    const miniatura = doc.es_imagen
+      ? `<img src="${urlArchivo}" class="miniatura-documento" alt="${escapeHtml(doc.nombre_archivo)}">`
+      : '<div class="documento-fila-icono"><svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-folder"></use></svg></div>';
+    const etiquetasHtml = doc.etiquetas.map((e) => `<span class="tag-badge">${escapeHtml(e)}</span>`).join('');
+    return `
+      <div class="documento-fila" draggable="true" data-id="${doc.id}" data-etiquetas="${doc.etiquetas.join(',').toLowerCase()}">
+        ${miniatura}
+        <a href="#" class="documento-fila-nombre abrir-documento">${escapeHtml(doc.nombre_archivo)}</a>
+        <span class="tags-documento">${etiquetasHtml}</span>
+        <span class="documento-fila-meta">${formatoTamano(doc.tamano_bytes)}</span>
+        <span class="documento-fila-fecha">${new Date(doc.fecha_subida).toLocaleDateString()}</span>
+        <div class="documento-fila-acciones">
+          <button type="button" class="fila-icono-btn btn-editar-etiquetas" title="Editar etiquetas">
+            <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-tag"></use></svg>
+          </button>
+          <button type="button" class="fila-icono-btn btn-mover-doc" title="Mover a...">
+            <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-folder"></use></svg>
+          </button>
+          <a class="fila-icono-btn descargar" href="${urlArchivo}" download title="Descargar">
+            <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-download"></use></svg>
+          </a>
+          <button type="button" class="fila-icono-btn btn-borrar-doc" title="Eliminar">
+            <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  contenedor.querySelectorAll('.documento-fila').forEach((fila) => {
+    const id = parseInt(fila.dataset.id, 10);
+    const doc = documentos.find((d) => d.id === id);
+    const urlArchivo = `/documentos/${doc.id}/archivo`;
+
+    fila.querySelector('.abrir-documento').addEventListener('click', (e) => {
+      e.preventDefault();
+      if (doc.es_pdf) abrirVisorPdf(doc.id);
+      else if (doc.es_imagen) abrirLightbox(urlArchivo, doc.nombre_archivo);
+      else window.open(urlArchivo, '_blank');
+    });
+    if (doc.es_imagen) {
+      fila.querySelector('.miniatura-documento').addEventListener('click', () => abrirLightbox(urlArchivo, doc.nombre_archivo));
+    }
+    fila.querySelector('.btn-editar-etiquetas').addEventListener('click', () => editarEtiquetas(doc));
+    fila.querySelector('.btn-mover-doc').addEventListener('click', (e) => abrirMenuMover(doc, e.currentTarget));
+    fila.querySelector('.btn-borrar-doc').addEventListener('click', () => confirmarBorrarDocumento(doc));
+
+    fila.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('application/x-documento-id', String(doc.id));
+      e.dataTransfer.effectAllowed = 'move';
+    });
+  });
+}
+
+// --- Drag & drop: archivos del SO (subida) y documentos internos (mover) ---
+
+function registrarDropzone(elemento, destino) {
+  elemento.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); elemento.classList.add('dragover'); });
+  elemento.addEventListener('dragleave', () => elemento.classList.remove('dragover'));
+  elemento.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    elemento.classList.remove('dragover');
+    await gestionarDrop(e, destino);
+  });
+}
+
+// Fondo del explorador (fuera de cualquier tarjeta): mismo destino que "Sin clasificar".
+// stopPropagation() en registrarDropzone() de las tarjetas evita que un drop sobre una
+// tarjeta concreta "caiga también" en este listener de fondo.
+function registrarDropzoneFondo(elemento, destino) {
+  elemento.addEventListener('dragover', (e) => e.preventDefault());
+  elemento.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    await gestionarDrop(e, destino);
+  });
+}
+
+async function gestionarDrop(e, destino) {
+  const idInterno = e.dataTransfer.getData('application/x-documento-id');
+  if (idInterno) {
+    await moverDocumento(parseInt(idInterno, 10), destino.categoria, destino.grupoId);
+    return;
+  }
+  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    await subirArchivos(destino.categoria, destino.grupoId, e.dataTransfer.files);
+  }
+}
+
+document.getElementById('input-subir-documentos').addEventListener('change', async (e) => {
+  await subirArchivos(categoriaActual, grupoActual ? grupoActual.id : null, e.target.files);
+  e.target.value = '';
+});
+
+// --- Subida con barra de progreso real (XHR: fetch no expone progreso de subida) ---
+
+function subidaConProgreso(url, formData, alActualizar) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) alActualizar(Math.round((e.loaded / e.total) * 100));
+    });
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else {
+        let mensaje = `Error ${xhr.status}`;
+        try { mensaje = JSON.parse(xhr.responseText).error || mensaje; } catch (err) { /* respuesta sin JSON */ }
+        reject(new Error(mensaje));
+      }
+    };
+    xhr.onerror = () => reject(new Error('Error de red al subir el archivo'));
+    xhr.send(formData);
+  });
+}
+
+async function subirArchivos(categoria, grupoId, files) {
+  if (!files || files.length === 0) return;
+  mostrarErrorCampo('documentos-error', '');
+  const formData = new FormData();
+  for (const file of files) formData.append('archivos', file);
+  if (grupoId) formData.append('grupo_id', grupoId);
+
+  const cont = document.getElementById('documentos-progreso');
+  const barra = document.getElementById('documentos-progreso-barra');
+  const texto = document.getElementById('documentos-progreso-texto');
+  cont.style.display = '';
+  barra.style.width = '0%';
+  texto.textContent = `Subiendo ${files.length} archivo${files.length !== 1 ? 's' : ''}...`;
+
+  try {
+    await subidaConProgreso(
+      `/asignaturas/${asignaturaId}/categorias/${categoria}/documentos`,
+      formData,
+      (pct) => { barra.style.width = `${pct}%`; },
+    );
+    await recargarVistaActual();
+    mostrarToast(`${files.length} archivo${files.length !== 1 ? 's' : ''} subido${files.length !== 1 ? 's' : ''}`, 'success');
+  } catch (err) {
+    mostrarErrorCampo('documentos-error', 'Error al subir: ' + err.message);
+  } finally {
+    setTimeout(() => { cont.style.display = 'none'; }, 400);
+  }
+}
+
+// --- Mover documento (menú "Mover a...", drag&drop interno) ---
+
+async function moverDocumento(documentoId, categoria, grupoId) {
+  try {
+    await api(`/documentos/${documentoId}/mover`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categoria, grupo_id: grupoId }),
+    });
+    await recargarVistaActual();
+    mostrarToast('Documento movido', 'success');
+  } catch (err) {
+    mostrarToast('Error al mover: ' + err.message, 'danger');
+  }
+}
+
+function cerrarMenuMover() {
+  const existente = document.getElementById('menu-mover-documento');
+  if (existente) existente.remove();
+  document.removeEventListener('click', cerrarMenuMoverSiFuera);
+}
+
+function cerrarMenuMoverSiFuera(e) {
+  const menu = document.getElementById('menu-mover-documento');
+  if (menu && !menu.contains(e.target)) cerrarMenuMover();
+}
+
+async function abrirMenuMover(doc, botonAncla) {
+  cerrarMenuMover();
+  const menu = document.createElement('div');
+  menu.id = 'menu-mover-documento';
+  menu.className = 'documentos-menu-mover';
+  menu.innerHTML = `
+    <p class="ds-label">Mover "${escapeHtml(doc.nombre_archivo)}" a…</p>
+    <select class="ds-select" id="mover-categoria">
+      ${CATEGORIAS_DOCUMENTO_LISTA.map((c) => `<option value="${c.categoria}" ${c.categoria === doc.categoria ? 'selected' : ''}>${escapeHtml(c.etiqueta)}</option>`).join('')}
+    </select>
+    <select class="ds-select" id="mover-grupo"><option value="">(Sin clasificar)</option></select>
+    <div class="documentos-menu-mover-acciones">
+      <button type="button" class="ds-btn ds-btn-secondary" id="mover-cancelar">Cancelar</button>
+      <button type="button" class="ds-btn ds-btn-primary" id="mover-confirmar">Mover</button>
+    </div>
+  `;
+  document.body.appendChild(menu);
+  const rect = botonAncla.getBoundingClientRect();
+  menu.style.top = `${window.scrollY + rect.bottom + 4}px`;
+  menu.style.left = `${Math.min(window.scrollX + rect.left, window.scrollX + document.documentElement.clientWidth - 260)}px`;
+
+  async function poblarGrupos(categoriaSeleccionada) {
+    const grupos = await api(`/asignaturas/${asignaturaId}/grupos?categoria=${categoriaSeleccionada}`);
+    const select = document.getElementById('mover-grupo');
+    if (!select) return;
+    select.innerHTML = '<option value="">(Sin clasificar)</option>' + grupos.map((g) =>
+      `<option value="${g.id}" ${categoriaSeleccionada === doc.categoria && g.id === doc.grupo_documento_id ? 'selected' : ''}>${escapeHtml(g.nombre)}</option>`
+    ).join('');
+  }
+  await poblarGrupos(doc.categoria);
+
+  document.getElementById('mover-categoria').addEventListener('change', (e) => poblarGrupos(e.target.value));
+  document.getElementById('mover-cancelar').addEventListener('click', cerrarMenuMover);
+  document.getElementById('mover-confirmar').addEventListener('click', async () => {
+    const categoria = document.getElementById('mover-categoria').value;
+    const grupoIdRaw = document.getElementById('mover-grupo').value;
+    cerrarMenuMover();
+    await moverDocumento(doc.id, categoria, grupoIdRaw ? parseInt(grupoIdRaw, 10) : null);
+  });
+  setTimeout(() => document.addEventListener('click', cerrarMenuMoverSiFuera), 0);
+}
+
+// --- Subgrupos: crear / renombrar / eliminar ---
+
+document.getElementById('form-nuevo-grupo').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  mostrarErrorCampo('documentos-error', '');
+  const campo = document.getElementById('nuevo-grupo-nombre');
+  const nombre = campo.value.trim();
+  if (!nombre) {
+    mostrarErrorCampo('documentos-error', 'Indica un nombre para el subgrupo.');
+    return;
+  }
+  const boton = e.submitter || e.target.querySelector('button[type="submit"]');
+  boton.classList.add('is-loading');
+  try {
+    await api(`/asignaturas/${asignaturaId}/grupos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categoria: categoriaActual, nombre }),
+    });
+    campo.value = '';
+    await cargarDocumentosCategoria();
+    mostrarToast('Subgrupo creado', 'success');
+  } catch (err) {
+    mostrarErrorCampo('documentos-error', err.message);
+  } finally {
+    boton.classList.remove('is-loading');
+  }
+});
+
+async function renombrarGrupo(grupoId) {
+  const grupo = GRUPOS_CATEGORIA_ACTUAL.find((g) => g.id === grupoId);
+  const nuevo = prompt('Nuevo nombre del subgrupo:', grupo ? grupo.nombre : '');
+  if (nuevo === null) return;
+  try {
+    await api(`/grupos/${grupoId}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: nuevo }),
+    });
+    await cargarDocumentosCategoria();
+    mostrarToast('Subgrupo renombrado', 'success');
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+async function confirmarBorrarGrupo(grupoId, nombre) {
+  if (!confirm(`¿Eliminar el subgrupo "${nombre}"? Sus documentos pasarán a "Sin clasificar" (no se borran).`)) return;
+  await api(`/grupos/${grupoId}`, { method: 'DELETE' });
+  await cargarDocumentosCategoria();
+  mostrarToast('Subgrupo eliminado', 'success');
+}
+
+// --- Vista lista/cuadrícula (recuerda la última usada) ---
+
+document.getElementById('documentos-vista-toggle').addEventListener('click', (e) => {
+  const boton = e.target.closest('.filtro-chip');
+  if (!boton) return;
+  document.querySelectorAll('#documentos-vista-toggle .filtro-chip').forEach((b) => b.classList.remove('is-active'));
+  boton.classList.add('is-active');
+  vistaDocumentos = boton.dataset.vista;
+  localStorage.setItem('documentos-vista', vistaDocumentos);
+  renderDocumentos();
+});
+
+// --- Etiquetas y borrado de documentos ---
+
+async function editarEtiquetas(doc) {
+  const actuales = doc.etiquetas.join(', ');
+  const respuesta = prompt('Etiquetas separadas por comas:', actuales);
+  if (respuesta === null) return;
+  const etiquetas = respuesta.split(',').map((e) => e.trim()).filter(Boolean);
+  await api(`/documentos/${doc.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ etiquetas }),
+  });
+  await recargarVistaActual();
+  mostrarToast('Etiquetas actualizadas', 'success');
+}
+
+function actualizarFiltroEtiquetas() {
+  const select = document.getElementById('filtro-etiqueta');
+  if (!select) return;
+  const valorActual = select.value;
+
+  const todas = new Set();
+  document.querySelectorAll('.documento-fila').forEach((fila) => {
+    (fila.dataset.etiquetas || '').split(',').forEach((e) => { if (e) todas.add(e); });
+  });
+
+  select.innerHTML = '<option value="">(todas)</option>' +
+    Array.from(todas).sort().map((e) => `<option value="${escapeHtml(e)}">${escapeHtml(e)}</option>`).join('');
+
+  if (todas.has(valorActual)) select.value = valorActual;
+  aplicarFiltroEtiqueta();
+}
+
+function aplicarFiltroEtiqueta() {
+  const select = document.getElementById('filtro-etiqueta');
+  if (!select) return;
+  const filtro = select.value.toLowerCase();
+  document.querySelectorAll('.documento-fila').forEach((fila) => {
+    const etiquetas = (fila.dataset.etiquetas || '').split(',');
+    fila.style.display = (!filtro || etiquetas.includes(filtro)) ? '' : 'none';
+  });
+}
+
+document.getElementById('filtro-etiqueta').addEventListener('change', aplicarFiltroEtiqueta);
+
+function abrirLightbox(url, alt) {
+  let lightbox = document.getElementById('lightbox');
+  if (!lightbox) {
+    lightbox = document.createElement('div');
+    lightbox.id = 'lightbox';
+    lightbox.className = 'lightbox oculto';
+    lightbox.innerHTML = '<img id="lightbox-img" src="" alt="">';
+    lightbox.addEventListener('click', () => lightbox.classList.add('oculto'));
+    document.body.appendChild(lightbox);
+  }
+  document.getElementById('lightbox-img').src = url;
+  document.getElementById('lightbox-img').alt = alt || '';
+  lightbox.classList.remove('oculto');
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const lightbox = document.getElementById('lightbox');
+    if (lightbox) lightbox.classList.add('oculto');
+  }
+});
+
+async function confirmarBorrarDocumento(doc) {
+  if (!confirm(`¿Borrar "${doc.nombre_archivo}"? Esta acción no se puede deshacer.`)) return;
+  await api(`/documentos/${doc.id}`, { method: 'DELETE' });
+  await recargarVistaActual();
+  mostrarToast('Documento eliminado', 'success');
+}
+
+// --- Visor PDF (PDF.js embebido) ---
+
+async function abrirVisorPdf(documentoId, paginaForzada) {
+  documentoAbiertoId = documentoId;
+  const doc = await api(`/documentos/${documentoId}`);
+  const paginaInicial = paginaForzada || doc.ultima_pagina_vista || 1;
+
+  const iframe = document.getElementById('pdf-frame');
+  const visor = document.getElementById('visor-pdf');
+  visor.style.display = 'block';
+  document.getElementById('visor-titulo').textContent = doc.nombre_archivo;
+
+  const archivoUrl = encodeURIComponent(`/documentos/${documentoId}/archivo`);
+  iframe.src = `/static/vendor/pdfjs/web/viewer.html?file=${archivoUrl}`;
+
+  iframe.onload = () => {
+    try {
+      const app = iframe.contentWindow.PDFViewerApplication;
+      if (!app) return;
+      app.initializedPromise.then(() => {
+        app.eventBus.on('pagesinit', () => {
+          if (paginaInicial > 1) app.page = paginaInicial;
+        }, { once: true });
+        app.eventBus.on('pagechanging', (evt) => {
+          guardarUltimaPagina(documentoId, evt.pageNumber);
+        });
+      });
+    } catch (err) {
+      console.warn('No se pudo enlazar con PDF.js:', err);
+    }
+  };
+
+  await cargarMarcadores(documentoId);
+  visor.scrollIntoView({ behavior: 'smooth' });
+}
+
+function cerrarVisorPdf() {
+  const iframe = document.getElementById('pdf-frame');
+  iframe.onload = null;
+  iframe.src = 'about:blank'; // libera el PDF cargado en vez de dejarlo corriendo oculto
+  document.getElementById('visor-pdf').style.display = 'none';
+  documentoAbiertoId = null;
+}
+
+document.getElementById('btn-cerrar-visor').addEventListener('click', cerrarVisorPdf);
+
+let debounceTimerPagina = null;
+function guardarUltimaPagina(documentoId, pagina) {
+  clearTimeout(debounceTimerPagina);
+  debounceTimerPagina = setTimeout(() => {
+    fetch(`/documentos/${documentoId}/ultima-pagina`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pagina }),
+    });
+  }, 800);
+}
+
+async function cargarMarcadores(documentoId) {
+  const marcadores = await api(`/documentos/${documentoId}/marcadores`);
+  const lista = document.getElementById('lista-marcadores');
+  lista.innerHTML = '';
+  if (marcadores.length === 0) {
+    lista.innerHTML = '<li class="sin-elementos">Sin marcadores todavía</li>';
+    return;
+  }
+  for (const m of marcadores) {
+    const li = document.createElement('li');
+    const etiqueta = `Pág. ${m.numero_pagina}${m.titulo ? ' — ' + escapeHtml(m.titulo) : ''}`;
+    li.innerHTML = `
+      <a href="#" class="ir-marcador">${etiqueta}</a>
+      <button type="button" class="fila-icono-btn btn-borrar-marcador">
+        <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
+      </button>
+    `;
+    li.querySelector('.ir-marcador').addEventListener('click', (e) => {
+      e.preventDefault();
+      irAPagina(m.numero_pagina);
+    });
+    li.querySelector('.btn-borrar-marcador').addEventListener('click', async () => {
+      if (!confirm(`¿Borrar el marcador de la página ${m.numero_pagina}? Esta acción no se puede deshacer.`)) return;
+      await api(`/marcadores/${m.id}`, { method: 'DELETE' });
+      await cargarMarcadores(documentoId);
+      mostrarToast('Marcador eliminado', 'success');
+    });
+    lista.appendChild(li);
+  }
+}
+
+function irAPagina(pagina) {
+  const iframe = document.getElementById('pdf-frame');
+  try {
+    iframe.contentWindow.PDFViewerApplication.page = pagina;
+  } catch (err) {
+    const base = iframe.src.split('#')[0];
+    iframe.src = `${base}#page=${pagina}`;
+  }
+}
+
+document.getElementById('btn-anadir-marcador').addEventListener('click', async () => {
+  if (!documentoAbiertoId) {
+    alert('Abre primero un documento PDF para poder añadir un marcador.');
+    return;
+  }
+  let paginaActual = 1;
+  try {
+    paginaActual = document.getElementById('pdf-frame').contentWindow.PDFViewerApplication.page;
+  } catch (err) { /* si no se puede leer, se usa la página 1 por defecto */ }
+
+  const titulo = prompt('Nota para este marcador (opcional):', '') || null;
+  await api(`/documentos/${documentoAbiertoId}/marcadores`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ numero_pagina: paginaActual, titulo }),
+  });
+  await cargarMarcadores(documentoAbiertoId);
+});
+
+// Deep-link desde el buscador global: /vista/asignaturas/<id>?doc=<id>&pagina=<n>
+async function abrirDesdeUrlSiCorresponde() {
+  const params = new URLSearchParams(window.location.search);
+  const docId = params.get('doc');
+  if (!docId) return;
+  const pagina = params.get('pagina');
+  await abrirVisorPdf(parseInt(docId, 10), pagina ? parseInt(pagina, 10) : null);
+}
+
+// --- Inicio ---
+
+mostrarEsqueletos();
+cargarCabeceraYResumen();
+cargarTareas();
+cargarDocumentosRaiz().then(abrirDesdeUrlSiCorresponde);

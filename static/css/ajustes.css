@@ -1,0 +1,102 @@
+/* ==========================================================================
+   Ajustes (Fase 10 de diseño) — pantalla completa migrada al design system.
+   Construido sobre static/css/design-system.css; ya no depende de style.css.
+   ========================================================================== */
+
+.detalle-btn-icono {
+  padding: var(--ds-space-2);
+  line-height: 0;
+}
+.detalle-btn-icono .ds-icon { width: 16px; height: 16px; margin: 0; }
+
+.ajustes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--ds-space-6);
+  align-items: start;
+}
+
+.ajustes-bloque--ancho {
+  grid-column: 1 / -1;
+}
+
+.ajustes-bloque-titulo {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  margin-bottom: var(--ds-space-4);
+}
+.ajustes-bloque-titulo .ds-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--ds-color-accent);
+}
+
+.ajustes-bloque-ayuda {
+  margin-bottom: var(--ds-space-4);
+}
+
+.ajustes-input-numero {
+  max-width: 120px;
+}
+
+.ajustes-campo-ayuda {
+  margin: var(--ds-space-1) 0 0;
+  color: var(--ds-color-text-secondary);
+  font-size: var(--ds-font-size-caption);
+}
+
+.ajustes-codigo {
+  display: block;
+  padding: var(--ds-space-3) var(--ds-space-4);
+  background: var(--ds-color-surface-secondary);
+  border: 1px solid var(--ds-color-border);
+  border-radius: var(--ds-radius-md);
+  color: var(--ds-color-text-primary);
+  font-size: var(--ds-font-size-caption);
+  word-break: break-all;
+}
+
+.ajustes-form-backup {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--ds-space-3);
+  flex-wrap: wrap;
+  margin-top: var(--ds-space-5);
+}
+.ajustes-form-backup .ds-field {
+  flex: 1 1 220px;
+  margin-bottom: 0;
+}
+
+.ajustes-enlace {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  color: var(--ds-color-accent);
+  text-decoration: none;
+  font-weight: var(--ds-font-weight-button);
+}
+.ajustes-enlace:hover { text-decoration: underline; }
+.ajustes-enlace .ds-icon { width: 14px; height: 14px; }
+
+/* --- Fila etiqueta/valor reutilizada de asignatura-detalle.css --- */
+
+.detalle-fila {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-3) var(--ds-space-2);
+  margin: 0 calc(-1 * var(--ds-space-2));
+  border-radius: var(--ds-radius-sm);
+  transition: background-color var(--ds-duration-fast) var(--ds-ease-standard);
+}
+.detalle-fila:hover { background: var(--ds-color-surface-secondary); }
+.detalle-fila-etiqueta {
+  color: var(--ds-color-text-secondary);
+  font-size: var(--ds-font-size-body);
+}
+.detalle-fila-valor {
+  margin-left: auto;
+  text-align: right;
+}

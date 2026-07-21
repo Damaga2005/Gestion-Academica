@@ -1,0 +1,308 @@
+/* ==========================================================================
+   Calendario (Fase 10 de diseño) — pantalla completa migrada al design
+   system. Construido sobre static/css/design-system.css; ya no depende de
+   style.css.
+   ========================================================================== */
+
+.detalle-btn-icono {
+  padding: var(--ds-space-2);
+  line-height: 0;
+}
+.detalle-btn-icono .ds-icon { width: 16px; height: 16px; margin: 0; }
+
+/* --- Barra de herramientas: navegación de mes + nueva tarea --- */
+
+.calendario-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  margin-bottom: var(--ds-space-6);
+}
+
+.calendario-nav-btn {
+  padding: var(--ds-space-2);
+  line-height: 0;
+}
+.calendario-nav-btn .ds-icon { width: 18px; height: 18px; margin: 0; }
+
+.calendario-mes-label {
+  min-width: 180px;
+  text-align: center;
+}
+
+.calendario-btn-nueva {
+  margin-left: auto;
+}
+.calendario-btn-nueva .ds-icon { width: 16px; height: 16px; }
+
+/* --- Filtros (vista/asignatura/tipo) + exportar --- */
+
+.calendario-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--ds-space-4);
+  margin-bottom: var(--ds-space-6);
+}
+.calendario-filtro-select {
+  margin-bottom: 0;
+  flex: 0 0 220px;
+}
+.calendario-btn-exportar {
+  margin-left: auto;
+}
+.calendario-btn-exportar .ds-icon { width: 16px; height: 16px; }
+
+/* --- Rejilla del mes --- */
+
+.calendario-cabecera-dias {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--ds-space-2);
+  margin-bottom: var(--ds-space-2);
+  color: var(--ds-color-text-secondary);
+  font-size: var(--ds-font-size-caption);
+  font-weight: var(--ds-font-weight-button);
+  text-align: center;
+}
+
+.calendario-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--ds-space-2);
+}
+
+.dia-celda, .dia-vacio {
+  min-height: 100px;
+  padding: var(--ds-space-2);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-color-surface);
+  border: 1px solid var(--ds-color-border);
+}
+.dia-vacio {
+  background: transparent;
+  border-color: transparent;
+}
+
+.dia-numero {
+  font-size: var(--ds-font-size-caption);
+  color: var(--ds-color-text-secondary);
+  margin-bottom: var(--ds-space-2);
+}
+
+.tarea-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-1);
+  font-size: 0.75rem;
+  padding: 2px var(--ds-space-1);
+  padding-right: 18px;
+  border-radius: var(--ds-radius-sm);
+  margin-bottom: 2px;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--ds-color-accent) 16%, var(--ds-color-surface));
+  color: color-mix(in srgb, var(--ds-color-accent) 55%, var(--ds-color-text-primary));
+  transition: filter var(--ds-duration-fast) var(--ds-ease-standard),
+              transform var(--ds-duration-fast) var(--ds-ease-standard);
+}
+.tarea-item:hover {
+  filter: brightness(0.95);
+  transform: translateY(-1px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tarea-item { transition-duration: 0.01ms; }
+}
+
+.tarea-item.prioridad-alta {
+  background: var(--ds-color-danger);
+  color: var(--ds-color-on-danger);
+}
+.tarea-item.prioridad-media {
+  background: var(--ds-color-warning);
+  color: var(--ds-color-on-warning);
+}
+.tarea-item.prioridad-baja {
+  background: var(--ds-color-surface-secondary);
+  color: var(--ds-color-text-secondary);
+  border: 1px solid var(--ds-color-border);
+}
+.tarea-item.completada {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.btn-borrar-tarea {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 0;
+}
+.btn-borrar-tarea:hover { opacity: 1; }
+.btn-borrar-tarea .ds-icon { width: 10px; height: 10px; }
+
+.tarea-item-cuerpo {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Formato detallado (semanal/agenda): siglas + tipo + título + hora/aula, cada
+   uno visualmente distinto sin depender solo del color (spec punto 9). */
+.tarea-item--detallado,
+.tarea-item .tarea-item-siglas {
+  font-weight: var(--ds-font-weight-button);
+}
+.tarea-item-siglas::after { content: ' · '; opacity: 0.6; }
+.tarea-item-horas, .tarea-item-aula {
+  margin-left: var(--ds-space-2);
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+.tarea-item-aula::before { content: '· '; }
+
+/* --- Vista semanal --- */
+
+.calendario-cabecera-dias--semana {
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.calendario-semana-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--ds-space-2);
+}
+
+.dia-celda--semana {
+  min-height: 220px;
+  padding: var(--ds-space-2);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-color-surface);
+  border: 1px solid var(--ds-color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dia-celda--semana .tarea-item {
+  white-space: normal;
+  padding: var(--ds-space-2);
+}
+.dia-celda--semana .tarea-item-cuerpo {
+  white-space: normal;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.dia-celda--semana .tarea-item-horas,
+.dia-celda--semana .tarea-item-aula {
+  margin-left: 0;
+  display: block;
+}
+.dia-celda--semana .tarea-item-aula::before { content: ''; }
+
+/* --- Vista agenda --- */
+
+.calendario-agenda-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.calendario-agenda-dia {
+  margin-top: var(--ds-space-6);
+  margin-bottom: var(--ds-space-2);
+  text-transform: capitalize;
+}
+.calendario-agenda-dia:first-child { margin-top: 0; }
+.calendario-agenda-lista .tarea-item {
+  padding: var(--ds-space-3);
+  font-size: var(--ds-font-size-body);
+}
+.calendario-agenda-lista .tarea-item-cuerpo {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ds-space-2);
+  flex-wrap: wrap;
+}
+
+/* --- Diálogo "Nueva/Editar tarea/evento" --- */
+
+.calendario-dialog-evento {
+  max-width: 640px;
+}
+
+.calendario-dialog-menu {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ds-space-3);
+  padding: 0;
+  margin: var(--ds-space-6) 0 0;
+}
+.calendario-btn-borrar-dialogo {
+  margin-right: auto;
+}
+
+.calendario-aviso-conflicto {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-space-2);
+  padding: var(--ds-space-3) var(--ds-space-4);
+  margin-top: var(--ds-space-4);
+  border-radius: var(--ds-radius-md);
+  background: color-mix(in srgb, var(--ds-color-warning) 14%, var(--ds-color-surface));
+  color: var(--ds-color-text-primary);
+  font-size: var(--ds-font-size-caption);
+}
+.calendario-aviso-conflicto .ds-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--ds-color-warning);
+  margin-top: 2px;
+}
+.calendario-aviso-conflicto ul {
+  margin: var(--ds-space-1) 0 0;
+  padding-left: var(--ds-space-5);
+}
+
+@media (max-width: 640px) {
+  .calendario-cabecera-dias, .calendario-grid { gap: 4px; }
+  .calendario-cabecera-dias { font-size: 0.65rem; }
+  .dia-celda, .dia-vacio { min-height: 64px; padding: 4px; }
+  .dia-numero { font-size: 0.7rem; margin-bottom: 4px; }
+  .tarea-item { font-size: 0.65rem; }
+  .calendario-mes-label { min-width: 0; flex: 1; }
+  .calendario-toolbar { flex-wrap: wrap; }
+  .calendario-btn-nueva { margin-left: 0; flex: 1 1 100%; }
+
+  .calendario-filtros { gap: var(--ds-space-3); }
+  .calendario-filtro-select { flex: 1 1 45%; }
+  .calendario-btn-exportar { margin-left: 0; flex: 1 1 100%; justify-content: center; }
+
+  /* Vista semanal en móvil: agenda diaria apilada, no una cuadrícula de 7
+     columnas comprimida (spec punto 3). */
+  .calendario-cabecera-dias--semana { display: none; }
+  .calendario-semana-grid { grid-template-columns: 1fr; gap: var(--ds-space-4); }
+  .dia-celda--semana { min-height: 0; }
+  .dia-celda-semana-etiqueta { display: block; }
+}
+
+.dia-celda-semana-etiqueta {
+  display: none; /* la cabecera compartida ya indica el día en escritorio */
+  margin: 0 0 var(--ds-space-2);
+  font-size: var(--ds-font-size-caption);
+  font-weight: var(--ds-font-weight-button);
+  color: var(--ds-color-text-secondary);
+}

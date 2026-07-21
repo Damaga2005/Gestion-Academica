@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Design System — GREELEC</title>
+  <link rel="stylesheet" href="css/design-system.css">
+  <style>
+    body {
+      margin: 0;
+      background: var(--ds-color-background);
+      font-family: var(--ds-font-family);
+    }
+    .docs-topbar {
+      position: sticky;
+      top: 0;
+      z-index: var(--ds-z-sticky);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--ds-space-4) var(--ds-space-6);
+      background: color-mix(in srgb, var(--ds-color-surface) 85%, transparent);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--ds-color-border);
+    }
+    .docs-shell { max-width: var(--ds-maxwidth-wide); margin: 0 auto; padding: var(--ds-space-16) var(--ds-space-6); }
+    .docs-section { margin: var(--ds-space-24) 0; }
+    .docs-section:first-child { margin-top: 0; }
+    .docs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--ds-space-6); margin-top: var(--ds-space-8); }
+    .docs-swatch { border-radius: var(--ds-radius-lg); padding: var(--ds-space-5); border: 1px solid var(--ds-color-border); }
+    .docs-swatch-fill { height: 64px; border-radius: var(--ds-radius-md); margin-bottom: var(--ds-space-3); border: 1px solid var(--ds-color-border); }
+    .docs-row { display: flex; flex-wrap: wrap; gap: var(--ds-space-4); align-items: center; margin-top: var(--ds-space-4); }
+    .docs-stack { display: flex; flex-direction: column; gap: var(--ds-space-4); max-width: 420px; }
+    .docs-icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: var(--ds-space-4); margin-top: var(--ds-space-6); }
+    .docs-icon-item { display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-2); padding: var(--ds-space-3); border-radius: var(--ds-radius-md); }
+    .docs-icon-item .ds-icon { color: var(--ds-color-text-secondary); }
+    .docs-icon-item span { font-size: 0.65rem; color: var(--ds-color-text-secondary); text-align: center; }
+    .docs-code { font-family: ui-monospace, monospace; font-size: 0.8rem; background: var(--ds-color-surface-secondary); padding: 2px 6px; border-radius: var(--ds-radius-sm); }
+    .docs-mini-sidebar { width: 200px; background: var(--ds-color-background); border: 1px solid var(--ds-color-border); border-radius: var(--ds-radius-lg); padding: var(--ds-space-4); }
+  </style>
+</head>
+<body>
+  <div class="ds-scope">
+    <header class="docs-topbar">
+      <span class="ds-h3">Design System — GREELEC</span>
+      <span class="ds-caption">Referencia de tokens y componentes · no forma parte de la navegación de la app</span>
+    </header>
+
+    <div class="docs-shell">
+
+      <section class="docs-section">
+        <p class="ds-caption">Colores</p>
+        <p class="ds-body ds-text-secondary" style="margin-top:var(--ds-space-2)">
+          Se cambia con el atributo <span class="docs-code">data-theme="claro"|"oscuro"</span> en el <span class="docs-code">&lt;html&gt;</span>.
+        </p>
+        <div class="docs-grid">
+          <div class="docs-swatch"><div class="docs-swatch-fill" style="background:var(--ds-color-background)"></div>Background</div>
+          <div class="docs-swatch"><div class="docs-swatch-fill" style="background:var(--ds-color-surface)"></div>Surface</div>
+          <div class="docs-swatch"><div class="docs-swatch-fill" style="background:var(--ds-color-surface-secondary)"></div>Surface Secondary</div>
+          <div class="docs-swatch"><div class="docs-swatch-fill" style="background:var(--ds-color-accent)"></div>Accent</div>
+          <div class="docs-swatch"><div class="docs-swatch-fill" style="background:var(--ds-color-success)"></div>Success</div>
+          <div class="docs-swatch"><div class="docs-swatch-fill" style="background:var(--ds-color-warning)"></div>Warning</div>
+          <div class="docs-swatch"><div class="docs-swatch-fill" style="background:var(--ds-color-danger)"></div>Danger</div>
+          <div class="docs-swatch"><div class="docs-swatch-fill" style="background:var(--ds-color-border)"></div>Border</div>
+        </div>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="docs-section">
+        <p class="ds-caption">Tipografía</p>
+        <p class="ds-display">Display 40</p>
+        <p class="ds-h1">Heading 1 / 32</p>
+        <p class="ds-h2">Heading 2 / 24</p>
+        <p class="ds-h3">Heading 3 / 19</p>
+        <p class="ds-body">Body 15 — texto de párrafo estándar.</p>
+        <p class="ds-caption">Caption 13 — texto secundario, metadatos.</p>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="docs-section">
+        <p class="ds-caption">Botones</p>
+        <div class="docs-row">
+          <button class="ds-btn ds-btn-primary">Primary</button>
+          <button class="ds-btn ds-btn-secondary">Secondary</button>
+          <button class="ds-btn ds-btn-danger">Danger</button>
+          <button class="ds-btn ds-btn-primary" disabled>Disabled</button>
+          <button class="ds-btn ds-btn-primary is-loading" id="docs-btn-loading">Cargando</button>
+        </div>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="docs-section">
+        <p class="ds-caption">Campos de formulario (.ds-field)</p>
+        <div class="docs-stack">
+          <div class="ds-field">
+            <label class="ds-label" for="docs-input">Nombre</label>
+            <input class="ds-input" id="docs-input" type="text" placeholder="Ej. Cálculo II">
+          </div>
+          <div class="ds-field">
+            <label class="ds-label" for="docs-input-error">Correo (con error)</label>
+            <input class="ds-input is-invalid" id="docs-input-error" type="email" value="no-es-un-email">
+            <p class="ds-field-error"><svg class="ds-icon"><use href="vendor/lucide/sprite.svg#lucide-circle-alert"></use></svg><span>Ese correo no tiene un formato válido.</span></p>
+          </div>
+          <select class="ds-select"><option>Obligatoria</option><option>Optativa</option></select>
+        </div>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="docs-section">
+        <p class="ds-caption">Badges (contraste verificado AA/AAA en ambos temas)</p>
+        <div class="docs-row">
+          <span class="ds-badge">Neutral</span>
+          <span class="ds-badge ds-badge-accent">Cursando</span>
+          <span class="ds-badge ds-badge-success">Superada</span>
+          <span class="ds-badge ds-badge-warning">Actual</span>
+          <span class="ds-badge ds-badge-danger">No superada</span>
+        </div>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="docs-section">
+        <p class="ds-caption">Progress bar</p>
+        <div class="docs-stack">
+          <div class="ds-progress"><div class="ds-progress-bar" style="width:35%"></div></div>
+          <div class="ds-progress"><div class="ds-progress-bar" style="width:72%"></div></div>
+        </div>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="docs-section">
+        <p class="ds-caption">Card</p>
+        <div class="docs-grid">
+          <div class="ds-card">
+            <p class="ds-h3">Card simple</p>
+            <p class="ds-caption" style="margin-top:4px">Sin interacción</p>
+          </div>
+          <div class="ds-card ds-card--interactive">
+            <p class="ds-h3">Card interactiva</p>
+            <p class="ds-caption" style="margin-top:4px">Hover: elevación + desplazamiento</p>
+          </div>
+        </div>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="docs-section">
+        <p class="ds-caption">Skeleton (carga)</p>
+        <div class="docs-stack" style="max-width:280px">
+          <div class="ds-card">
+            <div class="ds-skeleton ds-skeleton-title"></div>
+            <div class="ds-skeleton ds-skeleton-line"></div>
+          </div>
+        </div>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="docs-section">
+        <p class="ds-caption">Modal y Toast</p>
+        <div class="docs-row">
+          <button class="ds-btn ds-btn-secondary" id="docs-btn-modal">Abrir modal</button>
+          <button class="ds-btn ds-btn-secondary" id="docs-btn-toast">Mostrar toast</button>
+        </div>
+        <dialog class="ds-modal" id="docs-modal">
+          <p class="ds-h2">Confirmar acción</p>
+          <p class="ds-body" style="margin-top:12px">Ejemplo de modal sobre &lt;dialog&gt; nativo.</p>
+          <div class="docs-row" style="justify-content:flex-end">
+            <button class="ds-btn ds-btn-secondary" id="docs-modal-cerrar">Cerrar</button>
+          </div>
+        </dialog>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="docs-section">
+        <p class="ds-caption">Empty state</p>
+        <div class="ds-card">
+          <div class="ds-empty-state">
+            <div class="ds-empty-state-icon">📄</div>
+            <div class="ds-empty-state-title">Sin elementos todavía</div>
+            <p class="ds-empty-state-description">Texto de ejemplo para un estado vacío.</p>
+          </div>
+        </div>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="docs-section">
+        <p class="ds-caption">Sidebar (miniatura)</p>
+        <div class="docs-mini-sidebar">
+          <ul class="ds-sidebar-nav">
+            <li><a class="ds-sidebar-link is-active" href="#">Resumen</a></li>
+            <li><a class="ds-sidebar-link" href="#">Asignaturas</a></li>
+            <li><a class="ds-sidebar-link" href="#">Calendario</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="docs-section">
+        <p class="ds-caption">Iconos vendorizados (static/vendor/lucide/sprite.svg)</p>
+        <div class="docs-icon-grid" id="docs-icon-grid"></div>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('docs-btn-modal').addEventListener('click', () => document.getElementById('docs-modal').showModal());
+    document.getElementById('docs-modal-cerrar').addEventListener('click', () => document.getElementById('docs-modal').close());
+    document.getElementById('docs-btn-toast').addEventListener('click', () => {
+      let contenedor = document.getElementById('ds-toast-container');
+      if (!contenedor) {
+        contenedor = document.createElement('div');
+        contenedor.id = 'ds-toast-container';
+        contenedor.className = 'ds-toast-container';
+        document.body.appendChild(contenedor);
+      }
+      const toast = document.createElement('div');
+      toast.className = 'ds-toast ds-toast-success';
+      toast.textContent = 'Ejemplo de toast';
+      contenedor.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    });
+
+    fetch('vendor/lucide/sprite.svg').then(r => r.text()).then(svg => {
+      const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
+      const grid = document.getElementById('docs-icon-grid');
+      doc.querySelectorAll('symbol').forEach(sym => {
+        const id = sym.id;
+        const nombre = id.replace('lucide-', '');
+        const item = document.createElement('div');
+        item.className = 'docs-icon-item';
+        item.innerHTML = `<svg class="ds-icon"><use href="vendor/lucide/sprite.svg#${id}"></use></svg><span>${nombre}</span>`;
+        grid.appendChild(item);
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="es" data-theme="{{ tema_actual }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calendario · GREELEC</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/calendario.css') }}">
+</head>
+<body>
+  <div class="ds-scope">
+    <div class="ds-shell">
+      <aside class="ds-sidebar">
+        <ul class="ds-sidebar-nav">
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.dashboard') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-layout-dashboard"></use></svg>
+              Resumen
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.index') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-graduation-cap"></use></svg>
+              Asignaturas
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link is-active" href="{{ url_for('vistas.vista_calendario') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-calendar"></use></svg>
+              Calendario
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_horario') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-history"></use></svg>
+              Horario
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.index') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-folder"></use></svg>
+              Documentos
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_repaso') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-check"></use></svg>
+              Repaso
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_ajustes') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-settings"></use></svg>
+              Configuración
+            </a>
+          </li>
+        </ul>
+      </aside>
+
+      <main class="ds-shell-main">
+        <div class="ds-shell-content">
+          <header class="ds-page-header">
+            <div>
+              <h1 class="ds-h1 ds-page-header-title">Calendario</h1>
+              <p class="ds-body ds-text-secondary ds-page-header-subtitle">Tareas, exámenes y entregas por mes</p>
+            </div>
+            <div class="ds-page-header-actions">
+              <button id="toggle-tema" class="ds-btn ds-btn-secondary detalle-btn-icono" type="button" title="Cambiar tema"></button>
+              {% if lock_activo %}
+              <form method="post" action="{{ url_for('auth.cerrar_sesion') }}" class="form-lock">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="ds-btn ds-btn-secondary detalle-btn-icono" title="Bloquear la app">🔒</button>
+              </form>
+              {% endif %}
+            </div>
+          </header>
+
+          <div class="calendario-toolbar">
+            <button id="btn-periodo-anterior" class="ds-btn ds-btn-secondary calendario-nav-btn" aria-label="Periodo anterior">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-chevron-left"></use></svg>
+            </button>
+            <span id="periodo-actual-label" class="ds-h2 calendario-mes-label"></span>
+            <button id="btn-periodo-siguiente" class="ds-btn ds-btn-secondary calendario-nav-btn" aria-label="Periodo siguiente">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-chevron-right"></use></svg>
+            </button>
+            <button id="btn-nueva-tarea" class="ds-btn ds-btn-primary calendario-btn-nueva">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-plus"></use></svg>
+              Nueva tarea/evento
+            </button>
+          </div>
+
+          <div class="calendario-filtros">
+            <div class="asignaturas-filtros-chips" id="vista-chips">
+              <button type="button" class="filtro-chip is-active" data-vista="mensual">Mensual</button>
+              <button type="button" class="filtro-chip" data-vista="semanal">Semanal</button>
+              <button type="button" class="filtro-chip" data-vista="agenda">Agenda</button>
+            </div>
+            <div class="ds-field calendario-filtro-select">
+              <label for="filtro-asignatura" class="ds-label">Asignatura</label>
+              <select id="filtro-asignatura" class="ds-select">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <div class="ds-field calendario-filtro-select">
+              <label for="filtro-tipo" class="ds-label">Tipo</label>
+              <select id="filtro-tipo" class="ds-select">
+                <option value="">Todos</option>
+                <option value="examen_parcial">Examen parcial</option>
+                <option value="examen_final">Examen final</option>
+                <option value="recuperacion">Recuperación</option>
+                <option value="entrega">Entrega</option>
+                <option value="tutoria">Tutoría</option>
+                <option value="evento">Evento</option>
+                <option value="tarea_general">Tarea general</option>
+              </select>
+            </div>
+            <a id="btn-exportar-calendario" class="ds-btn ds-btn-secondary calendario-btn-exportar" href="/calendario/ics">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-download"></use></svg>
+              Exportar todo (.ics)
+            </a>
+          </div>
+
+          <div id="vista-mensual">
+            <div class="calendario-cabecera-dias">
+              <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+            </div>
+            <div id="calendario-grid" class="calendario-grid"></div>
+          </div>
+
+          <div id="vista-semanal" style="display:none">
+            <div class="calendario-cabecera-dias calendario-cabecera-dias--semana" id="calendario-semana-cabecera"></div>
+            <div id="calendario-semana-grid" class="calendario-semana-grid"></div>
+          </div>
+
+          <div id="vista-agenda" style="display:none">
+            <div id="calendario-agenda-lista" class="calendario-agenda-lista"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <nav class="ds-bottom-nav">
+      <ul class="ds-bottom-nav-list">
+        <li>
+          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.dashboard') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-layout-dashboard"></use></svg>
+            Resumen
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.index') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-graduation-cap"></use></svg>
+            Asignaturas
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link is-active" href="{{ url_for('vistas.vista_calendario') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-calendar"></use></svg>
+            Calendario
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.vista_horario') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-history"></use></svg>
+            Horario
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.vista_repaso') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-check"></use></svg>
+            Repaso
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.vista_ajustes') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-settings"></use></svg>
+            Ajustes
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+
+  <div class="ds-scope">
+    <dialog id="dialog-tarea" class="ds-modal calendario-dialog-evento">
+      <form id="form-tarea">
+        <h3 class="ds-h3" id="dialog-tarea-titulo">Nueva tarea/evento</h3>
+        <input type="hidden" id="tarea-id">
+
+        <div class="ds-field">
+          <label for="tarea-titulo" class="ds-label">Título</label>
+          <input type="text" id="tarea-titulo" class="ds-input" required>
+        </div>
+
+        <div class="ds-field-row">
+          <div class="ds-field">
+            <label for="tarea-tipo" class="ds-label">Tipo</label>
+            <select id="tarea-tipo" class="ds-select">
+              <option value="tarea_general">Tarea general</option>
+              <option value="examen_parcial">Examen parcial</option>
+              <option value="examen_final">Examen final</option>
+              <option value="recuperacion">Recuperación</option>
+              <option value="entrega">Entrega</option>
+              <option value="tutoria">Tutoría</option>
+              <option value="evento">Evento</option>
+            </select>
+          </div>
+          <div class="ds-field">
+            <label for="tarea-asignatura" class="ds-label">Asignatura (opcional)</label>
+            <select id="tarea-asignatura" class="ds-select">
+              <option value="">(ninguna)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="ds-field-row">
+          <div class="ds-field">
+            <label for="tarea-fecha" class="ds-label">Fecha</label>
+            <input type="date" id="tarea-fecha" class="ds-input" required>
+          </div>
+          <div class="ds-field">
+            <label for="tarea-hora-inicio" class="ds-label">Hora inicio (opcional)</label>
+            <input type="time" id="tarea-hora-inicio" class="ds-input">
+          </div>
+          <div class="ds-field">
+            <label for="tarea-hora-fin" class="ds-label">Hora fin (opcional)</label>
+            <input type="time" id="tarea-hora-fin" class="ds-input">
+          </div>
+        </div>
+
+        <div class="ds-field-row">
+          <div class="ds-field">
+            <label for="tarea-aula" class="ds-label">Aula (opcional)</label>
+            <input type="text" id="tarea-aula" class="ds-input" placeholder="Ej. 2.14">
+          </div>
+          <div class="ds-field">
+            <label for="tarea-ubicacion" class="ds-label">Ubicación/edificio (opcional)</label>
+            <input type="text" id="tarea-ubicacion" class="ds-input">
+          </div>
+        </div>
+
+        <div class="ds-field">
+          <label for="tarea-descripcion" class="ds-label">Descripción (opcional)</label>
+          <textarea id="tarea-descripcion" class="ds-textarea" rows="2"></textarea>
+        </div>
+
+        <div class="ds-field-row">
+          <div class="ds-field">
+            <label for="tarea-prioridad" class="ds-label">Prioridad</label>
+            <select id="tarea-prioridad" class="ds-select">
+              <option value="baja">Baja</option>
+              <option value="media" selected>Media</option>
+              <option value="alta">Alta</option>
+            </select>
+          </div>
+          <div class="ds-field">
+            <label for="tarea-recordatorio" class="ds-label">Recordatorio (días antes, opcional)</label>
+            <input type="number" id="tarea-recordatorio" class="ds-input" min="0" step="1">
+          </div>
+        </div>
+
+        <div class="ds-field">
+          <label for="tarea-link" class="ds-label">Enlace relacionado (opcional)</label>
+          <input type="url" id="tarea-link" class="ds-input" placeholder="https://...">
+        </div>
+
+        <div id="tarea-conflictos-aviso" class="calendario-aviso-conflicto" style="display:none"></div>
+
+        <p class="ds-field-error" id="tarea-form-error"></p>
+
+        <menu class="calendario-dialog-menu">
+          <button type="button" id="btn-borrar-tarea-dialogo" class="ds-btn ds-btn-danger calendario-btn-borrar-dialogo" style="display:none">Eliminar</button>
+          <a id="btn-exportar-tarea-ics" class="ds-btn ds-btn-secondary" style="display:none" target="_blank" rel="noopener">Exportar .ics</a>
+          <button type="button" id="btn-cancelar-tarea" class="ds-btn ds-btn-secondary">Cancelar</button>
+          <button type="submit" id="btn-guardar-tarea" class="ds-btn ds-btn-primary">Guardar</button>
+        </menu>
+      </form>
+    </dialog>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/tema.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/calendario.js') }}"></script>
+</body>
+</html>

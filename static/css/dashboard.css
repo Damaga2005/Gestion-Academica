@@ -1,0 +1,150 @@
+/* ==========================================================================
+   Dashboard (Fase 3 de diseño) — estilos propios de esta pantalla únicamente.
+   Construido sobre los componentes de static/css/design-system.css; no
+   redefine tokens ni toca ninguna regla de style.css u otras plantillas.
+   ========================================================================== */
+
+.dashboard-progreso {
+  margin-bottom: var(--ds-space-8);
+}
+
+.dashboard-progreso-stat {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ds-space-3);
+  margin-top: var(--ds-space-2);
+  flex-wrap: wrap;
+}
+
+.dashboard-progreso-barra {
+  margin-top: var(--ds-space-6);
+}
+
+.dashboard-progreso-desglose {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-5) var(--ds-space-8);
+  margin-top: var(--ds-space-6);
+  padding-top: var(--ds-space-6);
+  border-top: 1px solid var(--ds-color-border);
+}
+
+.dashboard-progreso-categoria {
+  flex: 1 1 180px;
+  min-width: 160px;
+}
+
+.dashboard-progreso-categoria-etiqueta {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  margin-bottom: var(--ds-space-2);
+}
+
+.dashboard-progreso-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dashboard-progreso-dot--accent { background: var(--ds-color-accent); }
+.dashboard-progreso-dot--warning { background: var(--ds-color-warning); }
+.dashboard-progreso-dot--success { background: var(--ds-color-success); }
+
+.dashboard-progreso-mini {
+  height: 6px;
+}
+
+.dashboard-section {
+  margin-bottom: var(--ds-space-8);
+}
+
+.dashboard-section .ds-h2 {
+  margin-bottom: var(--ds-space-4);
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--ds-space-4);
+}
+
+.dashboard-asignatura-card {
+  text-decoration: none;
+  display: block;
+}
+
+.dashboard-entregas-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dashboard-entrega-item {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-3) 0;
+  border-bottom: 1px solid var(--ds-color-border);
+}
+
+.dashboard-entrega-item:last-child {
+  border-bottom: none;
+}
+
+.dashboard-entrega-link {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-decoration: none;
+  color: var(--ds-color-text-primary);
+}
+
+.dashboard-entrega-link:hover .dashboard-entrega-titulo {
+  color: var(--ds-color-accent);
+}
+
+.dashboard-entrega-titulo {
+  font-size: var(--ds-font-size-body);
+  transition: color var(--ds-duration-fast) var(--ds-ease-standard);
+}
+
+.dashboard-entrega-badges {
+  display: flex;
+  gap: var(--ds-space-2);
+  flex-shrink: 0;
+}
+
+.dashboard-accesos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--ds-space-4);
+}
+
+.dashboard-acceso {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ds-space-3);
+  text-decoration: none;
+  color: var(--ds-color-text-primary);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-body);
+  font-weight: var(--ds-font-weight-button);
+}
+
+.dashboard-acceso .ds-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--ds-color-accent);
+}
+
+@media (max-width: 640px) {
+  .dashboard-progreso-stat {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--ds-space-1);
+  }
+}

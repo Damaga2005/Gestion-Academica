@@ -1,0 +1,83 @@
+/* ==========================================================================
+   Repaso de hoy (Fase 10 de diseño) — pantalla completa migrada al design
+   system. Construido sobre static/css/design-system.css; ya no depende de
+   style.css.
+   ========================================================================== */
+
+.detalle-btn-icono {
+  padding: var(--ds-space-2);
+  line-height: 0;
+}
+.detalle-btn-icono .ds-icon { width: 16px; height: 16px; margin: 0; }
+
+.grupo-repaso {
+  margin-bottom: var(--ds-space-8);
+}
+.grupo-repaso:last-child {
+  margin-bottom: 0;
+}
+.grupo-repaso h3 {
+  margin-bottom: var(--ds-space-3);
+}
+
+.lista-conceptos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.lista-conceptos li {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-3) var(--ds-space-2);
+  margin: 0 calc(-1 * var(--ds-space-2));
+  border-bottom: 1px solid var(--ds-color-border);
+  border-radius: var(--ds-radius-sm);
+  transition: background-color var(--ds-duration-fast) var(--ds-ease-standard);
+}
+.lista-conceptos li:hover {
+  background: var(--ds-color-surface-secondary);
+}
+.lista-conceptos li:last-child {
+  border-bottom: none;
+}
+
+.concepto-nombre {
+  flex: 1;
+  min-width: 0;
+}
+
+.badge.estado-concepto-no_visto { background: var(--ds-color-surface-secondary); color: var(--ds-color-text-secondary); }
+.badge.estado-concepto-flojo { background: color-mix(in srgb, var(--ds-color-danger) 16%, var(--ds-color-surface)); color: color-mix(in srgb, var(--ds-color-danger) 55%, var(--ds-color-text-primary)); }
+.badge.estado-concepto-dominado { background: color-mix(in srgb, var(--ds-color-success) 16%, var(--ds-color-surface)); color: color-mix(in srgb, var(--ds-color-success) 55%, var(--ds-color-text-primary)); }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--ds-space-3);
+  border-radius: var(--ds-radius-full);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-caption);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.btn-subir-concepto, .btn-bajar-concepto {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--ds-radius-sm);
+  border: none;
+  background: none;
+  color: var(--ds-color-text-secondary);
+  cursor: pointer;
+}
+.btn-subir-concepto:hover, .btn-bajar-concepto:hover {
+  background: var(--ds-color-surface);
+  color: var(--ds-color-text-primary);
+}
+.btn-subir-concepto .ds-icon, .btn-bajar-concepto .ds-icon {
+  width: 16px;
+  height: 16px;
+}

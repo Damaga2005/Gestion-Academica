@@ -1,0 +1,148 @@
+/* ==========================================================================
+   Horario (pestaña independiente del calendario académico) — cuadrícula
+   semanal lunes-viernes en escritorio, agenda diaria en móvil.
+   ========================================================================== */
+
+.detalle-btn-icono {
+  padding: var(--ds-space-2);
+  line-height: 0;
+}
+.detalle-btn-icono .ds-icon { width: 16px; height: 16px; margin: 0; }
+
+.horario-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-3);
+  margin-bottom: var(--ds-space-6);
+}
+.horario-toolbar .ds-icon { width: 16px; height: 16px; }
+
+.horario-solo-movil { display: none; }
+
+/* --- Cuadrícula de escritorio --- */
+
+.horario-grid-wrap {
+  overflow-x: auto;
+}
+
+.horario-grid {
+  display: grid;
+  grid-template-columns: 56px repeat(5, minmax(140px, 1fr));
+  min-width: 760px;
+}
+
+.horario-grid-esquina {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.horario-grid-dia-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--ds-font-size-caption);
+  font-weight: var(--ds-font-weight-button);
+  color: var(--ds-color-text-secondary);
+  border-bottom: 1px solid var(--ds-color-border);
+  padding-bottom: var(--ds-space-2);
+}
+
+.horario-grid-hora {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding-right: var(--ds-space-2);
+  font-size: var(--ds-font-size-caption);
+  color: var(--ds-color-text-secondary);
+  transform: translateY(-0.6em);
+}
+
+.horario-grid-celda {
+  border-top: 1px solid var(--ds-color-border);
+  border-left: 1px solid var(--ds-color-border);
+}
+.horario-grid-celda--media {
+  border-top-style: dashed;
+  border-top-color: color-mix(in srgb, var(--ds-color-border) 60%, transparent);
+}
+
+.horario-bloque {
+  position: relative;
+  margin: 1px 2px;
+  padding: var(--ds-space-2);
+  border-radius: var(--ds-radius-sm);
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+  font-family: var(--ds-font-family);
+  transition: filter var(--ds-duration-fast) var(--ds-ease-standard),
+              transform var(--ds-duration-fast) var(--ds-ease-standard);
+}
+.horario-bloque:hover { filter: brightness(0.95); transform: translateY(-1px); }
+@media (prefers-reduced-motion: reduce) { .horario-bloque { transition-duration: 0.01ms; } }
+
+.horario-bloque-siglas {
+  font-size: var(--ds-font-size-caption);
+  font-weight: var(--ds-font-weight-button);
+}
+.horario-bloque-tipo {
+  font-size: 0.7rem;
+  opacity: 0.85;
+}
+.horario-bloque-horas, .horario-bloque-aula {
+  font-size: 0.7rem;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Icono/color distinto por tipo de sesión (spec punto 9: no depender solo del
+   color — cada bloque ya lleva la etiqueta de tipo como texto siempre visible). */
+.horario-bloque--teoria {
+  background: color-mix(in srgb, var(--ds-color-accent) 16%, var(--ds-color-surface));
+  color: color-mix(in srgb, var(--ds-color-accent) 55%, var(--ds-color-text-primary));
+}
+.horario-bloque--problemas {
+  background: color-mix(in srgb, var(--ds-color-success) 16%, var(--ds-color-surface));
+  color: color-mix(in srgb, var(--ds-color-success) 55%, var(--ds-color-text-primary));
+}
+.horario-bloque--laboratorio {
+  background: color-mix(in srgb, var(--ds-color-warning) 18%, var(--ds-color-surface));
+  color: color-mix(in srgb, var(--ds-color-warning) 40%, var(--ds-color-text-primary));
+}
+.horario-bloque--seminario {
+  background: color-mix(in srgb, var(--ds-color-danger) 14%, var(--ds-color-surface));
+  color: color-mix(in srgb, var(--ds-color-danger) 55%, var(--ds-color-text-primary));
+}
+
+/* --- Agenda móvil / bloques en modo lista --- */
+
+.horario-agenda-dia {
+  margin-top: var(--ds-space-6);
+  margin-bottom: var(--ds-space-2);
+}
+.horario-agenda-dia:first-child { margin-top: 0; }
+
+.horario-agenda-lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-2);
+}
+
+.horario-bloque--agenda {
+  flex-direction: row;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--ds-space-2);
+  padding: var(--ds-space-3) var(--ds-space-4);
+  width: 100%;
+}
+.horario-bloque--agenda .horario-bloque-siglas { font-size: var(--ds-font-size-body); }
+
+@media (max-width: 900px) {
+  .horario-solo-escritorio { display: none; }
+  .horario-solo-movil { display: block; }
+}

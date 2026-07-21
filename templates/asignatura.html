@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="es" data-theme="{{ tema_actual }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title id="titulo-pagina">Asignatura · GREELEC</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/asignatura-detalle.css') }}">
+</head>
+<body>
+  <div class="ds-scope">
+    <div class="ds-shell">
+      <aside class="ds-sidebar">
+        <ul class="ds-sidebar-nav">
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.dashboard') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-layout-dashboard"></use></svg>
+              Resumen
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link is-active" href="{{ url_for('vistas.index') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-graduation-cap"></use></svg>
+              Asignaturas
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_calendario') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-calendar"></use></svg>
+              Calendario
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_horario') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-history"></use></svg>
+              Horario
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.index') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-folder"></use></svg>
+              Documentos
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_repaso') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-check"></use></svg>
+              Repaso
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_ajustes') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-settings"></use></svg>
+              Configuración
+            </a>
+          </li>
+        </ul>
+      </aside>
+
+      <main class="ds-shell-main">
+        <div class="ds-shell-content">
+          <a class="detalle-volver" href="{{ url_for('vistas.index') }}">
+            <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-arrow-left"></use></svg>
+            Asignaturas
+          </a>
+
+          <header class="ds-page-header">
+            <div>
+              <h1 class="ds-h1 ds-page-header-title" id="detalle-nombre">Cargando…</h1>
+              <div class="detalle-header-meta">
+                <span class="ds-badge" id="detalle-badge-estado"></span>
+                <span class="ds-body ds-text-secondary" id="detalle-creditos"></span>
+              </div>
+            </div>
+            <div class="detalle-header-actions">
+              <div class="ds-field detalle-field-estado">
+                <label for="detalle-select-estado" class="ds-label">Estado</label>
+                <select id="detalle-select-estado" class="ds-select detalle-select-estado">
+                  <option value="cursando">Cursando</option>
+                  <option value="pendiente">Pendiente</option>
+                  <option value="superada">Superada</option>
+                  <option value="no_superada">No superada</option>
+                </select>
+              </div>
+              <button id="btn-quitar-eleccion" class="ds-btn ds-btn-secondary" type="button" style="display:none">Quitar elección</button>
+              <button id="toggle-tema" class="ds-btn ds-btn-secondary detalle-btn-icono" type="button" title="Cambiar tema"></button>
+              <button id="btn-borrar-asignatura" class="ds-btn ds-btn-secondary detalle-btn-icono" type="button" title="Eliminar asignatura">
+                <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-trash-2"></use></svg>
+              </button>
+              {% if lock_activo %}
+              <form method="post" action="{{ url_for('auth.cerrar_sesion') }}" class="form-lock">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="ds-btn ds-btn-secondary detalle-btn-icono" title="Bloquear la app">🔒</button>
+              </form>
+              {% endif %}
+            </div>
+          </header>
+
+          <div class="detalle-grid">
+
+            <section class="ds-card">
+              <h2 class="ds-h2 detalle-bloque-titulo">Resumen</h2>
+              <div class="ds-field">
+                <label for="resumen-siglas-input" class="ds-label">Siglas</label>
+                <input type="text" id="resumen-siglas-input" class="ds-input" placeholder="Ej. DSED" maxlength="20">
+                <p class="ds-field-error" id="resumen-siglas-error"></p>
+                <span class="ds-form-mensaje" id="resumen-siglas-estado"></span>
+              </div>
+              <div class="detalle-fila">
+                <span class="detalle-fila-etiqueta">Tipo</span>
+                <span class="detalle-fila-valor" id="resumen-tipo"></span>
+              </div>
+              <div class="detalle-fila">
+                <span class="detalle-fila-etiqueta">Curso</span>
+                <span class="detalle-fila-valor" id="resumen-curso"></span>
+              </div>
+              <div class="detalle-fila">
+                <span class="detalle-fila-etiqueta">Nota final</span>
+                <span class="detalle-fila-valor" id="resumen-nota"></span>
+              </div>
+              <div class="detalle-fila" id="resumen-fila-prerrequisitos" style="display:none">
+                <span class="detalle-fila-etiqueta">Prerrequisitos</span>
+                <div class="resumen-prerrequisitos" id="resumen-prerrequisitos"></div>
+              </div>
+              <div class="resumen-progreso">
+                <p class="ds-caption" id="resumen-progreso-texto">Progreso</p>
+                <div class="ds-progress" style="margin-top:var(--ds-space-2)">
+                  <div class="ds-progress-bar" id="resumen-progreso-barra" style="width:0%"></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="ds-card">
+              <h2 class="ds-h2 detalle-bloque-titulo">Profesor</h2>
+              <div class="ds-field">
+                <label for="profesor-nombre" class="ds-label">Nombre</label>
+                <input type="text" id="profesor-nombre" class="ds-input" placeholder="Ej. María García">
+              </div>
+              <div class="ds-field">
+                <label for="profesor-correo" class="ds-label">Correo</label>
+                <input type="email" id="profesor-correo" class="ds-input" placeholder="profesor@universidad.es">
+                <p class="ds-field-error" id="profesor-correo-error"></p>
+              </div>
+              <div class="ds-field">
+                <label for="profesor-despacho" class="ds-label">Despacho</label>
+                <input type="text" id="profesor-despacho" class="ds-input" placeholder="Ej. Edificio A, 2ª planta">
+              </div>
+              <div class="ds-field">
+                <label for="profesor-aula-virtual" class="ds-label">Aula virtual</label>
+                <input type="url" id="profesor-aula-virtual" class="ds-input" placeholder="https://...">
+              </div>
+              <span class="ds-form-mensaje" id="profesor-guardado-estado"></span>
+              <div class="profesor-acciones">
+                <a id="btn-enviar-email" class="ds-btn ds-btn-secondary" href="#">
+                  <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-mail"></use></svg>
+                  Enviar email
+                </a>
+                <a id="btn-abrir-aula" class="ds-btn ds-btn-secondary" href="#" target="_blank" rel="noopener">
+                  <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-external-link"></use></svg>
+                  Abrir aula virtual
+                </a>
+              </div>
+            </section>
+
+            <section class="ds-card detalle-bloque--ancho" id="tarjeta-evaluacion">
+              <div class="evaluacion-cabecera">
+                <h2 class="ds-h2 detalle-bloque-titulo" style="margin-bottom:0">Evaluación</h2>
+                <button type="button" id="btn-anadir-esquema" class="ds-btn ds-btn-secondary">
+                  <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-plus"></use></svg>
+                  Comparar con otro esquema
+                </button>
+              </div>
+
+              <div id="evaluacion-unico">
+                <div class="evaluacion-resumen">
+                  <div>
+                    <p class="ds-caption">Evaluado</p>
+                    <p class="evaluacion-stat-numero" id="evaluacion-porcentaje">—</p>
+                  </div>
+                  <div id="evaluacion-media-wrap" style="display:none">
+                    <p class="ds-caption">Nota media ponderada</p>
+                    <p class="evaluacion-stat-numero" id="evaluacion-media">—</p>
+                  </div>
+                </div>
+                <div id="evaluacion-lista"></div>
+                <form id="form-nuevo-componente" class="detalle-form-anadir">
+                  <div class="ds-field">
+                    <label for="componente-nombre" class="ds-label">Nombre</label>
+                    <input type="text" id="componente-nombre" class="ds-input" placeholder="Ej. Parcial 1" required>
+                  </div>
+                  <div class="ds-field" style="flex-basis:150px">
+                    <label for="componente-tipo" class="ds-label">Tipo</label>
+                    <select id="componente-tipo" class="ds-select">
+                      <option value="teoria">Teoría</option>
+                      <option value="parcial">Parcial</option>
+                      <option value="examen_final">Examen final</option>
+                      <option value="laboratorio">Laboratorio</option>
+                      <option value="otro">Otro</option>
+                    </select>
+                  </div>
+                  <div class="ds-field" style="flex-basis:100px">
+                    <label for="componente-porcentaje" class="ds-label">% peso</label>
+                    <input type="number" id="componente-porcentaje" class="ds-input" placeholder="0–100" min="0" max="100" step="0.01" required>
+                  </div>
+                  <button type="submit" class="ds-btn ds-btn-secondary">
+                    <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-plus"></use></svg>
+                    Añadir
+                  </button>
+                </form>
+                <p class="ds-field-error" id="componente-error"></p>
+              </div>
+
+              <div id="evaluacion-comparacion" class="evaluacion-comparacion" style="display:none"></div>
+            </section>
+
+            <section class="ds-card">
+              <h2 class="ds-h2 detalle-bloque-titulo">Recursos</h2>
+              <div id="recursos-lista"></div>
+              <form id="form-nuevo-recurso" class="detalle-form-anadir">
+                <div class="ds-field" style="flex-basis:150px">
+                  <label for="recurso-nombre" class="ds-label">Plataforma</label>
+                  <select id="recurso-nombre" class="ds-select">
+                    <option value="Wuolah">Wuolah</option>
+                    <option value="Studocu">Studocu</option>
+                    <option value="Academia">Academia</option>
+                    <option value="Drive">Drive</option>
+                    <option value="GitHub">GitHub</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+                <div class="ds-field">
+                  <label for="recurso-url" class="ds-label">Enlace</label>
+                  <input type="url" id="recurso-url" class="ds-input" placeholder="https://..." required>
+                </div>
+                <button type="submit" class="ds-btn ds-btn-secondary">
+                  <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-plus"></use></svg>
+                  Añadir
+                </button>
+              </form>
+              <p class="ds-field-error" id="recurso-error"></p>
+            </section>
+
+            <section class="ds-card detalle-bloque--ancho">
+              <div class="documentos-cabecera">
+                <h2 class="ds-h2 detalle-bloque-titulo" style="margin-bottom:0">Documentos</h2>
+                <div class="asignaturas-filtros-chips" id="documentos-vista-toggle">
+                  <button type="button" class="filtro-chip is-active" data-vista="lista">Lista</button>
+                  <button type="button" class="filtro-chip" data-vista="cuadricula">Cuadrícula</button>
+                </div>
+              </div>
+
+              <nav class="documentos-breadcrumbs" id="documentos-breadcrumbs" aria-label="Ruta de documentos"></nav>
+
+              <div class="documentos-toolbar">
+                <form id="form-nuevo-grupo" class="detalle-form-anadir" style="display:none;margin:0;padding:0;border:none">
+                  <div class="ds-field">
+                    <label for="nuevo-grupo-nombre" class="ds-label">Nuevo subgrupo</label>
+                    <input type="text" id="nuevo-grupo-nombre" class="ds-input" placeholder="Ej. Tema 1" required>
+                  </div>
+                  <button type="submit" class="ds-btn ds-btn-secondary">
+                    <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-plus"></use></svg>
+                    Subgrupo
+                  </button>
+                </form>
+                <div class="ds-field">
+                  <label for="filtro-etiqueta" class="ds-label">Filtrar por etiqueta</label>
+                  <select id="filtro-etiqueta" class="ds-select">
+                    <option value="">(todas)</option>
+                  </select>
+                </div>
+                <label class="ds-btn ds-btn-secondary documentos-btn-subir" id="documentos-btn-subir">
+                  <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-upload"></use></svg>
+                  Subir archivos
+                  <input type="file" id="input-subir-documentos" multiple style="display:none">
+                </label>
+              </div>
+              <p class="ds-field-error" id="documentos-error"></p>
+
+              <div id="documentos-progreso" class="documentos-progreso" style="display:none">
+                <div class="ds-progress"><div class="ds-progress-bar" id="documentos-progreso-barra" style="width:0%"></div></div>
+                <span id="documentos-progreso-texto" class="ds-caption"></span>
+              </div>
+
+              <div id="documentos-explorador" class="documentos-explorador documentos-explorador--lista"></div>
+
+              <div id="visor-pdf" class="visor-pdf" style="display:none">
+                <div class="visor-header">
+                  <h3 class="ds-h3" id="visor-titulo"></h3>
+                  <div class="visor-header-acciones">
+                    <button id="btn-anadir-marcador" class="ds-btn ds-btn-secondary">+ Marcador en esta página</button>
+                    <button id="btn-cerrar-visor" type="button" class="fila-icono-btn" title="Cerrar visor">
+                      <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-x"></use></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="visor-body">
+                  <iframe id="pdf-frame" class="pdf-frame"></iframe>
+                  <aside class="marcadores-panel">
+                    <h3 class="ds-h3">Marcadores</h3>
+                    <ul id="lista-marcadores"></ul>
+                  </aside>
+                </div>
+              </div>
+            </section>
+
+            <section class="ds-card">
+              <h2 class="ds-h2 detalle-bloque-titulo">Notas</h2>
+              <div class="ds-field">
+                <label for="notas-rapidas" class="ds-label">Notas rápidas</label>
+                <textarea id="notas-rapidas" class="ds-textarea" rows="6" placeholder="Escribe aquí notas libres sobre esta asignatura..."></textarea>
+              </div>
+              <span id="notas-guardado-estado" class="ds-form-mensaje"></span>
+            </section>
+
+            <section class="ds-card">
+              <h2 class="ds-h2 detalle-bloque-titulo">Tareas</h2>
+              <div id="tareas-lista"></div>
+              <form id="form-nueva-tarea" class="detalle-form-anadir">
+                <div class="ds-field">
+                  <label for="tarea-titulo" class="ds-label">Título</label>
+                  <input type="text" id="tarea-titulo" class="ds-input" placeholder="Ej. Entrega práctica 2" required>
+                </div>
+                <div class="ds-field" style="flex-basis:150px">
+                  <label for="tarea-fecha" class="ds-label">Fecha</label>
+                  <input type="date" id="tarea-fecha" class="ds-input" required>
+                </div>
+                <div class="ds-field" style="flex-basis:140px">
+                  <label for="tarea-tipo" class="ds-label">Tipo</label>
+                  <select id="tarea-tipo" class="ds-select">
+                    <option value="tarea_general">Tarea</option>
+                    <option value="entrega">Entrega</option>
+                    <option value="examen">Examen</option>
+                    <option value="tutoria">Tutoría</option>
+                  </select>
+                </div>
+                <button type="submit" class="ds-btn ds-btn-secondary">
+                  <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-plus"></use></svg>
+                  Añadir
+                </button>
+              </form>
+              <p class="ds-field-error" id="tarea-error"></p>
+            </section>
+
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <nav class="ds-bottom-nav">
+      <ul class="ds-bottom-nav-list">
+        <li>
+          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.dashboard') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-layout-dashboard"></use></svg>
+            Resumen
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link is-active" href="{{ url_for('vistas.index') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-graduation-cap"></use></svg>
+            Asignaturas
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.vista_calendario') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-calendar"></use></svg>
+            Calendario
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.vista_horario') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-history"></use></svg>
+            Horario
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.vista_repaso') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-check"></use></svg>
+            Repaso
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.vista_ajustes') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-settings"></use></svg>
+            Ajustes
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+
+  <script>
+    window.ASIGNATURA_ID = {{ asignatura.id }};
+  </script>
+  <script src="{{ url_for('static', filename='js/tema.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/asignatura.js') }}"></script>
+</body>
+</html>

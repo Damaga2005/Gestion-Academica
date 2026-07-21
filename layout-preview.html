@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Layout — Vista previa</title>
+  <link rel="stylesheet" href="static/css/design-system.css">
+  <style>
+    /*
+      Los iconos se incrustan aquí como SVG inline (no via <use href="sprite.svg#...">)
+      porque esta vista previa se abre directamente como file:// y los navegadores
+      bloquean la carga de SVG externos por fetch bajo ese protocolo. El sprite
+      vendorizado en static/vendor/lucide/sprite.svg es la versión "oficial" para
+      cuando esto se enlace a las plantillas Flask reales (servidas por http://,
+      donde <use href="..."> sí funciona sin restricciones).
+    */
+    body {
+      margin: 0;
+      background: var(--ds-color-background);
+      font-family: var(--ds-font-family);
+    }
+    .preview-note {
+      position: fixed;
+      top: var(--ds-space-3);
+      right: var(--ds-space-3);
+      z-index: var(--ds-z-tooltip);
+      padding: var(--ds-space-1) var(--ds-space-3);
+      border-radius: var(--ds-radius-full);
+      background: var(--ds-color-surface-secondary);
+      border: 1px solid var(--ds-color-border);
+      font-size: var(--ds-font-size-caption);
+      color: var(--ds-color-text-secondary);
+    }
+    .demo-card { margin-bottom: var(--ds-space-6); }
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: var(--ds-space-6);
+    }
+  </style>
+</head>
+<body>
+  <div class="ds-scope">
+    <span class="preview-note">Fase 2 · Estructura de layout, sin pantallas reales</span>
+
+    <div class="ds-shell">
+      <aside class="ds-sidebar">
+        <ul class="ds-sidebar-nav">
+          <li>
+            <a class="ds-sidebar-link is-active" href="#">
+              <svg class="ds-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/>
+                <rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>
+              </svg>
+              Resumen
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="#">
+              <svg class="ds-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.838l8.57 3.908a2 2 0 0 0 1.66 0z"/>
+                <path d="M22 10.6V16"/>
+                <path d="M6.5 12.5V17c0 1.657 2.462 3 5.5 3s5.5-1.343 5.5-3v-4.5"/>
+              </svg>
+              Asignaturas
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="#">
+              <svg class="ds-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>
+              </svg>
+              Calendario
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="#">
+              <svg class="ds-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+              </svg>
+              Documentos
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="#">
+              <svg class="ds-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.5a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              Configuración
+            </a>
+          </li>
+        </ul>
+      </aside>
+
+      <main class="ds-shell-main">
+        <div class="ds-shell-content">
+          <header class="ds-page-header">
+            <div>
+              <h1 class="ds-h1 ds-page-header-title">Asignaturas</h1>
+              <p class="ds-body ds-text-secondary ds-page-header-subtitle">3º curso · GREELEC — 2 cuatrimestres, 9 asignaturas</p>
+            </div>
+            <div class="ds-page-header-actions">
+              <button class="ds-btn ds-btn-secondary">Filtrar</button>
+              <button class="ds-btn ds-btn-primary">Añadir asignatura</button>
+            </div>
+          </header>
+
+          <div class="demo-grid">
+            <div class="ds-card demo-card">
+              <p class="ds-h3">Cálculo II</p>
+              <p class="ds-caption" style="margin-top:4px">6 ECTS · Obligatoria</p>
+              <div class="ds-progress" style="margin-top:16px"><div class="ds-progress-bar" style="width:60%"></div></div>
+            </div>
+            <div class="ds-card demo-card ds-card--interactive">
+              <p class="ds-h3">Termodinámica</p>
+              <p class="ds-caption" style="margin-top:4px">6 ECTS · Obligatoria</p>
+              <div class="ds-progress" style="margin-top:16px"><div class="ds-progress-bar" style="width:30%"></div></div>
+            </div>
+            <div class="ds-card demo-card ds-card--interactive">
+              <p class="ds-h3">Sistemas Electrónicos</p>
+              <p class="ds-caption" style="margin-top:4px">4.5 ECTS · Optativa</p>
+              <div class="ds-progress" style="margin-top:16px"><div class="ds-progress-bar" style="width:85%"></div></div>
+            </div>
+          </div>
+
+          <p class="ds-caption" style="margin-top:var(--ds-space-8)">
+            Contenido de ejemplo únicamente para verificar el layout — el maquetado real de esta pantalla se hará en una fase posterior.
+          </p>
+        </div>
+      </main>
+    </div>
+
+    <nav class="ds-bottom-nav">
+      <ul class="ds-bottom-nav-list">
+        <li>
+          <a class="ds-bottom-nav-link is-active" href="#">
+            <svg class="ds-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/>
+              <rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>
+            </svg>
+            Resumen
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link" href="#">
+            <svg class="ds-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.838l8.57 3.908a2 2 0 0 0 1.66 0z"/>
+              <path d="M22 10.6V16"/>
+              <path d="M6.5 12.5V17c0 1.657 2.462 3 5.5 3s5.5-1.343 5.5-3v-4.5"/>
+            </svg>
+            Asignaturas
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link" href="#">
+            <svg class="ds-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>
+            </svg>
+            Calendario
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link" href="#">
+            <svg class="ds-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+            </svg>
+            Documentos
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link" href="#">
+            <svg class="ds-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.5a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            Ajustes
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</body>
+</html>

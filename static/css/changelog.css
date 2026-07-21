@@ -1,0 +1,50 @@
+/* ==========================================================================
+   Registro de cambios (Fase 10 de diseño) — pantalla completa migrada al
+   design system. Construido sobre static/css/design-system.css; ya no
+   depende de style.css.
+   ========================================================================== */
+
+.detalle-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  color: var(--ds-color-text-secondary);
+  text-decoration: none;
+  font-size: var(--ds-font-size-caption);
+  font-weight: var(--ds-font-weight-button);
+  margin-bottom: var(--ds-space-4);
+}
+.detalle-volver:hover { color: var(--ds-color-text-primary); }
+.detalle-volver .ds-icon { width: 16px; height: 16px; }
+
+.detalle-btn-icono {
+  padding: var(--ds-space-2);
+  line-height: 0;
+}
+.detalle-btn-icono .ds-icon { width: 16px; height: 16px; margin: 0; }
+
+.changelog-lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-6);
+}
+
+.entrada-changelog-cabecera {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  margin-bottom: var(--ds-space-4);
+}
+
+.entrada-changelog ul {
+  margin: 0;
+  padding-left: var(--ds-space-5);
+  color: var(--ds-color-text-secondary);
+}
+.entrada-changelog li {
+  margin-bottom: var(--ds-space-2);
+  line-height: var(--ds-line-height-body);
+}
+.entrada-changelog li:last-child {
+  margin-bottom: 0;
+}

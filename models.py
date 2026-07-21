@@ -1,0 +1,929 @@
+import re
+from datetime import date, datetime, timedelta
+
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import validates
+
+db = SQLAlchemy()
+
+# Validación básica de formato, no exhaustiva (no se pretende cubrir el RFC 5322 completo)
+PATRON_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+PATRON_URL = re.compile(r"^https?://[^\s]+$")
+
+TIPOS_ASIGNATURA = ("obligatoria", "optativa")
+# Constante centralizada de estados (spec Fase 11 punto 2): única fuente de verdad
+# reutilizada por el modelo, las rutas CRUD y la lógica de elección de optativas.
+ESTADOS_ASIGNATURA = ("superada", "cursando", "pendiente", "no_superada", "no_elegida")
+ESTADOS_CUATRIMESTRE = ("superado", "actual", "pendiente")
+TIPOS_COMPONENTE = ("teoria", "parcial", "examen_final", "laboratorio", "otro")
+# Regla para combinar el resultado de varios EsquemaEvaluacion de una misma asignatura
+# en un único resultado "aplicable". Por ahora solo existe "maximo" (el caso típico de
+# la UPC: nota final = máximo entre evaluación continua y fórmula alternativa), pero se
+# deja como tupla extensible en vez de un booleano para poder añadir otras reglas
+# (p. ej. "media") sin tener que tocar el esquema de datos otra vez.
+REGLAS_ESQUEMA = ("maximo",)
+APARTADOS_POR_DEFECTO = ("Teoría", "Exámenes", "Laboratorio")
+# Categorías fijas de documentos (Fase Organización jerárquica, punto 1): no se pueden
+# crear ni eliminar, toda asignatura las tiene todas implícitamente. Sustituyen a los
+# Apartado como clasificador principal; Apartado se conserva en el esquema por
+# compatibilidad con datos ya migrados, pero deja de usarse para documentos nuevos.
+CATEGORIAS_DOCUMENTO = ("teoria", "examenes", "laboratorios", "otros")
+ETIQUETA_CATEGORIA_DOCUMENTO = {
+    "teoria": "Teoría", "examenes": "Exámenes", "laboratorios": "Laboratorios", "otros": "Otros",
+}
+# "examen" y "tarea_general" son los tipos históricos (anteriores a la Fase de
+# Calendario académico y horario). Se mantienen para no romper tareas ya creadas;
+# los nuevos (examen_parcial/examen_final/recuperacion/evento) son los que pide esa
+# fase para poder distinguir exámenes con más detalle.
+TIPOS_TAREA = (
+    "examen", "examen_parcial", "examen_final", "recuperacion",
+    "entrega", "tarea_general", "tutoria", "evento",
+)
+PRIORIDADES_TAREA = ("alta", "media", "baja")
+TIPOS_HORARIO = ("teoria", "problemas", "laboratorio", "seminario")
+DIAS_SEMANA = (1, 2, 3, 4, 5)  # 1=lunes ... 5=viernes (spec: cuadrícula lunes-viernes)
+INTERVALOS_SEMANAS = (1, 2)  # 1=todas las semanas, 2=quincenal
+PATRON_SIGLAS = re.compile(r"^[A-Z0-9ÁÉÍÓÚÑ]+$")
+ESTADOS_HITO = ("pendiente", "en_progreso", "hecho")
+WIDGETS_POR_DEFECTO = ("recordatorios", "calendario", "certificaciones", "satelite")
+ORDEN_ESTADOS_CONCEPTO = ("no_visto", "flojo", "dominado")
+# Días hasta la próxima revisión según nivel (repetición espaciada simplificada, spec punto 7)
+INTERVALO_DIAS_CONCEPTO = {"no_visto": 0, "flojo": 3, "dominado": 18}
+
+
+# Tabla de asociación many-to-many para prerrequisitos (auto-referencial sobre Asignatura)
+asignatura_prerrequisito = db.Table(
+    "asignatura_prerrequisito",
+    db.Column("asignatura_id", db.Integer, db.ForeignKey("asignatura.id"), primary_key=True),
+    db.Column("prerrequisito_id", db.Integer, db.ForeignKey("asignatura.id"), primary_key=True),
+)
+
+
+class Anio(db.Model):
+    __tablename__ = "anio"
+
+    id = db.Column(db.Integer, primary_key=True)
+    numero = db.Column(db.Integer, nullable=False, unique=True)  # 1-4
+
+    cuatrimestres = db.relationship(
+        "Cuatrimestre", back_populates="anio", cascade="all, delete-orphan", order_by="Cuatrimestre.numero"
+    )
+
+    @validates("numero")
+    def validar_numero(self, key, value):
+        if value is None or not (1 <= int(value) <= 4):
+            raise ValueError("numero de Año debe estar entre 1 y 4")
+        return value
+
+    def to_dict(self, include_cuatrimestres=False):
+        data = {"id": self.id, "numero": self.numero}
+        if include_cuatrimestres:
+            data["cuatrimestres"] = [c.to_dict() for c in self.cuatrimestres]
+        return data
+
+
+class Cuatrimestre(db.Model):
+    __tablename__ = "cuatrimestre"
+
+    id = db.Column(db.Integer, primary_key=True)
+    anio_id = db.Column(db.Integer, db.ForeignKey("anio.id"), nullable=False)
+    numero = db.Column(db.Integer, nullable=False, unique=True)  # 1-8 global
+    estado = db.Column(db.String(20), nullable=False, default="pendiente")
+
+    anio = db.relationship("Anio", back_populates="cuatrimestres")
+    asignaturas = db.relationship(
+        "Asignatura", back_populates="cuatrimestre", cascade="all, delete-orphan", order_by="Asignatura.nombre"
+    )
+
+    @validates("numero")
+    def validar_numero(self, key, value):
+        if value is None or not (1 <= int(value) <= 8):
+            raise ValueError("numero de Cuatrimestre debe estar entre 1 y 8")
+        return value
+
+    @validates("estado")
+    def validar_estado(self, key, value):
+        if value not in ESTADOS_CUATRIMESTRE:
+            raise ValueError(f"estado de Cuatrimestre debe ser uno de {ESTADOS_CUATRIMESTRE}")
+        return value
+
+    def to_dict(self, include_asignaturas=True):
+        data = {
+            "id": self.id,
+            "anio_id": self.anio_id,
+            "numero": self.numero,
+            "estado": self.estado,
+        }
+        if include_asignaturas:
+            data["asignaturas"] = [a.to_dict(include_componentes=False) for a in self.asignaturas]
+        return data
+
+
+class Asignatura(db.Model):
+    __tablename__ = "asignatura"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cuatrimestre_id = db.Column(db.Integer, db.ForeignKey("cuatrimestre.id"), nullable=False)
+    nombre = db.Column(db.String(200), nullable=False)
+    # Código oficial del plan de estudios (p. ej. "DSED"). Nullable a nivel de columna
+    # a propósito (spec Fase Calendario/Horario punto 10): las asignaturas ya cargadas
+    # no tienen por qué tener siglas conocidas todavía, y no hay que inventárselas. La
+    # restricción UNIQUE sí aplica desde ya (SQLite permite varios NULL en una columna
+    # UNIQUE sin conflicto entre ellos).
+    siglas = db.Column(db.String(20), unique=True, nullable=True)
+    creditos_ects = db.Column(db.Float, nullable=False)
+    tipo = db.Column(db.String(20), nullable=False, default="obligatoria")
+    estado = db.Column(db.String(20), nullable=False, default="pendiente")
+    nota_final = db.Column(db.Float, nullable=True)
+    # True si la fila viene del catálogo de optativas cargado en el seed.
+    # Determina si "quitar elección" la revierte a no_elegida (True) o la borra (False, creada a mano).
+    origen_catalogo = db.Column(db.Boolean, nullable=False, default=False)
+    # Regla para combinar el resultado de los esquemas de evaluación cuando hay más de
+    # uno (ver REGLAS_ESQUEMA). Con un solo esquema (el caso normal) no tiene efecto.
+    regla_esquemas = db.Column(db.String(20), nullable=False, default="maximo")
+    notas = db.Column(db.Text, nullable=True)  # notas rápidas de texto libre (spec punto 3)
+    notas_actualizado_en = db.Column(db.DateTime, nullable=True)  # para detectar inactividad (spec punto 6)
+
+    # Metadatos de contacto/logística del profesor (Fase 11), todos opcionales
+    nombre_profesor = db.Column(db.String(200), nullable=True)
+    despacho_profesor = db.Column(db.String(200), nullable=True)
+    correo_profesor = db.Column(db.String(200), nullable=True)
+    link_aula_virtual = db.Column(db.String(500), nullable=True)
+
+    cuatrimestre = db.relationship("Cuatrimestre", back_populates="asignaturas")
+    componentes = db.relationship(
+        "ComponenteEvaluacion", back_populates="asignatura", cascade="all, delete-orphan"
+    )
+    esquemas = db.relationship(
+        "EsquemaEvaluacion", back_populates="asignatura", cascade="all, delete-orphan",
+        order_by="EsquemaEvaluacion.orden"
+    )
+    apartados = db.relationship(
+        "Apartado", back_populates="asignatura", cascade="all, delete-orphan", order_by="Apartado.orden"
+    )
+    documentos = db.relationship(
+        "Documento", back_populates="asignatura", cascade="all, delete-orphan"
+    )
+    grupos_documento = db.relationship(
+        "GrupoDocumento", back_populates="asignatura", cascade="all, delete-orphan",
+        order_by="GrupoDocumento.orden"
+    )
+    conceptos = db.relationship(
+        "Concepto", back_populates="asignatura", cascade="all, delete-orphan"
+    )
+    recursos_externos = db.relationship(
+        "RecursoExterno", back_populates="asignatura", cascade="all, delete-orphan",
+        order_by="RecursoExterno.orden"
+    )
+
+    prerrequisitos = db.relationship(
+        "Asignatura",
+        secondary=asignatura_prerrequisito,
+        primaryjoin=id == asignatura_prerrequisito.c.asignatura_id,
+        secondaryjoin=id == asignatura_prerrequisito.c.prerrequisito_id,
+        backref="es_prerrequisito_de",
+    )
+
+    @validates("tipo")
+    def validar_tipo(self, key, value):
+        if value not in TIPOS_ASIGNATURA:
+            raise ValueError(f"tipo de Asignatura debe ser uno de {TIPOS_ASIGNATURA}")
+        return value
+
+    @validates("siglas")
+    def validar_siglas(self, key, value):
+        """Normaliza (recorta espacios y pasa a mayúsculas) antes de guardar. None/""
+        se guardan como NULL: unas siglas vacías no son un valor válido, son "sin
+        siglas todavía", así que no tiene sentido guardar una cadena vacía distinta."""
+        if value is None:
+            return None
+        limpio = value.strip().upper()
+        if not limpio:
+            return None
+        if not PATRON_SIGLAS.match(limpio):
+            raise ValueError("siglas solo puede contener letras, números y sin espacios")
+        return limpio
+
+    @validates("regla_esquemas")
+    def validar_regla_esquemas(self, key, value):
+        if value not in REGLAS_ESQUEMA:
+            raise ValueError(f"regla_esquemas debe ser una de {REGLAS_ESQUEMA}")
+        return value
+
+    @validates("estado")
+    def validar_estado(self, key, value):
+        if value not in ESTADOS_ASIGNATURA:
+            raise ValueError(f"estado de Asignatura debe ser uno de {ESTADOS_ASIGNATURA}")
+        return value
+
+    @validates("correo_profesor")
+    def validar_correo_profesor(self, key, value):
+        if value and not PATRON_EMAIL.match(value.strip()):
+            raise ValueError("correo_profesor no tiene un formato de email válido")
+        return value
+
+    @validates("link_aula_virtual")
+    def validar_link_aula_virtual(self, key, value):
+        if value and not PATRON_URL.match(value.strip()):
+            raise ValueError("link_aula_virtual debe ser una URL http(s) válida")
+        return value
+
+    def to_dict(self, include_componentes=True):
+        prerrequisitos_cumplidos = all(p.estado == "superada" for p in self.prerrequisitos)
+        data = {
+            "id": self.id,
+            "cuatrimestre_id": self.cuatrimestre_id,
+            "nombre": self.nombre,
+            "siglas": self.siglas,
+            "creditos_ects": self.creditos_ects,
+            "tipo": self.tipo,
+            "estado": self.estado,
+            "nota_final": self.nota_final,
+            "origen_catalogo": self.origen_catalogo,
+            "regla_esquemas": self.regla_esquemas,
+            "notas": self.notas,
+            "notas_actualizado_en": self.notas_actualizado_en.isoformat() if self.notas_actualizado_en else None,
+            "nombre_profesor": self.nombre_profesor,
+            "despacho_profesor": self.despacho_profesor,
+            "correo_profesor": self.correo_profesor,
+            "link_aula_virtual": self.link_aula_virtual,
+            "recursos_externos": [r.to_dict() for r in self.recursos_externos],
+            "prerrequisitos": [{"id": p.id, "nombre": p.nombre} for p in self.prerrequisitos],
+            "prerrequisitos_cumplidos": prerrequisitos_cumplidos,
+        }
+        if include_componentes:
+            data["componentes"] = [c.to_dict() for c in self.componentes]
+            data["esquemas"] = esquemas_con_ganador(self.esquemas, self.regla_esquemas)
+        return data
+
+
+def resolver_asignatura(identificador):
+    """
+    Localiza una Asignatura por su id numérico interno O por sus siglas oficiales
+    (spec Fase Calendario/Horario punto 1): la API acepta ambos de cara afuera, pero
+    todas las relaciones internas (claves foráneas) siguen usando el id numérico —
+    esta función es el único punto donde se resuelve la sigla al id antes de tocar
+    la base de datos.
+
+    Devuelve None si no encuentra nada (el llamador decide si eso es 404 o "opcional").
+    """
+    if identificador is None:
+        return None
+    texto = str(identificador).strip()
+    if not texto:
+        return None
+    if texto.isdigit():
+        return db.session.get(Asignatura, int(texto))
+    return Asignatura.query.filter_by(siglas=texto.upper()).first()
+
+
+class ComponenteEvaluacion(db.Model):
+    __tablename__ = "componente_evaluacion"
+
+    id = db.Column(db.Integer, primary_key=True)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=False)
+    # A qué EsquemaEvaluacion pertenece este componente. Nullable a nivel de columna solo
+    # por compatibilidad con la migración (que rellena esta columna en asignaturas ya
+    # existentes); en la práctica toda fila creada por la app siempre tiene un esquema.
+    esquema_id = db.Column(db.Integer, db.ForeignKey("esquema_evaluacion.id"), nullable=True)
+    nombre = db.Column(db.String(200), nullable=False)
+    tipo = db.Column(db.String(20), nullable=False, default="otro")
+    porcentaje = db.Column(db.Float, nullable=False)
+    nota = db.Column(db.Float, nullable=True)
+
+    asignatura = db.relationship("Asignatura", back_populates="componentes")
+    esquema = db.relationship("EsquemaEvaluacion", back_populates="componentes")
+
+    @validates("tipo")
+    def validar_tipo(self, key, value):
+        if value not in TIPOS_COMPONENTE:
+            raise ValueError(f"tipo de Componente debe ser uno de {TIPOS_COMPONENTE}")
+        return value
+
+    @validates("porcentaje")
+    def validar_porcentaje(self, key, value):
+        if value is None or not (0 <= float(value) <= 100):
+            raise ValueError("porcentaje debe estar entre 0 y 100")
+        return value
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "asignatura_id": self.asignatura_id,
+            "esquema_id": self.esquema_id,
+            "nombre": self.nombre,
+            "tipo": self.tipo,
+            "porcentaje": self.porcentaje,
+            "nota": self.nota,
+        }
+
+
+def calcular_resultado_componentes(componentes):
+    """
+    Resultado agregado de una lista de ComponenteEvaluacion (independiente de si
+    pertenecen a un único esquema "de siempre" o a uno de varios EsquemaEvaluacion):
+    - peso_total: suma de porcentajes de todos los componentes.
+    - peso_evaluado / porcentaje_evaluado: cuánto de ese peso ya tiene nota puesta.
+    - media_ponderada: nota media ponderada SOLO de los componentes con nota (None si
+      ninguno la tiene todavía) — mismo criterio que ya usaba la vista de un único
+      esquema, no una proyección sobre el 100% del peso.
+    """
+    con_nota = [c for c in componentes if c.nota is not None]
+    peso_total = sum(c.porcentaje for c in componentes)
+    peso_evaluado = sum(c.porcentaje for c in con_nota)
+    porcentaje_evaluado = round((peso_evaluado / peso_total) * 100, 2) if peso_total else 0.0
+
+    media_ponderada = None
+    if con_nota and peso_evaluado > 0:
+        media_ponderada = round(sum(c.porcentaje * c.nota for c in con_nota) / peso_evaluado, 4)
+
+    return {
+        "peso_total": peso_total,
+        "peso_evaluado": peso_evaluado,
+        "porcentaje_evaluado": porcentaje_evaluado,
+        "media_ponderada": media_ponderada,
+    }
+
+
+class EsquemaEvaluacion(db.Model):
+    """
+    Fórmula de evaluación alternativa dentro de una asignatura (p. ej. "Evaluación
+    continua" vs "Fórmula con más peso al examen final", habitual en la UPC). La
+    mayoría de asignaturas tienen exactamente un esquema; cuando hay más de uno, la
+    nota que cuenta es la que da el mejor resultado según `Asignatura.regla_esquemas`.
+    """
+    __tablename__ = "esquema_evaluacion"
+
+    id = db.Column(db.Integer, primary_key=True)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=False)
+    nombre = db.Column(db.String(200), nullable=False)
+    orden = db.Column(db.Integer, nullable=False, default=0)
+
+    asignatura = db.relationship("Asignatura", back_populates="esquemas")
+    componentes = db.relationship(
+        "ComponenteEvaluacion", back_populates="esquema", cascade="all, delete-orphan",
+        order_by="ComponenteEvaluacion.id"
+    )
+
+    def to_dict(self, incluir_componentes=True):
+        resultado = calcular_resultado_componentes(self.componentes)
+        data = {
+            "id": self.id,
+            "asignatura_id": self.asignatura_id,
+            "nombre": self.nombre,
+            "orden": self.orden,
+            "resultado": resultado,
+        }
+        if incluir_componentes:
+            data["componentes"] = [c.to_dict() for c in self.componentes]
+        return data
+
+
+def esquemas_con_ganador(esquemas, regla):
+    """
+    Serializa la lista de EsquemaEvaluacion de una asignatura añadiendo a cada uno un
+    flag "aplicado": cuál es el que cuenta según `regla` (de momento solo "maximo").
+
+    - 0 ó 1 esquema: no hay comparación que hacer; ese único esquema (si existe) queda
+      marcado como aplicado, ya que es el único resultado posible.
+    - Varios esquemas: aplicado = el de mayor media_ponderada actual entre los que ya
+      tienen alguna nota puesta. Si ninguno tiene nota todavía, no se marca ninguno
+      (no hay base para decidir un "ganador" con puros ceros).
+    """
+    lista = [e.to_dict(incluir_componentes=True) for e in esquemas]
+
+    if len(lista) <= 1:
+        for e in lista:
+            e["aplicado"] = True
+        return lista
+
+    if regla == "maximo":
+        candidatos = [e for e in lista if e["resultado"]["media_ponderada"] is not None]
+        ganador_id = max(candidatos, key=lambda e: e["resultado"]["media_ponderada"])["id"] if candidatos else None
+        for e in lista:
+            e["aplicado"] = (e["id"] == ganador_id)
+        return lista
+
+    for e in lista:
+        e["aplicado"] = False
+    return lista
+
+
+class Apartado(db.Model):
+    __tablename__ = "apartado"
+
+    id = db.Column(db.Integer, primary_key=True)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=False)
+    nombre = db.Column(db.String(120), nullable=False)
+    orden = db.Column(db.Integer, nullable=False, default=0)
+
+    asignatura = db.relationship("Asignatura", back_populates="apartados")
+    documentos = db.relationship(
+        "Documento", back_populates="apartado", cascade="all, delete-orphan", order_by="Documento.nombre_archivo"
+    )
+
+    def to_dict(self, include_documentos=False):
+        data = {
+            "id": self.id,
+            "asignatura_id": self.asignatura_id,
+            "nombre": self.nombre,
+            "orden": self.orden,
+        }
+        if include_documentos:
+            data["documentos"] = [d.to_dict() for d in self.documentos]
+        return data
+
+
+class GrupoDocumento(db.Model):
+    """
+    Subgrupo libre dentro de una categoría fija de documentos (Fase Organización
+    jerárquica, punto 2). P. ej. categoria="teoria", nombre="Tema 1". El nombre debe
+    ser único dentro de (asignatura, categoria) — normalizado (espacios recortados y
+    colapsados) para que "Tema  1" y "Tema 1" cuenten como el mismo nombre —, pero se
+    puede repetir libremente en otra categoría o en otra asignatura.
+    """
+    __tablename__ = "grupo_documento"
+    __table_args__ = (
+        db.UniqueConstraint("asignatura_id", "categoria", "nombre", name="uq_grupo_documento_asig_cat_nombre"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=False)
+    categoria = db.Column(db.String(20), nullable=False)
+    nombre = db.Column(db.String(120), nullable=False)
+    orden = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    asignatura = db.relationship("Asignatura", back_populates="grupos_documento")
+    documentos = db.relationship(
+        "Documento", back_populates="grupo", order_by="Documento.nombre_archivo"
+    )
+
+    @validates("categoria")
+    def validar_categoria(self, key, value):
+        if value not in CATEGORIAS_DOCUMENTO:
+            raise ValueError(f"categoria debe ser una de {CATEGORIAS_DOCUMENTO}")
+        return value
+
+    @validates("nombre")
+    def validar_nombre(self, key, value):
+        # Normaliza espacios (recorta y colapsa múltiples espacios en uno) antes de
+        # guardar: es lo que hace que la comprobación de duplicados y el UNIQUE de BD
+        # traten "Tema  1" y " Tema 1 " como el mismo nombre.
+        limpio = re.sub(r"\s+", " ", (value or "")).strip()
+        if not limpio:
+            raise ValueError("nombre de GrupoDocumento no puede estar vacío")
+        return limpio
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "asignatura_id": self.asignatura_id,
+            "categoria": self.categoria,
+            "nombre": self.nombre,
+            "orden": self.orden,
+            "total_documentos": len(self.documentos),
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+
+class Documento(db.Model):
+    __tablename__ = "documento"
+
+    id = db.Column(db.Integer, primary_key=True)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=False)
+    # Legado (previo a la Fase de Organización jerárquica): nullable a partir de esa
+    # fase porque los documentos nuevos ya no se clasifican por Apartado, sino por
+    # categoria + grupo_documento_id. Se conserva sin más en los documentos migrados.
+    apartado_id = db.Column(db.Integer, db.ForeignKey("apartado.id"), nullable=True)
+    # Categoría fija (obligatoria en la práctica; nullable a nivel de columna solo
+    # para permitir el backfill de la migración sin bloquear filas ya existentes).
+    categoria = db.Column(db.String(20), nullable=True)
+    grupo_documento_id = db.Column(db.Integer, db.ForeignKey("grupo_documento.id"), nullable=True)
+    nombre_archivo = db.Column(db.String(255), nullable=False)
+    ruta_local = db.Column(db.String(500), nullable=False)  # relativa a config.DOCUMENTOS_DIR
+    tamano_bytes = db.Column(db.Integer, nullable=True)
+    fecha_subida = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    ultima_pagina_vista = db.Column(db.Integer, nullable=True)
+    etiquetas = db.Column(db.String(500), nullable=True)  # lista libre separada por comas
+
+    asignatura = db.relationship("Asignatura", back_populates="documentos")
+    apartado = db.relationship("Apartado", back_populates="documentos")
+    grupo = db.relationship("GrupoDocumento", back_populates="documentos")
+    marcadores = db.relationship(
+        "Marcador", back_populates="documento", cascade="all, delete-orphan", order_by="Marcador.numero_pagina"
+    )
+    paginas_texto = db.relationship(
+        "PaginaTexto", back_populates="documento", cascade="all, delete-orphan"
+    )
+
+    EXTENSIONES_IMAGEN = (".jpg", ".jpeg", ".png", ".gif", ".webp")
+
+    @validates("categoria")
+    def validar_categoria(self, key, value):
+        if value is not None and value not in CATEGORIAS_DOCUMENTO:
+            raise ValueError(f"categoria debe ser una de {CATEGORIAS_DOCUMENTO}")
+        return value
+
+    def es_pdf(self):
+        return self.nombre_archivo.lower().endswith(".pdf")
+
+    def es_imagen(self):
+        return self.nombre_archivo.lower().endswith(self.EXTENSIONES_IMAGEN)
+
+    def lista_etiquetas(self):
+        if not self.etiquetas:
+            return []
+        return [e.strip() for e in self.etiquetas.split(",") if e.strip()]
+
+    def to_dict(self, include_marcadores=False):
+        data = {
+            "id": self.id,
+            "asignatura_id": self.asignatura_id,
+            "apartado_id": self.apartado_id,
+            "categoria": self.categoria,
+            "grupo_documento_id": self.grupo_documento_id,
+            "nombre_archivo": self.nombre_archivo,
+            "tamano_bytes": self.tamano_bytes,
+            "fecha_subida": self.fecha_subida.isoformat(),
+            "es_pdf": self.es_pdf(),
+            "es_imagen": self.es_imagen(),
+            "ultima_pagina_vista": self.ultima_pagina_vista,
+            "etiquetas": self.lista_etiquetas(),
+        }
+        if include_marcadores:
+            data["marcadores"] = [m.to_dict() for m in self.marcadores]
+        return data
+
+
+class Marcador(db.Model):
+    __tablename__ = "marcador"
+
+    id = db.Column(db.Integer, primary_key=True)
+    documento_id = db.Column(db.Integer, db.ForeignKey("documento.id"), nullable=False)
+    numero_pagina = db.Column(db.Integer, nullable=False)
+    titulo = db.Column(db.String(200), nullable=True)
+    fecha_creacion = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    documento = db.relationship("Documento", back_populates="marcadores")
+
+    @validates("numero_pagina")
+    def validar_pagina(self, key, value):
+        if value is None or int(value) < 1:
+            raise ValueError("numero_pagina debe ser mayor o igual que 1")
+        return value
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "documento_id": self.documento_id,
+            "numero_pagina": self.numero_pagina,
+            "titulo": self.titulo,
+            "fecha_creacion": self.fecha_creacion.isoformat(),
+        }
+
+
+class TareaEvento(db.Model):
+    """Entidad del calendario académico: exámenes, entregas, tutorías y eventos
+    puntuales. Los campos de horario/aula/etc. son opcionales porque las tareas
+    "de siempre" (tarea_general, entregas sin hora fija) no los necesitan."""
+    __tablename__ = "tarea_evento"
+
+    id = db.Column(db.Integer, primary_key=True)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=True)
+    titulo = db.Column(db.String(200), nullable=False)
+    fecha = db.Column(db.Date, nullable=False)
+    tipo = db.Column(db.String(20), nullable=False, default="tarea_general")
+    completada = db.Column(db.Boolean, nullable=False, default=False)
+    prioridad = db.Column(db.String(10), nullable=False, default="media")
+
+    # Ampliación "Calendario académico" (spec punto 2): todos opcionales para no
+    # romper tareas ya creadas sin estos datos.
+    hora_inicio = db.Column(db.Time, nullable=True)
+    hora_fin = db.Column(db.Time, nullable=True)
+    aula = db.Column(db.String(100), nullable=True)
+    ubicacion = db.Column(db.String(200), nullable=True)
+    descripcion = db.Column(db.Text, nullable=True)
+    recordatorio = db.Column(db.Integer, nullable=True)  # días de aviso antes del evento
+    link_relacionado = db.Column(db.String(500), nullable=True)
+
+    asignatura = db.relationship("Asignatura")
+
+    @validates("tipo")
+    def validar_tipo(self, key, value):
+        if value not in TIPOS_TAREA:
+            raise ValueError(f"tipo de Tarea/Evento debe ser uno de {TIPOS_TAREA}")
+        return value
+
+    @validates("prioridad")
+    def validar_prioridad(self, key, value):
+        if value not in PRIORIDADES_TAREA:
+            raise ValueError(f"prioridad debe ser una de {PRIORIDADES_TAREA}")
+        return value
+
+    @validates("link_relacionado")
+    def validar_link_relacionado(self, key, value):
+        if value and not PATRON_URL.match(value.strip()):
+            raise ValueError("link_relacionado debe ser una URL http(s) válida")
+        return value
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "asignatura_id": self.asignatura_id,
+            "asignatura_nombre": self.asignatura.nombre if self.asignatura else None,
+            "asignatura_siglas": self.asignatura.siglas if self.asignatura else None,
+            "titulo": self.titulo,
+            "fecha": self.fecha.isoformat(),
+            "tipo": self.tipo,
+            "completada": self.completada,
+            "prioridad": self.prioridad,
+            "hora_inicio": self.hora_inicio.strftime("%H:%M") if self.hora_inicio else None,
+            "hora_fin": self.hora_fin.strftime("%H:%M") if self.hora_fin else None,
+            "aula": self.aula,
+            "ubicacion": self.ubicacion,
+            "descripcion": self.descripcion,
+            "recordatorio": self.recordatorio,
+            "link_relacionado": self.link_relacionado,
+        }
+
+
+class HorarioClase(db.Model):
+    """
+    Serie recurrente de clase/laboratorio (spec Fase Calendario/Horario punto 4):
+    UNA fila representa toda la serie (p. ej. "DSED Laboratorio los martes de
+    15:00 a 17:00 del 8/9 al 20/12, cada semana"), no una fila por sesión. Las
+    fechas concretas de cada sesión se calculan bajo demanda con
+    `fechas_sesiones_horario()`, no se guardan copias — así editar o borrar la
+    serie es una sola operación sobre una sola fila.
+
+    Deliberadamente sin entidad de excepciones (spec punto 6): editar o borrar
+    afecta a toda la serie, no a una sesión suelta.
+    """
+    __tablename__ = "horario_clase"
+
+    id = db.Column(db.Integer, primary_key=True)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=False)
+    tipo = db.Column(db.String(20), nullable=False)
+    dia_semana = db.Column(db.Integer, nullable=False)  # 1=lunes ... 5=viernes
+    hora_inicio = db.Column(db.Time, nullable=False)
+    hora_fin = db.Column(db.Time, nullable=False)
+    aula = db.Column(db.String(100), nullable=True)
+    fecha_inicio = db.Column(db.Date, nullable=False)
+    fecha_fin = db.Column(db.Date, nullable=False)
+    intervalo_semanas = db.Column(db.Integer, nullable=False, default=1)
+    notas = db.Column(db.Text, nullable=True)
+
+    asignatura = db.relationship("Asignatura")
+
+    @validates("tipo")
+    def validar_tipo(self, key, value):
+        if value not in TIPOS_HORARIO:
+            raise ValueError(f"tipo de HorarioClase debe ser uno de {TIPOS_HORARIO}")
+        return value
+
+    @validates("dia_semana")
+    def validar_dia_semana(self, key, value):
+        if value not in DIAS_SEMANA:
+            raise ValueError(f"dia_semana debe ser uno de {DIAS_SEMANA} (1=lunes...5=viernes)")
+        return value
+
+    @validates("intervalo_semanas")
+    def validar_intervalo_semanas(self, key, value):
+        if value not in INTERVALOS_SEMANAS:
+            raise ValueError(f"intervalo_semanas debe ser uno de {INTERVALOS_SEMANAS}")
+        return value
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "asignatura_id": self.asignatura_id,
+            "asignatura_nombre": self.asignatura.nombre if self.asignatura else None,
+            "asignatura_siglas": self.asignatura.siglas if self.asignatura else None,
+            "tipo": self.tipo,
+            "dia_semana": self.dia_semana,
+            "hora_inicio": self.hora_inicio.strftime("%H:%M"),
+            "hora_fin": self.hora_fin.strftime("%H:%M"),
+            "aula": self.aula,
+            "fecha_inicio": self.fecha_inicio.isoformat(),
+            "fecha_fin": self.fecha_fin.isoformat(),
+            "intervalo_semanas": self.intervalo_semanas,
+            "notas": self.notas,
+        }
+
+
+def fechas_sesiones_horario(horario):
+    """
+    Genera la lista de fechas (date) de cada sesión de una serie HorarioClase,
+    entre fecha_inicio y fecha_fin inclusive, respetando el día de la semana y el
+    intervalo (spec punto 4: "la primera sesión calculada dentro del intervalo
+    marca el inicio del patrón de cada dos semanas" — es decir, la propia
+    fecha_inicio no tiene por qué caer en el día de la semana elegido; se busca la
+    primera ocurrencia de ese día a partir de fecha_inicio y esa es la semana 0
+    del patrón quincenal).
+    """
+    dias_hasta_el_primero = (horario.dia_semana - 1 - horario.fecha_inicio.weekday()) % 7
+    primera_sesion = horario.fecha_inicio + timedelta(days=dias_hasta_el_primero)
+
+    paso = timedelta(weeks=horario.intervalo_semanas)
+    fechas = []
+    actual = primera_sesion
+    while actual <= horario.fecha_fin:
+        if actual >= horario.fecha_inicio:
+            fechas.append(actual)
+        actual += paso
+    return fechas
+
+
+def intervalos_solapan(inicio1, fin1, inicio2, fin2):
+    """True si dos intervalos [inicio, fin) de horas se cruzan en algún punto."""
+    return inicio1 < fin2 and inicio2 < fin1
+
+
+def fecha_es_sesion_de_horario(fecha, horario):
+    """
+    Igual que comprobar si `fecha` está en `fechas_sesiones_horario(horario)`, pero
+    sin generar la lista completa: para detección de conflictos se comprueba una
+    fecha suelta muchas veces, así que conviene que sea O(1).
+    """
+    if not (horario.fecha_inicio <= fecha <= horario.fecha_fin):
+        return False
+    if fecha.isoweekday() != horario.dia_semana:
+        return False
+    dias_hasta_el_primero = (horario.dia_semana - 1 - horario.fecha_inicio.weekday()) % 7
+    primera_sesion = horario.fecha_inicio + timedelta(days=dias_hasta_el_primero)
+    diferencia_dias = (fecha - primera_sesion).days
+    if diferencia_dias < 0:
+        return False
+    return diferencia_dias % (7 * horario.intervalo_semanas) == 0
+
+
+TEMAS = ("claro", "oscuro")
+
+
+class ConfiguracionApp(db.Model):
+    """Fila única (id=1) con las preferencias/ajustes globales de la app."""
+    __tablename__ = "configuracion_app"
+
+    id = db.Column(db.Integer, primary_key=True)
+    tema = db.Column(db.String(10), nullable=False, default="oscuro")
+    dias_aviso_examen = db.Column(db.Integer, nullable=False, default=7)
+    dias_asignatura_abandonada = db.Column(db.Integer, nullable=False, default=14)
+    widgets_orden = db.Column(db.String(200), nullable=False, default=",".join(WIDGETS_POR_DEFECTO))
+    widgets_ocultos = db.Column(db.String(200), nullable=True)
+
+    @validates("tema")
+    def validar_tema(self, key, value):
+        if value not in TEMAS:
+            raise ValueError(f"tema debe ser uno de {TEMAS}")
+        return value
+
+    @validates("dias_aviso_examen", "dias_asignatura_abandonada")
+    def validar_dias(self, key, value):
+        if value is None or int(value) < 1:
+            raise ValueError(f"{key} debe ser un número de días mayor o igual que 1")
+        return value
+
+    def lista_widgets_orden(self):
+        if not self.widgets_orden:
+            return list(WIDGETS_POR_DEFECTO)
+        return [w.strip() for w in self.widgets_orden.split(",") if w.strip()]
+
+    def lista_widgets_ocultos(self):
+        if not self.widgets_ocultos:
+            return []
+        return [w.strip() for w in self.widgets_ocultos.split(",") if w.strip()]
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "tema": self.tema,
+            "dias_aviso_examen": self.dias_aviso_examen,
+            "dias_asignatura_abandonada": self.dias_asignatura_abandonada,
+            "widgets_orden": self.lista_widgets_orden(),
+            "widgets_ocultos": self.lista_widgets_ocultos(),
+        }
+
+
+class Hito(db.Model):
+    """Certificaciones y proyectos propios (spec punto 8), hitos libres editables por el usuario."""
+    __tablename__ = "hito"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(200), nullable=False)
+    estado = db.Column(db.String(20), nullable=False, default="pendiente")
+    fecha = db.Column(db.Date, nullable=True)
+    orden = db.Column(db.Integer, nullable=False, default=0)
+
+    @validates("estado")
+    def validar_estado(self, key, value):
+        if value not in ESTADOS_HITO:
+            raise ValueError(f"estado de Hito debe ser uno de {ESTADOS_HITO}")
+        return value
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "nombre": self.nombre,
+            "estado": self.estado,
+            "fecha": self.fecha.isoformat() if self.fecha else None,
+            "orden": self.orden,
+        }
+
+
+class Concepto(db.Model):
+    """Concepto/tema dentro de una asignatura, con repetición espaciada simplificada (spec punto 7)."""
+    __tablename__ = "concepto"
+
+    id = db.Column(db.Integer, primary_key=True)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=False)
+    nombre = db.Column(db.String(200), nullable=False)
+    estado = db.Column(db.String(20), nullable=False, default="no_visto")
+    ultima_revision = db.Column(db.Date, nullable=True)
+    proxima_revision = db.Column(db.Date, nullable=False, default=date.today)
+
+    asignatura = db.relationship("Asignatura", back_populates="conceptos")
+
+    @validates("estado")
+    def validar_estado(self, key, value):
+        if value not in ORDEN_ESTADOS_CONCEPTO:
+            raise ValueError(f"estado de Concepto debe ser uno de {ORDEN_ESTADOS_CONCEPTO}")
+        return value
+
+    def reclasificar(self, direccion):
+        """direccion: +1 para subir de nivel (mejor dominio), -1 para bajar."""
+        indice = ORDEN_ESTADOS_CONCEPTO.index(self.estado)
+        nuevo_indice = max(0, min(len(ORDEN_ESTADOS_CONCEPTO) - 1, indice + direccion))
+        self.estado = ORDEN_ESTADOS_CONCEPTO[nuevo_indice]
+        self.ultima_revision = date.today()
+        self.proxima_revision = date.today() + timedelta(days=INTERVALO_DIAS_CONCEPTO[self.estado])
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "asignatura_id": self.asignatura_id,
+            "asignatura_nombre": self.asignatura.nombre if self.asignatura else None,
+            "nombre": self.nombre,
+            "estado": self.estado,
+            "ultima_revision": self.ultima_revision.isoformat() if self.ultima_revision else None,
+            "proxima_revision": self.proxima_revision.isoformat(),
+        }
+
+
+class PaginaTexto(db.Model):
+    """Texto extraído de cada página de un PDF, para poder buscar por contenido (spec punto 20)."""
+    __tablename__ = "pagina_texto"
+
+    id = db.Column(db.Integer, primary_key=True)
+    documento_id = db.Column(db.Integer, db.ForeignKey("documento.id"), nullable=False)
+    numero_pagina = db.Column(db.Integer, nullable=False)
+    contenido = db.Column(db.Text, nullable=False)
+
+    documento = db.relationship("Documento", back_populates="paginas_texto")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "documento_id": self.documento_id,
+            "numero_pagina": self.numero_pagina,
+        }
+
+
+class RecursoExterno(db.Model):
+    """
+    Enlaces externos libres de una asignatura (Wuolah, Studocu, Drive, GitHub, etc.).
+
+    Se modela como entidad relacionada 1:N en vez de un campo JSON porque el resto del
+    proyecto ya sigue ese patrón de forma consistente para toda relación "una asignatura
+    tiene varios X" (Documento, Marcador, Concepto, ComponenteEvaluacion...), lo que da
+    CRUD, orden y validación por fila igual que las demás entidades, sin introducir un
+    mecanismo de almacenamiento distinto solo para este caso.
+    """
+    __tablename__ = "recurso_externo"
+
+    id = db.Column(db.Integer, primary_key=True)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=False)
+    nombre = db.Column(db.String(100), nullable=False)
+    url = db.Column(db.String(500), nullable=False)
+    tipo = db.Column(db.String(50), nullable=True)  # valor libre (p. ej. "apuntes", "repositorio")
+    orden = db.Column(db.Integer, nullable=False, default=0)
+
+    asignatura = db.relationship("Asignatura", back_populates="recursos_externos")
+
+    @validates("url")
+    def validar_url(self, key, value):
+        if not value or not PATRON_URL.match(value.strip()):
+            raise ValueError("url de RecursoExterno debe ser una URL http(s) válida")
+        return value
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "asignatura_id": self.asignatura_id,
+            "nombre": self.nombre,
+            "url": self.url,
+            "tipo": self.tipo,
+            "orden": self.orden,
+        }

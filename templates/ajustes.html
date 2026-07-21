@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="es" data-theme="{{ tema_actual }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ajustes · GREELEC</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ajustes.css') }}">
+</head>
+<body>
+  <div class="ds-scope">
+    <div class="ds-shell">
+      <aside class="ds-sidebar">
+        <ul class="ds-sidebar-nav">
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.dashboard') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-layout-dashboard"></use></svg>
+              Resumen
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.index') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-graduation-cap"></use></svg>
+              Asignaturas
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_calendario') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-calendar"></use></svg>
+              Calendario
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_horario') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-history"></use></svg>
+              Horario
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.index') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-folder"></use></svg>
+              Documentos
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_repaso') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-check"></use></svg>
+              Repaso
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link is-active" href="{{ url_for('vistas.vista_ajustes') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-settings"></use></svg>
+              Configuración
+            </a>
+          </li>
+        </ul>
+      </aside>
+
+      <main class="ds-shell-main">
+        <div class="ds-shell-content">
+          <header class="ds-page-header">
+            <div>
+              <h1 class="ds-h1 ds-page-header-title">Ajustes</h1>
+              <p class="ds-body ds-text-secondary ds-page-header-subtitle">Notificaciones, apariencia, almacenamiento y copias de seguridad</p>
+            </div>
+            <div class="ds-page-header-actions">
+              <button id="toggle-tema" class="ds-btn ds-btn-secondary detalle-btn-icono" type="button" title="Cambiar tema"></button>
+              {% if lock_activo %}
+              <form method="post" action="{{ url_for('auth.cerrar_sesion') }}" class="form-lock">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="ds-btn ds-btn-secondary detalle-btn-icono" title="Bloquear la app">🔒</button>
+              </form>
+              {% endif %}
+            </div>
+          </header>
+
+          <div class="ajustes-grid">
+
+            <section class="ds-card">
+              <h2 class="ds-h2 ajustes-bloque-titulo">
+                <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-bell"></use></svg>
+                Notificaciones
+              </h2>
+              <p class="ds-caption ajustes-bloque-ayuda">Umbrales usados para los avisos del dashboard (exámenes próximos y asignaturas sin actividad).</p>
+              <div class="ds-field">
+                <label for="dias-aviso-examen" class="ds-label">Aviso de examen o entrega (días)</label>
+                <input type="number" id="dias-aviso-examen" class="ds-input ajustes-input-numero" min="1">
+                <p class="ajustes-campo-ayuda">Avisar cuando falten menos de este número de días.</p>
+              </div>
+              <div class="ds-field">
+                <label for="dias-asignatura-abandonada" class="ds-label">Asignatura abandonada (días)</label>
+                <input type="number" id="dias-asignatura-abandonada" class="ds-input ajustes-input-numero" min="1">
+                <p class="ajustes-campo-ayuda">Días sin actividad para considerarla "abandonada".</p>
+              </div>
+              <button id="btn-guardar-notificaciones" class="ds-btn ds-btn-primary">Guardar</button>
+              <span id="mensaje-notificaciones" class="ds-form-mensaje"></span>
+            </section>
+
+            <section class="ds-card">
+              <h2 class="ds-h2 ajustes-bloque-titulo">
+                <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-sun-moon"></use></svg>
+                Apariencia
+              </h2>
+              <div class="detalle-fila">
+                <span class="detalle-fila-etiqueta">Tema actual</span>
+                <span class="detalle-fila-valor" id="tema-actual-texto"></span>
+              </div>
+              <button id="btn-cambiar-tema-ajustes" class="ds-btn ds-btn-secondary" style="margin-top:var(--ds-space-5)">Cambiar tema</button>
+            </section>
+
+            <section class="ds-card">
+              <h2 class="ds-h2 ajustes-bloque-titulo">
+                <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-hard-drive"></use></svg>
+                Almacenamiento
+              </h2>
+              <p class="ds-caption ajustes-bloque-ayuda">Carpeta donde se guardan los documentos subidos</p>
+              <code class="ajustes-codigo">{{ documentos_dir }}</code>
+            </section>
+
+            <section class="ds-card">
+              <h2 class="ds-h2 ajustes-bloque-titulo">
+                <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-smartphone"></use></svg>
+                Acceso desde el móvil
+              </h2>
+              <p class="ds-caption ajustes-bloque-ayuda">Con el móvil conectado a la misma red WiFi que este ordenador, entra en</p>
+              <code class="ajustes-codigo">http://{{ ip_local }}:5000</code>
+            </section>
+
+            <section class="ds-card ajustes-bloque--ancho">
+              <h2 class="ds-h2 ajustes-bloque-titulo">
+                <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-download"></use></svg>
+                Backup
+              </h2>
+              <p class="ds-caption ajustes-bloque-ayuda">Genera una copia de la base de datos y todos los documentos, o restaura una copia anterior.</p>
+              <a id="btn-exportar-backup" href="/backup/exportar" class="ds-btn ds-btn-secondary" style="margin-top:var(--ds-space-4)">
+                <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-download"></use></svg>
+                Exportar todo (.zip)
+              </a>
+
+              <form id="form-importar-backup" class="ajustes-form-backup">
+                <div class="ds-field">
+                  <label for="input-backup" class="ds-label">Archivo de backup (.zip)</label>
+                  <input type="file" id="input-backup" class="ds-input" accept=".zip" required>
+                </div>
+                <button type="submit" class="ds-btn ds-btn-secondary">Importar backup</button>
+              </form>
+              <span id="mensaje-backup" class="ds-form-mensaje"></span>
+            </section>
+
+            <section class="ds-card">
+              <h2 class="ds-h2 ajustes-bloque-titulo">
+                <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-history"></use></svg>
+                Acerca de
+              </h2>
+              <a href="{{ url_for('vistas.vista_changelog') }}" class="ajustes-enlace">
+                Ver registro de cambios de la app
+                <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-external-link"></use></svg>
+              </a>
+              <br>
+              <a href="{{ url_for('static', filename='docs.html') }}" target="_blank" class="ajustes-enlace" style="margin-top:var(--ds-space-3)">
+                Ver design system (tokens y componentes)
+                <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-external-link"></use></svg>
+              </a>
+            </section>
+
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <nav class="ds-bottom-nav">
+      <ul class="ds-bottom-nav-list">
+        <li>
+          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.dashboard') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-layout-dashboard"></use></svg>
+            Resumen
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.index') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-graduation-cap"></use></svg>
+            Asignaturas
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.vista_calendario') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-calendar"></use></svg>
+            Calendario
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.vista_horario') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-history"></use></svg>
+            Horario
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.vista_repaso') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-check"></use></svg>
+            Repaso
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link is-active" href="{{ url_for('vistas.vista_ajustes') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-settings"></use></svg>
+            Ajustes
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/tema.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/ajustes.js') }}"></script>
+</body>
+</html>

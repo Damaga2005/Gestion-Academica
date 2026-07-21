@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Design System — Vista previa</title>
+  <link rel="stylesheet" href="static/css/design-system.css">
+  <style>
+    /* Estilos SOLO de esta página de previsualización, fuera del sistema de diseño */
+    body {
+      margin: 0;
+      background: var(--ds-color-background);
+      font-family: var(--ds-font-family);
+    }
+    .preview-shell {
+      max-width: var(--ds-maxwidth-wide);
+      margin: 0 auto;
+      padding: var(--ds-space-16) var(--ds-space-6);
+    }
+    .preview-topbar {
+      position: sticky;
+      top: 0;
+      z-index: var(--ds-z-sticky);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--ds-space-4) var(--ds-space-6);
+      background: color-mix(in srgb, var(--ds-color-surface) 85%, transparent);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--ds-color-border);
+    }
+    .preview-section { margin: var(--ds-space-24) 0; }
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: var(--ds-space-6);
+      margin-top: var(--ds-space-8);
+    }
+    .swatch {
+      border-radius: var(--ds-radius-lg);
+      padding: var(--ds-space-5);
+      border: 1px solid var(--ds-color-border);
+    }
+    .swatch-fill { height: 64px; border-radius: var(--ds-radius-md); margin-bottom: var(--ds-space-3); border: 1px solid var(--ds-color-border); }
+    .row { display: flex; flex-wrap: wrap; gap: var(--ds-space-4); align-items: center; margin-top: var(--ds-space-4); }
+    .stack { display: flex; flex-direction: column; gap: var(--ds-space-4); max-width: 420px; }
+    .space-demo { display: flex; align-items: flex-end; gap: var(--ds-space-3); margin-top: var(--ds-space-6); }
+    .space-block { background: var(--ds-color-accent); border-radius: 4px; width: 24px; }
+    .space-label { font-size: var(--ds-font-size-caption); color: var(--ds-color-text-secondary); text-align: center; margin-top: var(--ds-space-2); }
+  </style>
+</head>
+<body>
+  <div class="ds-scope">
+    <header class="preview-topbar">
+      <span class="ds-h3">Design System — GREELEC</span>
+      <span class="ds-caption">Fase 1 · No enlazado a la app todavía</span>
+    </header>
+
+    <div class="preview-shell">
+
+      <section class="preview-section">
+        <p class="ds-caption">Tipografía</p>
+        <p class="ds-display">Display 40</p>
+        <p class="ds-h1">Heading 1 / 32</p>
+        <p class="ds-h2">Heading 2 / 24</p>
+        <p class="ds-h3">Heading 3 / 19</p>
+        <p class="ds-body">Body 15 — Texto de párrafo estándar para contenido largo, notas y descripciones dentro de la aplicación.</p>
+        <p class="ds-caption">Caption 13 — texto secundario, metadatos, ayudas.</p>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="preview-section">
+        <p class="ds-caption">Color</p>
+        <div class="preview-grid">
+          <div class="swatch"><div class="swatch-fill" style="background:var(--ds-color-background)"></div><span class="ds-caption">Background</span></div>
+          <div class="swatch"><div class="swatch-fill" style="background:var(--ds-color-surface)"></div><span class="ds-caption">Surface</span></div>
+          <div class="swatch"><div class="swatch-fill" style="background:var(--ds-color-surface-secondary)"></div><span class="ds-caption">Surface Secondary</span></div>
+          <div class="swatch"><div class="swatch-fill" style="background:var(--ds-color-accent)"></div><span class="ds-caption">Accent</span></div>
+          <div class="swatch"><div class="swatch-fill" style="background:var(--ds-color-success)"></div><span class="ds-caption">Success</span></div>
+          <div class="swatch"><div class="swatch-fill" style="background:var(--ds-color-warning)"></div><span class="ds-caption">Warning</span></div>
+          <div class="swatch"><div class="swatch-fill" style="background:var(--ds-color-danger)"></div><span class="ds-caption">Danger</span></div>
+          <div class="swatch"><div class="swatch-fill" style="background:var(--ds-color-border)"></div><span class="ds-caption">Border</span></div>
+        </div>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="preview-section">
+        <p class="ds-caption">Espaciado (múltiplos de 4px)</p>
+        <div class="space-demo">
+          <div><div class="space-block" style="height:var(--ds-space-1)"></div><div class="space-label">1 · 4</div></div>
+          <div><div class="space-block" style="height:var(--ds-space-2)"></div><div class="space-label">2 · 8</div></div>
+          <div><div class="space-block" style="height:var(--ds-space-3)"></div><div class="space-label">3 · 12</div></div>
+          <div><div class="space-block" style="height:var(--ds-space-4)"></div><div class="space-label">4 · 16</div></div>
+          <div><div class="space-block" style="height:var(--ds-space-6)"></div><div class="space-label">6 · 24</div></div>
+          <div><div class="space-block" style="height:var(--ds-space-8)"></div><div class="space-label">8 · 32</div></div>
+          <div><div class="space-block" style="height:var(--ds-space-12)"></div><div class="space-label">12 · 48</div></div>
+          <div><div class="space-block" style="height:var(--ds-space-16)"></div><div class="space-label">16 · 64</div></div>
+        </div>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="preview-section">
+        <p class="ds-caption">Botones</p>
+        <div class="row">
+          <button class="ds-btn ds-btn-primary">Guardar cambios</button>
+          <button class="ds-btn ds-btn-secondary">Cancelar</button>
+          <button class="ds-btn ds-btn-danger">Eliminar</button>
+          <button class="ds-btn ds-btn-primary" disabled>Deshabilitado</button>
+        </div>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="preview-section">
+        <p class="ds-caption">Badges</p>
+        <div class="row">
+          <span class="ds-badge">Neutral</span>
+          <span class="ds-badge ds-badge-accent">Cursando</span>
+          <span class="ds-badge ds-badge-success">Superada</span>
+          <span class="ds-badge ds-badge-warning">Actual</span>
+          <span class="ds-badge ds-badge-danger">No superada</span>
+        </div>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="preview-section">
+        <p class="ds-caption">Progress bar</p>
+        <div class="stack">
+          <div class="ds-progress"><div class="ds-progress-bar" style="width:35%"></div></div>
+          <div class="ds-progress"><div class="ds-progress-bar" style="width:72%"></div></div>
+        </div>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="preview-section">
+        <p class="ds-caption">Campos de formulario</p>
+        <div class="stack">
+          <input class="ds-input" type="text" placeholder="Nombre de la asignatura">
+          <select class="ds-select">
+            <option>Obligatoria</option>
+            <option>Optativa</option>
+          </select>
+          <textarea class="ds-textarea" placeholder="Notas rápidas..."></textarea>
+        </div>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="preview-section">
+        <p class="ds-caption">Card</p>
+        <div class="preview-grid">
+          <div class="ds-card">
+            <p class="ds-h3">Cálculo II</p>
+            <p class="ds-caption" style="margin-top:4px">6 ECTS · Obligatoria</p>
+            <div class="ds-progress" style="margin-top:16px"><div class="ds-progress-bar" style="width:60%"></div></div>
+          </div>
+          <div class="ds-card ds-card--interactive">
+            <p class="ds-h3">Termodinámica</p>
+            <p class="ds-caption" style="margin-top:4px">Tarjeta interactiva — hover</p>
+          </div>
+        </div>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="preview-section">
+        <p class="ds-caption">Empty state</p>
+        <div class="ds-card">
+          <div class="ds-empty-state">
+            <div class="ds-empty-state-icon">📄</div>
+            <div class="ds-empty-state-title">Sin documentos todavía</div>
+            <p class="ds-empty-state-description">Arrastra archivos aquí o usa el botón de subida para añadir tus primeros documentos.</p>
+            <button class="ds-btn ds-btn-primary">Subir documento</button>
+          </div>
+        </div>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="preview-section">
+        <p class="ds-caption">Toast</p>
+        <div class="stack" style="max-width:360px">
+          <div class="ds-toast ds-toast-success">Cambios guardados correctamente.</div>
+          <div class="ds-toast ds-toast-warning">La fecha límite es mañana.</div>
+          <div class="ds-toast ds-toast-danger">No se pudo eliminar el documento.</div>
+        </div>
+      </section>
+
+      <hr class="ds-divider">
+
+      <section class="preview-section">
+        <p class="ds-caption">Modal</p>
+        <button class="ds-btn ds-btn-secondary" id="btn-abrir-modal">Abrir modal de ejemplo</button>
+        <dialog class="ds-modal" id="modal-demo">
+          <p class="ds-h2">Confirmar acción</p>
+          <p class="ds-body" style="margin-top:12px">¿Seguro que quieres continuar? Esta acción no se puede deshacer.</p>
+          <div class="row" style="margin-top:24px; justify-content:flex-end">
+            <button class="ds-btn ds-btn-secondary" id="btn-cerrar-modal">Cancelar</button>
+            <button class="ds-btn ds-btn-primary" id="btn-confirmar-modal">Confirmar</button>
+          </div>
+        </dialog>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    const modal = document.getElementById('modal-demo');
+    document.getElementById('btn-abrir-modal').addEventListener('click', () => modal.showModal());
+    document.getElementById('btn-cerrar-modal').addEventListener('click', () => modal.close());
+    document.getElementById('btn-confirmar-modal').addEventListener('click', () => modal.close());
+  </script>
+</body>
+</html>

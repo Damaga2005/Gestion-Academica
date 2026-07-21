@@ -1,0 +1,992 @@
+/* ==========================================================================
+   DESIGN SYSTEM — Gestión Académica GREELEC
+   Fase de diseño 1: sistema de diseño reutilizable, inspirado en macOS/iPadOS.
+
+   Este archivo NO está enlazado todavía en ninguna plantilla. Es una base
+   aislada: define tokens (variables) y componentes reutilizables mediante
+   clases con prefijo `.ds-`. No modifica ni sobrescribe ningún selector de
+   `style.css`, ni estiliza elementos globales (body, h1, etc.) para no
+   afectar a ninguna pantalla existente hasta que se adopte explícitamente
+   en una fase posterior.
+
+   Vista previa: abrir `design-system-preview.html` (raíz del proyecto)
+   directamente en el navegador.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. TOKENS — Color
+   Tema claro por defecto; tema oscuro vía [data-theme="oscuro"] (mismo
+   atributo/valores que ya usa tema.js) y vía prefers-color-scheme cuando
+   no hay atributo explícito de tema claro.
+   -------------------------------------------------------------------------- */
+
+:root {
+  /* Superficies */
+  --ds-color-background: #f5f5f7;
+  --ds-color-surface: #ffffff;
+  --ds-color-surface-secondary: #f2f2f4;
+
+  /* Texto */
+  --ds-color-text-primary: #1d1d1f;
+  --ds-color-text-secondary: #6e6e73;
+
+  /* Acento y estado */
+  --ds-color-accent: #0071e3;
+  --ds-color-success: #34c759;
+  --ds-color-warning: #ff9f0a;
+  --ds-color-danger: #ff3b30;
+
+  /* Bordes */
+  --ds-color-border: #d2d2d7;
+
+  /* Texto sobre color sólido (botones, badges sólidos, toasts) */
+  --ds-color-on-accent: #ffffff;
+  --ds-color-on-success: #ffffff;
+  --ds-color-on-warning: #2b1400;
+  --ds-color-on-danger: #ffffff;
+
+  /* Sombras (macOS: suaves, difusas, poco opacas) */
+  --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0, 0, 0, 0.03);
+  --ds-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --ds-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.10), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --ds-shadow-focus: 0 0 0 4px color-mix(in srgb, var(--ds-color-accent) 25%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="claro"]) {
+    --ds-color-background: #1c1c1e;
+    --ds-color-surface: #2c2c2e;
+    --ds-color-surface-secondary: #232325;
+
+    --ds-color-text-primary: #f5f5f7;
+    --ds-color-text-secondary: #98989d;
+
+    --ds-color-accent: #0a84ff;
+    --ds-color-success: #30d158;
+    --ds-color-warning: #ff9f0a;
+    --ds-color-danger: #ff453a;
+
+    --ds-color-border: #38383a;
+
+    --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --ds-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
+    --ds-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45);
+    --ds-shadow-focus: 0 0 0 4px color-mix(in srgb, var(--ds-color-accent) 35%, transparent);
+  }
+}
+
+:root[data-theme="oscuro"] {
+  --ds-color-background: #1c1c1e;
+  --ds-color-surface: #2c2c2e;
+  --ds-color-surface-secondary: #232325;
+
+  --ds-color-text-primary: #f5f5f7;
+  --ds-color-text-secondary: #98989d;
+
+  --ds-color-accent: #0a84ff;
+  --ds-color-success: #30d158;
+  --ds-color-warning: #ff9f0a;
+  --ds-color-danger: #ff453a;
+
+  --ds-color-border: #38383a;
+
+  --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --ds-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --ds-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --ds-shadow-focus: 0 0 0 4px color-mix(in srgb, var(--ds-color-accent) 35%, transparent);
+}
+
+/* --------------------------------------------------------------------------
+   2. TOKENS — Tipografía
+   -------------------------------------------------------------------------- */
+
+:root {
+  --ds-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", sans-serif;
+
+  --ds-font-size-display: 2.5rem;    /* 40px */
+  --ds-line-height-display: 1.15;
+  --ds-font-weight-display: 700;
+  --ds-letter-spacing-display: -0.02em;
+
+  --ds-font-size-h1: 2rem;           /* 32px */
+  --ds-line-height-h1: 1.2;
+  --ds-font-weight-h1: 700;
+  --ds-letter-spacing-h1: -0.015em;
+
+  --ds-font-size-h2: 1.5rem;         /* 24px */
+  --ds-line-height-h2: 1.25;
+  --ds-font-weight-h2: 600;
+  --ds-letter-spacing-h2: -0.01em;
+
+  --ds-font-size-h3: 1.1875rem;      /* 19px */
+  --ds-line-height-h3: 1.3;
+  --ds-font-weight-h3: 600;
+
+  --ds-font-size-body: 0.9375rem;    /* 15px */
+  --ds-line-height-body: 1.55;
+  --ds-font-weight-body: 400;
+
+  --ds-font-size-caption: 0.8125rem; /* 13px */
+  --ds-line-height-caption: 1.4;
+  --ds-font-weight-caption: 400;
+
+  --ds-font-size-button: 0.9375rem;  /* 15px */
+  --ds-line-height-button: 1;
+  --ds-font-weight-button: 600;
+  --ds-letter-spacing-button: 0.01em;
+}
+
+/* --------------------------------------------------------------------------
+   3. TOKENS — Espaciado (múltiplos de 4px)
+   -------------------------------------------------------------------------- */
+
+:root {
+  --ds-space-1: 4px;
+  --ds-space-2: 8px;
+  --ds-space-3: 12px;
+  --ds-space-4: 16px;
+  --ds-space-5: 20px;
+  --ds-space-6: 24px;
+  --ds-space-8: 32px;
+  --ds-space-10: 40px;
+  --ds-space-12: 48px;
+  --ds-space-16: 64px;
+  --ds-space-20: 80px;
+  --ds-space-24: 96px;
+}
+
+/* --------------------------------------------------------------------------
+   4. TOKENS — Radios, anchos máximos, z-index, animación
+   -------------------------------------------------------------------------- */
+
+:root {
+  --ds-radius-sm: 6px;
+  --ds-radius-md: 10px;
+  --ds-radius-lg: 14px;
+  --ds-radius-xl: 20px;
+  --ds-radius-full: 999px;
+
+  --ds-maxwidth-narrow: 640px;
+  --ds-maxwidth-content: 980px;
+  --ds-maxwidth-wide: 1200px;
+  --ds-maxwidth-modal: 480px;
+
+  --ds-z-dropdown: 100;
+  --ds-z-sticky: 200;
+  --ds-z-overlay: 900;
+  --ds-z-modal: 1000;
+  --ds-z-toast: 1100;
+  --ds-z-tooltip: 1200;
+
+  --ds-duration-fast: 150ms;
+  --ds-duration-base: 200ms;
+  --ds-duration-slow: 250ms;
+  --ds-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --------------------------------------------------------------------------
+   5. Reset mínimo (idéntico al ya usado en style.css; inerte y no visual)
+   -------------------------------------------------------------------------- */
+
+/*
+  html/body: las plantillas rediseñadas ya no cargan style.css (que sí traía
+  su propio reset de body), así que sin esto el margin de 8px y el fondo
+  blanco por defecto del navegador quedan visibles como un borde alrededor
+  de .ds-shell (que solo rellena el ancho del body, no el viewport).
+*/
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--ds-color-background);
+}
+
+.ds-scope, .ds-scope *, .ds-scope *::before, .ds-scope *::after {
+  box-sizing: border-box;
+}
+
+/*
+  Color de texto base (Fase 9): sin esto, cualquier elemento que no use una
+  clase de tipografía propia (.ds-h1, .ds-body...) hereda el negro por
+  defecto del navegador — invisible sobre superficies oscuras. Se define
+  aquí, no en `body`, para no salirse del criterio de "todo dentro de
+  .ds-scope" que ya sigue el resto del sistema.
+*/
+.ds-scope {
+  color: var(--ds-color-text-primary);
+}
+
+/* --------------------------------------------------------------------------
+   6. Tipografía — clases utilitarias
+   -------------------------------------------------------------------------- */
+
+.ds-display, .ds-h1, .ds-h2, .ds-h3, .ds-body, .ds-caption {
+  font-family: var(--ds-font-family);
+  color: var(--ds-color-text-primary);
+  margin: 0;
+}
+
+.ds-display {
+  font-size: var(--ds-font-size-display);
+  line-height: var(--ds-line-height-display);
+  font-weight: var(--ds-font-weight-display);
+  letter-spacing: var(--ds-letter-spacing-display);
+}
+
+.ds-h1 {
+  font-size: var(--ds-font-size-h1);
+  line-height: var(--ds-line-height-h1);
+  font-weight: var(--ds-font-weight-h1);
+  letter-spacing: var(--ds-letter-spacing-h1);
+}
+
+.ds-h2 {
+  font-size: var(--ds-font-size-h2);
+  line-height: var(--ds-line-height-h2);
+  font-weight: var(--ds-font-weight-h2);
+  letter-spacing: var(--ds-letter-spacing-h2);
+}
+
+.ds-h3 {
+  font-size: var(--ds-font-size-h3);
+  line-height: var(--ds-line-height-h3);
+  font-weight: var(--ds-font-weight-h3);
+}
+
+.ds-body {
+  font-size: var(--ds-font-size-body);
+  line-height: var(--ds-line-height-body);
+  font-weight: var(--ds-font-weight-body);
+}
+
+.ds-caption {
+  font-size: var(--ds-font-size-caption);
+  line-height: var(--ds-line-height-caption);
+  font-weight: var(--ds-font-weight-caption);
+  color: var(--ds-color-text-secondary);
+}
+
+.ds-text-secondary { color: var(--ds-color-text-secondary); }
+
+/* --------------------------------------------------------------------------
+   7. Animación — transición global y accesibilidad
+   -------------------------------------------------------------------------- */
+
+.ds-transition {
+  transition-duration: var(--ds-duration-base);
+  transition-timing-function: var(--ds-ease-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-scope *, .ds-scope *::before, .ds-scope *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* Los toasts y skeletons pueden montarse fuera de .ds-scope (p. ej.
+     append a document.body desde toast.js en páginas aún no migradas),
+     así que se cubren aparte para que el reposo de movimiento se respete
+     también ahí. */
+  .ds-toast, .ds-toast *,
+  .ds-skeleton, .ds-skeleton *,
+  .ds-btn.is-loading::after,
+  .ds-fade-in {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   8. Componente — Botones
+   -------------------------------------------------------------------------- */
+
+.ds-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-space-2);
+  min-height: 44px;
+  padding: var(--ds-space-3) var(--ds-space-5);
+  border-radius: var(--ds-radius-md);
+  border: 1px solid transparent;
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-button);
+  line-height: var(--ds-line-height-button);
+  font-weight: var(--ds-font-weight-button);
+  letter-spacing: var(--ds-letter-spacing-button);
+  cursor: pointer;
+  transition-property: background-color, border-color, color, box-shadow, transform;
+  transition-duration: var(--ds-duration-fast);
+  transition-timing-function: var(--ds-ease-standard);
+}
+
+.ds-btn:active { transform: scale(0.98); }
+
+.ds-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ds-shadow-focus);
+}
+
+.ds-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ds-btn-primary {
+  background: var(--ds-color-accent);
+  color: var(--ds-color-on-accent);
+  --ds-btn-fg: var(--ds-color-on-accent);
+}
+.ds-btn-primary:hover {
+  background: color-mix(in srgb, var(--ds-color-accent) 88%, black);
+}
+
+.ds-btn-secondary {
+  background: var(--ds-color-surface-secondary);
+  color: var(--ds-color-text-primary);
+  border-color: var(--ds-color-border);
+  --ds-btn-fg: var(--ds-color-text-primary);
+}
+.ds-btn-secondary:hover {
+  border-color: var(--ds-color-accent);
+  color: var(--ds-color-accent);
+}
+
+.ds-btn-danger {
+  background: var(--ds-color-danger);
+  color: var(--ds-color-on-danger);
+  --ds-btn-fg: var(--ds-color-on-danger);
+}
+.ds-btn-danger:hover {
+  background: color-mix(in srgb, var(--ds-color-danger) 88%, black);
+}
+
+/* --------------------------------------------------------------------------
+   9. Componente — Card
+   -------------------------------------------------------------------------- */
+
+.ds-card {
+  background: var(--ds-color-surface);
+  border: 1px solid var(--ds-color-border);
+  border-radius: var(--ds-radius-lg);
+  padding: var(--ds-space-6);
+  box-shadow: var(--ds-shadow-sm);
+  transition-property: box-shadow, transform;
+  transition-duration: var(--ds-duration-base);
+  transition-timing-function: var(--ds-ease-standard);
+}
+
+.ds-card--interactive {
+  cursor: pointer;
+}
+.ds-card--interactive:hover {
+  box-shadow: var(--ds-shadow-md);
+  transform: translateY(-2px);
+}
+
+/* --------------------------------------------------------------------------
+   10. Componente — Campos de formulario (Input, Textarea, Select)
+   -------------------------------------------------------------------------- */
+
+.ds-input,
+.ds-textarea,
+.ds-select {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--ds-space-3) var(--ds-space-4);
+  border-radius: var(--ds-radius-md);
+  border: 1px solid var(--ds-color-border);
+  background: var(--ds-color-surface);
+  color: var(--ds-color-text-primary);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-body);
+  line-height: var(--ds-line-height-body);
+  transition-property: border-color, box-shadow;
+  transition-duration: var(--ds-duration-fast);
+  transition-timing-function: var(--ds-ease-standard);
+}
+
+.ds-textarea {
+  resize: vertical;
+  min-height: 96px;
+}
+
+.ds-input::placeholder,
+.ds-textarea::placeholder {
+  color: var(--ds-color-text-secondary);
+}
+
+.ds-input:focus,
+.ds-textarea:focus,
+.ds-select:focus {
+  outline: none;
+  border-color: var(--ds-color-accent);
+  box-shadow: var(--ds-shadow-focus);
+}
+
+.ds-input:disabled,
+.ds-textarea:disabled,
+.ds-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ds-input.is-invalid,
+.ds-textarea.is-invalid,
+.ds-select.is-invalid {
+  border-color: var(--ds-color-danger);
+}
+.ds-input.is-invalid:focus,
+.ds-textarea.is-invalid:focus,
+.ds-select.is-invalid:focus {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ds-color-danger) 25%, transparent);
+}
+
+/* --------------------------------------------------------------------------
+   11. Componente — Badge (estilo suave, típico macOS/iPadOS)
+   -------------------------------------------------------------------------- */
+
+.ds-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--ds-space-3);
+  border-radius: var(--ds-radius-full);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-caption);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  background: var(--ds-color-surface-secondary);
+  color: var(--ds-color-text-secondary);
+}
+
+/*
+  Fase 10: el texto de estas variantes se mezcla con --ds-color-text-primary
+  (no con el color puro del token) porque en modo claro el color puro sobre
+  un fondo tintado al 16-20% no llega al contraste mínimo de WCAG AA
+  (medido ~1.95:1 antes de este cambio). Mezclar hacia text-primary oscurece
+  el texto en claro y lo aclara en oscuro automáticamente — sin variables
+  de color distintas por tema — y sube el contraste a >4.5:1 en ambos.
+*/
+.ds-badge-accent {
+  background: color-mix(in srgb, var(--ds-color-accent) 16%, var(--ds-color-surface));
+  color: color-mix(in srgb, var(--ds-color-accent) 55%, var(--ds-color-text-primary));
+}
+.ds-badge-success {
+  background: color-mix(in srgb, var(--ds-color-success) 16%, var(--ds-color-surface));
+  color: color-mix(in srgb, var(--ds-color-success) 55%, var(--ds-color-text-primary));
+}
+.ds-badge-warning {
+  background: color-mix(in srgb, var(--ds-color-warning) 20%, var(--ds-color-surface));
+  color: color-mix(in srgb, var(--ds-color-warning) 40%, var(--ds-color-text-primary));
+}
+.ds-badge-danger {
+  background: color-mix(in srgb, var(--ds-color-danger) 16%, var(--ds-color-surface));
+  color: color-mix(in srgb, var(--ds-color-danger) 55%, var(--ds-color-text-primary));
+}
+/* Variante de contorno: para una dimensión secundaria (p. ej. tipo de
+   asignatura) que no debe competir visualmente con el badge de estado. */
+.ds-badge-outline {
+  background: transparent;
+  border: 1px solid var(--ds-color-border);
+  color: var(--ds-color-text-secondary);
+}
+
+/* --------------------------------------------------------------------------
+   12. Componente — Progress Bar
+   -------------------------------------------------------------------------- */
+
+.ds-progress {
+  width: 100%;
+  height: 8px;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-color-surface-secondary);
+  overflow: hidden;
+}
+
+.ds-progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ds-color-accent);
+  transition: width var(--ds-duration-slow) var(--ds-ease-standard);
+}
+/* Variantes de color para distinguir categorías en barras de progreso agrupadas
+   (p. ej. obligatorias/optativas/TFG del progreso del grado). */
+.ds-progress-bar--warning { background: var(--ds-color-warning); }
+.ds-progress-bar--success { background: var(--ds-color-success); }
+
+/* --------------------------------------------------------------------------
+   13. Componente — Modal (sobre <dialog> nativo)
+   -------------------------------------------------------------------------- */
+
+dialog.ds-modal {
+  margin: auto;
+  width: 90vw;
+  max-width: var(--ds-maxwidth-modal);
+  padding: var(--ds-space-8);
+  border: none;
+  border-radius: var(--ds-radius-xl);
+  background: var(--ds-color-surface);
+  color: var(--ds-color-text-primary);
+  box-shadow: var(--ds-shadow-lg);
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition: opacity var(--ds-duration-base) var(--ds-ease-standard),
+              transform var(--ds-duration-base) var(--ds-ease-standard),
+              overlay var(--ds-duration-base) var(--ds-ease-standard) allow-discrete,
+              display var(--ds-duration-base) var(--ds-ease-standard) allow-discrete;
+}
+
+dialog.ds-modal::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+  transition: opacity var(--ds-duration-base) var(--ds-ease-standard);
+}
+
+@starting-style {
+  dialog.ds-modal[open] {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+}
+
+dialog.ds-modal:not([open]) {
+  opacity: 0;
+  transform: scale(0.96) translateY(8px);
+}
+
+/* --------------------------------------------------------------------------
+   14. Componente — Toast
+   -------------------------------------------------------------------------- */
+
+.ds-toast-container,
+.ds-toast-container * {
+  box-sizing: border-box;
+}
+.ds-toast-container {
+  position: fixed;
+  right: var(--ds-space-6);
+  bottom: var(--ds-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-3);
+  z-index: var(--ds-z-toast);
+}
+
+.ds-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  min-width: 260px;
+  max-width: 360px;
+  padding: var(--ds-space-4) var(--ds-space-5);
+  border-radius: var(--ds-radius-md);
+  border: 1px solid var(--ds-color-border);
+  border-left: 3px solid var(--ds-color-accent);
+  background: var(--ds-color-surface);
+  color: var(--ds-color-text-primary);
+  box-shadow: var(--ds-shadow-lg);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-body);
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--ds-duration-base) var(--ds-ease-standard),
+              transform var(--ds-duration-base) var(--ds-ease-standard);
+}
+
+@starting-style {
+  .ds-toast {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.ds-toast-success { border-left-color: var(--ds-color-success); }
+.ds-toast-warning { border-left-color: var(--ds-color-warning); }
+.ds-toast-danger { border-left-color: var(--ds-color-danger); }
+
+/* --------------------------------------------------------------------------
+   15. Componente — Empty State
+   -------------------------------------------------------------------------- */
+
+.ds-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-16) var(--ds-space-6);
+  text-align: center;
+  color: var(--ds-color-text-secondary);
+}
+
+.ds-empty-state-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+  opacity: 0.6;
+}
+
+.ds-empty-state-title {
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-h3);
+  font-weight: var(--ds-font-weight-h3);
+  color: var(--ds-color-text-primary);
+}
+
+.ds-empty-state-description {
+  max-width: 360px;
+  font-size: var(--ds-font-size-body);
+  line-height: var(--ds-line-height-body);
+}
+
+/* --------------------------------------------------------------------------
+   16. Componente — Divider
+   -------------------------------------------------------------------------- */
+
+.ds-divider {
+  border: none;
+  border-top: 1px solid var(--ds-color-border);
+  margin: var(--ds-space-6) 0;
+}
+
+.ds-divider--vertical {
+  border: none;
+  border-left: 1px solid var(--ds-color-border);
+  width: 1px;
+  align-self: stretch;
+  margin: 0 var(--ds-space-4);
+}
+
+/* --------------------------------------------------------------------------
+   17. Layout — Icono base (sprite Lucide vendorizado en static/vendor/lucide)
+   -------------------------------------------------------------------------- */
+
+.ds-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: currentColor;
+}
+
+/*
+  Fase 10: escala de tamaños de icono. Antes había valores sueltos por
+  contexto (14/15/16/18/20/22/24px) para el mismo tipo de uso — se
+  normalizan a esta escala de 4 pasos en todas las hojas de estilo.
+*/
+.ds-icon--xs { width: 14px; height: 14px; }
+.ds-icon--sm { width: 16px; height: 16px; }
+.ds-icon--lg { width: 24px; height: 24px; }
+
+/* --------------------------------------------------------------------------
+   18. Layout — Shell (sidebar + contenido, altura completa)
+   -------------------------------------------------------------------------- */
+
+.ds-shell {
+  display: flex;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--ds-color-surface);
+}
+
+.ds-shell-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--ds-color-surface);
+}
+
+.ds-shell-content {
+  max-width: var(--ds-maxwidth-wide);
+  margin: 0 auto;
+  padding: var(--ds-space-10) var(--ds-space-8);
+}
+
+/* --------------------------------------------------------------------------
+   19. Layout — Sidebar
+   -------------------------------------------------------------------------- */
+
+.ds-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--ds-color-background);
+  border-right: 1px solid var(--ds-color-border);
+  padding: var(--ds-space-6) var(--ds-space-4);
+}
+
+.ds-sidebar-nav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-1);
+}
+
+.ds-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-2) var(--ds-space-4);
+  border-radius: var(--ds-radius-full);
+  color: var(--ds-color-text-secondary);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-body);
+  font-weight: var(--ds-font-weight-button);
+  text-decoration: none;
+  transition-property: background-color, color;
+  transition-duration: var(--ds-duration-fast);
+  transition-timing-function: var(--ds-ease-standard);
+}
+
+.ds-sidebar-link:hover {
+  background: var(--ds-color-surface-secondary);
+  color: var(--ds-color-text-primary);
+}
+
+.ds-sidebar-link.is-active {
+  background: var(--ds-color-accent);
+  color: var(--ds-color-on-accent);
+}
+
+/* --------------------------------------------------------------------------
+   20. Layout — Header de página (Título, Subtítulo, Acciones)
+   -------------------------------------------------------------------------- */
+
+.ds-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ds-space-6);
+  margin-bottom: var(--ds-space-8);
+}
+
+.ds-page-header-title {
+  margin: 0;
+}
+
+.ds-page-header-subtitle {
+  margin: var(--ds-space-1) 0 0;
+}
+
+.ds-page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  flex-wrap: wrap;
+}
+
+/* --------------------------------------------------------------------------
+   21. Layout — Navegación inferior (móvil)
+   -------------------------------------------------------------------------- */
+
+.ds-bottom-nav {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--ds-z-sticky);
+  background: var(--ds-color-surface);
+  border-top: 1px solid var(--ds-color-border);
+  padding: var(--ds-space-2) var(--ds-space-2) max(var(--ds-space-2), env(safe-area-inset-bottom));
+}
+
+.ds-bottom-nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+}
+
+.ds-bottom-nav-link {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--ds-space-1) 0;
+  color: var(--ds-color-text-secondary);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-caption);
+  font-weight: var(--ds-font-weight-button);
+  text-decoration: none;
+  transition: color var(--ds-duration-fast) var(--ds-ease-standard);
+}
+
+.ds-bottom-nav-link.is-active {
+  color: var(--ds-color-accent);
+}
+
+/* --------------------------------------------------------------------------
+   22. Responsive — punto de corte móvil (640px, igual que style.css)
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .ds-sidebar {
+    display: none;
+  }
+
+  .ds-shell-content {
+    padding: var(--ds-space-6) var(--ds-space-4) calc(var(--ds-space-6) + 72px);
+  }
+
+  .ds-page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ds-page-header-actions {
+    justify-content: flex-start;
+  }
+
+  .ds-bottom-nav {
+    display: block;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   23. Formularios — Field, Label, Error (Fase 6: reutilizable en toda la app)
+
+   Cada campo se envuelve en `.ds-field`: una etiqueta `.ds-label` siempre
+   visible (nunca solo un placeholder), el control (.ds-input/.ds-textarea/
+   .ds-select, ya con min-height 44px) y, si aplica, un `.ds-field-error`.
+   `.ds-field-row` agrupa varios campos en una misma fila en pantallas anchas.
+   -------------------------------------------------------------------------- */
+
+.ds-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-2);
+  margin-bottom: var(--ds-space-5);
+}
+.ds-field:last-child { margin-bottom: 0; }
+
+.ds-label {
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-caption);
+  font-weight: var(--ds-font-weight-button);
+  color: var(--ds-color-text-primary);
+}
+
+.ds-field-error {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-1);
+  font-size: var(--ds-font-size-caption);
+  color: var(--ds-color-danger);
+}
+.ds-field-error .ds-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.ds-field-error:empty { display: none; }
+
+.ds-field-row {
+  display: flex;
+  gap: var(--ds-space-3);
+  flex-wrap: wrap;
+}
+.ds-field-row .ds-field {
+  flex: 1 1 160px;
+  margin-bottom: 0;
+}
+.ds-field-row .ds-btn {
+  align-self: flex-end;
+}
+
+.ds-form-mensaje {
+  display: block;
+  margin-top: var(--ds-space-2);
+  font-size: var(--ds-font-size-caption);
+  color: var(--ds-color-success);
+  min-height: 1.2em;
+}
+.ds-form-mensaje.es-error {
+  color: var(--ds-color-danger);
+}
+
+/* --------------------------------------------------------------------------
+   24. Microinteracciones (Fase 7) — Skeleton, carga en botones, entrada de
+   tarjetas. El toast (sección 14) y el foco/hover ya existían; aquí se
+   añade lo que faltaba. Todo respeta prefers-reduced-motion (sección 7).
+   -------------------------------------------------------------------------- */
+
+/* --- Skeleton: placeholders de carga con barrido sutil --- */
+
+.ds-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--ds-color-surface-secondary);
+  border-radius: var(--ds-radius-sm);
+}
+.ds-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--ds-color-border) 70%, transparent),
+    transparent
+  );
+  animation: ds-shimmer 1.6s ease-in-out infinite;
+}
+@keyframes ds-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+.ds-skeleton-title {
+  height: 18px;
+  width: 55%;
+  margin-bottom: var(--ds-space-3);
+}
+.ds-skeleton-line {
+  height: 12px;
+  width: 40%;
+}
+.ds-skeleton-bar {
+  height: 8px;
+  width: 100%;
+  border-radius: var(--ds-radius-full);
+  margin-top: var(--ds-space-5);
+}
+
+/* --- Botón en estado de carga: oculta el contenido, muestra un spinner --- */
+
+.ds-btn.is-loading {
+  position: relative;
+  pointer-events: none;
+  color: transparent !important;
+}
+.ds-btn.is-loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border-radius: 50%;
+  border: 2px solid var(--ds-btn-fg, var(--ds-color-text-primary));
+  border-right-color: transparent;
+  animation: ds-spin 0.6s linear infinite;
+}
+@keyframes ds-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* --- Entrada suave de tarjetas/listas al renderizarse --- */
+
+@keyframes ds-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.ds-fade-in {
+  animation: ds-fade-in-up var(--ds-duration-slow) var(--ds-ease-standard);
+}

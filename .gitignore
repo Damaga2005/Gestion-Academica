@@ -1,0 +1,26 @@
+# Entornos y dependencias
+venv/
+__pycache__/
+*.pyc
+
+# Empaquetado
+build/
+dist/
+*.spec.bak
+
+# Datos reales (nunca deben subirse a un repositorio)
+*.db
+*.sqlite
+*.sqlite3
+instance/
+documentos/
+.env
+
+# Backups reales exportados
+backup_*.zip
+
+# Logs y temporales
+*.log
+*.tmp
+.restore_tmp/
+.pytest_cache/

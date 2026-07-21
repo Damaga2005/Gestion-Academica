@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="es" data-theme="{{ tema_actual }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Desbloquear · GREELEC</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+    }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: var(--ds-font-family);
+      background:
+        radial-gradient(circle at 18% 20%, color-mix(in srgb, var(--ds-color-accent) 22%, transparent), transparent 45%),
+        radial-gradient(circle at 82% 78%, color-mix(in srgb, var(--ds-color-accent) 14%, transparent), transparent 45%),
+        var(--ds-color-background);
+    }
+
+    .unlock-card {
+      width: 100%;
+      max-width: 320px;
+      margin: var(--ds-space-4);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .unlock-avatar {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--ds-color-surface);
+      box-shadow: var(--ds-shadow-lg);
+      margin-bottom: var(--ds-space-5);
+    }
+    .unlock-avatar .ds-icon {
+      width: 42px;
+      height: 42px;
+      color: var(--ds-color-accent);
+    }
+
+    .unlock-title {
+      margin: 0;
+    }
+    .unlock-subtitle {
+      margin: var(--ds-space-2) 0 0;
+    }
+
+    .unlock-form {
+      margin-top: var(--ds-space-8);
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .unlock-input-wrap {
+      position: relative;
+      width: 220px;
+    }
+    .unlock-input {
+      width: 100%;
+      border-radius: var(--ds-radius-full);
+      text-align: center;
+      padding-right: 44px;
+    }
+    .unlock-submit {
+      position: absolute;
+      top: 50%;
+      right: 4px;
+      transform: translateY(-50%);
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      background: var(--ds-color-accent);
+      color: var(--ds-color-on-accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background-color var(--ds-duration-fast) var(--ds-ease-standard), opacity var(--ds-duration-fast) var(--ds-ease-standard);
+    }
+    .unlock-submit:hover {
+      background: color-mix(in srgb, var(--ds-color-accent) 88%, black);
+    }
+    .unlock-submit:focus-visible {
+      outline: none;
+      box-shadow: var(--ds-shadow-focus);
+    }
+    .unlock-submit .ds-icon {
+      width: 16px;
+      height: 16px;
+    }
+    .unlock-submit.is-loading {
+      pointer-events: none;
+    }
+    .unlock-submit.is-loading .ds-icon {
+      visibility: hidden;
+    }
+    .unlock-submit.is-loading::after {
+      content: "";
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid var(--ds-color-on-accent);
+      border-right-color: transparent;
+      animation: ds-spin 0.6s linear infinite;
+    }
+
+    .unlock-error {
+      display: flex;
+      align-items: center;
+      gap: var(--ds-space-1);
+      justify-content: center;
+      min-height: 1.2em;
+      margin: var(--ds-space-4) 0 0;
+      color: var(--ds-color-danger);
+      font-size: var(--ds-font-size-caption);
+    }
+    .unlock-error .ds-icon {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+    .unlock-error:empty { display: none; }
+
+    @keyframes unlock-shake {
+      10%, 90% { transform: translateX(-1px); }
+      20%, 80% { transform: translateX(2px); }
+      30%, 50%, 70% { transform: translateX(-4px); }
+      40%, 60% { transform: translateX(4px); }
+    }
+    .unlock-shake {
+      animation: unlock-shake 400ms var(--ds-ease-standard);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .unlock-shake { animation-duration: 0.01ms; }
+    }
+  </style>
+</head>
+<body>
+  <div class="ds-scope">
+    <div class="unlock-card{{ ' unlock-shake' if error else '' }}">
+      <div class="unlock-avatar">
+        <svg class="ds-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-graduation-cap"></use>
+        </svg>
+      </div>
+
+      <h1 class="ds-h2 unlock-title">Gestión Académica GREELEC</h1>
+      <p class="ds-body ds-text-secondary unlock-subtitle">Introduce la clave de acceso</p>
+
+      <form class="unlock-form" method="post" action="{{ url_for('auth.procesar_unlock') }}" id="unlock-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="unlock-input-wrap">
+          <input
+            type="password"
+            id="clave"
+            name="clave"
+            class="ds-input unlock-input"
+            aria-label="Clave de acceso"
+            autofocus
+            required
+          >
+          <button type="submit" class="unlock-submit" id="unlock-submit" aria-label="Desbloquear">
+            <svg class="ds-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14"/>
+              <path d="m12 5 7 7-7 7"/>
+            </svg>
+          </button>
+        </div>
+        <p class="unlock-error" id="unlock-error">
+          {% if error %}
+          <svg class="ds-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" x2="12" y1="8" y2="12"/>
+            <line x1="12" x2="12.01" y1="16" y2="16"/>
+          </svg>
+          <span>{{ error }}</span>
+          {% endif %}
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('unlock-form').addEventListener('submit', () => {
+      document.getElementById('unlock-submit').classList.add('is-loading');
+    });
+  </script>
+</body>
+</html>

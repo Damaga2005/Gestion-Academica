@@ -1,0 +1,197 @@
+/* ==========================================================================
+   Listado de Asignaturas (Fase 4 de diseño) — estilos propios de esta
+   pantalla únicamente. Construido sobre static/css/design-system.css;
+   no toca ninguna regla de style.css, dashboard.css u otras plantillas.
+   ========================================================================== */
+
+.asignaturas-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--ds-space-4);
+  margin-bottom: var(--ds-space-8);
+}
+.asignaturas-toolbar .ds-field {
+  margin-bottom: 0;
+}
+
+.asignaturas-field-buscador {
+  flex: 1 1 240px;
+  min-width: 200px;
+}
+
+.asignaturas-field-select {
+  flex: 0 0 auto;
+}
+.asignaturas-select {
+  width: auto;
+}
+
+.asignaturas-filtros-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-2);
+}
+
+.filtro-chip {
+  min-height: 44px;
+  padding: var(--ds-space-2) var(--ds-space-4);
+  border-radius: var(--ds-radius-full);
+  border: 1px solid var(--ds-color-border);
+  background: var(--ds-color-surface-secondary);
+  color: var(--ds-color-text-secondary);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-caption);
+  font-weight: var(--ds-font-weight-button);
+  cursor: pointer;
+  transition-property: background-color, border-color, color;
+  transition-duration: var(--ds-duration-fast);
+  transition-timing-function: var(--ds-ease-standard);
+}
+.filtro-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--ds-shadow-focus);
+}
+
+.filtro-chip:hover {
+  color: var(--ds-color-text-primary);
+}
+
+.filtro-chip.is-active {
+  background: var(--ds-color-accent);
+  border-color: var(--ds-color-accent);
+  color: var(--ds-color-on-accent);
+}
+
+.asignaturas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--ds-space-6);
+}
+
+.asignatura-card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--ds-space-8);
+  text-decoration: none;
+  color: var(--ds-color-text-primary);
+}
+
+.asignatura-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+}
+
+.asignatura-card-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--ds-space-2);
+  flex-shrink: 0;
+}
+
+/* --- Panel "Optativas por elegir" --- */
+
+.optativas-panel {
+  margin-bottom: var(--ds-space-8);
+  padding: var(--ds-space-5) var(--ds-space-6);
+}
+
+.optativas-panel-header {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--ds-font-family);
+  color: var(--ds-color-text-primary);
+}
+.optativas-panel-caret {
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  color: var(--ds-color-text-secondary);
+  transition: transform var(--ds-duration-fast) var(--ds-ease-standard);
+}
+.optativas-panel.is-open .optativas-panel-caret {
+  transform: rotate(180deg);
+}
+
+#optativas-panel-body {
+  margin-top: var(--ds-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-6);
+}
+
+.optativas-grupo-titulo {
+  margin-bottom: var(--ds-space-3);
+}
+
+.optativas-catalogo-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-space-3);
+}
+
+.optativa-catalogo-item {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-3) var(--ds-space-4);
+  border: 1px solid var(--ds-color-border);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-color-surface-secondary);
+}
+.optativa-catalogo-item-nombre {
+  display: flex;
+  flex-direction: column;
+}
+.optativa-catalogo-item-acciones {
+  display: flex;
+  gap: var(--ds-space-2);
+}
+.optativa-catalogo-item-acciones .ds-btn {
+  padding: var(--ds-space-1) var(--ds-space-3);
+  min-height: 32px;
+  font-size: var(--ds-font-size-caption);
+}
+
+.optativas-crear-form {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--ds-space-3);
+  margin-top: var(--ds-space-4);
+  padding-top: var(--ds-space-4);
+  border-top: 1px dashed var(--ds-color-border);
+}
+.optativas-crear-form .ds-field {
+  margin-bottom: 0;
+}
+
+.asignatura-card-meta {
+  margin-top: var(--ds-space-2);
+}
+
+.asignatura-card-progreso {
+  margin-top: var(--ds-space-6);
+}
+
+.asignatura-card-entrega {
+  margin-top: var(--ds-space-4);
+  padding-top: var(--ds-space-4);
+  border-top: 1px solid var(--ds-color-border);
+}
+
+@media (max-width: 640px) {
+  .asignaturas-field-select {
+    flex: 1 1 auto;
+  }
+}
