@@ -1,6 +1,11 @@
 const NOMBRES_ESTADO_CONCEPTO = { no_visto: 'No visto', flojo: 'Flojo', dominado: 'Dominado' };
 
 async function api(path, options = {}) {
+  const metodo = (options.method || 'GET').toUpperCase();
+  if (metodo !== 'GET' && metodo !== 'HEAD') {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    options.headers = Object.assign({}, options.headers, { 'X-CSRFToken': meta ? meta.content : '' });
+  }
   const res = await fetch(path, options);
   if (!res.ok) {
     let mensaje = `Error ${res.status}`;

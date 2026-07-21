@@ -188,9 +188,10 @@ document.getElementById('orden-asignaturas').addEventListener('change', (e) => {
 // --- Panel "Optativas por elegir" (catálogo + creación a mano + quitar elección) ---
 
 async function apiPost(path, body) {
+  const meta = document.querySelector('meta[name="csrf-token"]');
   const res = await fetch(path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': meta ? meta.content : '' },
     body: JSON.stringify(body),
   });
   if (!res.ok) {

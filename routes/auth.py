@@ -13,6 +13,7 @@ para evitar timing attacks, y sin guardar ni loguear nunca la clave en ningún s
 import hmac
 import os
 import secrets
+import time
 
 from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
 
@@ -21,6 +22,46 @@ auth_bp = Blueprint("auth", __name__)
 # Rutas accesibles sin autenticar aunque el bloqueo esté activo (spec: solo estas quedan públicas)
 RUTAS_PUBLICAS_EXACTAS = {"/unlock", "/lock", "/api"}
 PREFIJOS_PUBLICOS = ("/static/",)
+
+# --- Rate limit progresivo para /unlock ---
+# En memoria, de un solo proceso: suficiente para esta app personal (spec Fase Web
+# punto 5). `_reloj` es sustituible en los tests para no depender de time.sleep real.
+_reloj = time.monotonic
+_intentos_fallidos = {}  # ip -> {"fallos": int, "bloqueado_hasta": float, "ultimo": float}
+_INTENTOS_ANTES_DE_BLOQUEAR = 3
+_BACKOFF_BASE_SEGUNDOS = 2
+_BACKOFF_MAXIMO_SEGUNDOS = 300  # nunca un bloqueo permanente
+_ENTRADA_INACTIVA_SEGUNDOS = 3600  # se olvida una IP tras una hora sin intentos
+
+
+def _limpiar_intentos_viejos(ahora):
+    viejas = [ip for ip, info in _intentos_fallidos.items() if ahora - info["ultimo"] > _ENTRADA_INACTIVA_SEGUNDOS]
+    for ip in viejas:
+        del _intentos_fallidos[ip]
+
+
+def _segundos_de_espera(ip):
+    ahora = _reloj()
+    _limpiar_intentos_viejos(ahora)
+    info = _intentos_fallidos.get(ip)
+    if not info:
+        return 0
+    return max(0, info["bloqueado_hasta"] - ahora)
+
+
+def _registrar_intento_fallido(ip):
+    ahora = _reloj()
+    info = _intentos_fallidos.setdefault(ip, {"fallos": 0, "bloqueado_hasta": 0.0, "ultimo": ahora})
+    info["fallos"] += 1
+    info["ultimo"] = ahora
+    exceso = info["fallos"] - _INTENTOS_ANTES_DE_BLOQUEAR
+    if exceso >= 0:
+        espera = min(_BACKOFF_BASE_SEGUNDOS * (2 ** exceso), _BACKOFF_MAXIMO_SEGUNDOS)
+        info["bloqueado_hasta"] = ahora + espera
+
+
+def _resetear_intentos(ip):
+    _intentos_fallidos.pop(ip, None)
 
 
 def lock_key_configurada():
@@ -58,6 +99,32 @@ def _generar_csrf_token():
 def _validar_csrf(token_recibido):
     token_esperado = session.get("_csrf_token")
     return bool(token_esperado) and bool(token_recibido) and hmac.compare_digest(token_esperado, token_recibido)
+
+
+def _tiene_cabecera_api_valida(peticion):
+    """Cierto solo si la petición trae una cabecera de autenticación de API bien
+    formada y no vacía (Bearer <token> o X-GREELEC-KEY: <clave>). Una cabecera
+    ausente, vacía o mal formada NO exime de CSRF: si la clave es correcta o no lo
+    decide después la lógica de autenticación normal, esto solo distingue "esto
+    parece un cliente de API" de "esto es un navegador"."""
+    auth_header = peticion.headers.get("Authorization", "")
+    if auth_header:
+        return auth_header.startswith("Bearer ") and bool(auth_header[len("Bearer "):].strip())
+    x_key = peticion.headers.get("X-GREELEC-KEY")
+    if x_key is not None:
+        return bool(x_key.strip())
+    return False
+
+
+def _token_csrf_de_la_peticion():
+    token = request.headers.get("X-CSRFToken")
+    if token:
+        return token
+    if request.is_json:
+        token = (request.get_json(silent=True) or {}).get("csrf_token")
+        if token:
+            return token
+    return request.form.get("csrf_token")
 
 
 def _es_ruta_publica(path):
@@ -100,10 +167,38 @@ def registrar_gate_autenticacion(app):
 
     @app.context_processor
     def _inyectar_datos_auth():
+        # El token CSRF existe por sesión independientemente de si hay login activo
+        # (spec Fase Web: "tokens CSRF por sesión"), porque la protección CSRF global
+        # cubre TODAS las peticiones mutables, no solo cuando GREELEC_LOCK_KEY está
+        # activa.
         return {
             "lock_activo": lock_key_configurada(),
-            "csrf_token": _generar_csrf_token() if session.get("autenticado") else "",
+            "csrf_token": _generar_csrf_token(),
         }
+
+
+def registrar_csrf_global(app):
+    """Protección CSRF global para POST/PUT/PATCH/DELETE (spec Fase Web punto 1).
+    Debe registrarse DESPUÉS de registrar_gate_autenticacion(app): así el gate de
+    autenticación ya ha podido devolver 401/redirigir antes de llegar aquí.
+
+    /unlock y /lock quedan fuera: ya tienen su propia validación CSRF específica
+    (ligada al flujo de esos dos formularios en concreto) y esta comprobación
+    global no debe duplicarla ni contradecirla."""
+    RUTAS_CSRF_PROPIO = {"/unlock", "/lock"}
+
+    @app.before_request
+    def _exigir_csrf_global():
+        if not current_app.config.get("WTF_CSRF_ENABLED", True):
+            return  # desactivado explícitamente (p. ej. en tests que no cubren CSRF)
+        if request.method not in ("POST", "PUT", "PATCH", "DELETE"):
+            return
+        if request.path in RUTAS_CSRF_PROPIO:
+            return
+        if _tiene_cabecera_api_valida(request):
+            return  # cliente de API (Bearer/X-GREELEC-KEY bien formado): exento
+        if not _validar_csrf(_token_csrf_de_la_peticion()):
+            return jsonify({"error": "invalid_csrf_token"}), 403
 
 
 @auth_bp.get("/unlock")
@@ -119,6 +214,17 @@ def procesar_unlock():
     if not lock_key_configurada():
         return redirect(url_for("vistas.dashboard"))
 
+    ip = request.remote_addr or "desconocida"
+    espera = _segundos_de_espera(ip)
+    if espera > 0:
+        respuesta = render_template(
+            "unlock.html", csrf_token=_generar_csrf_token(),
+            error=f"Demasiados intentos. Inténtalo de nuevo en {int(espera) + 1} s.",
+        )
+        resp = current_app.response_class(respuesta, status=429)
+        resp.headers["Retry-After"] = str(int(espera) + 1)
+        return resp
+
     if not _validar_csrf(request.form.get("csrf_token", "")):
         return render_template(
             "unlock.html", csrf_token=_generar_csrf_token(),
@@ -126,12 +232,14 @@ def procesar_unlock():
         ), 400
 
     if _clave_correcta(request.form.get("clave", "")):
+        _resetear_intentos(ip)
         destino = session.pop("destino_tras_unlock", None)
         session.clear()
         session["autenticado"] = True
         session.permanent = True
         return redirect(destino or url_for("vistas.dashboard"))
 
+    _registrar_intento_fallido(ip)
     return render_template(
         "unlock.html", csrf_token=_generar_csrf_token(), error="Clave incorrecta.",
     ), 401

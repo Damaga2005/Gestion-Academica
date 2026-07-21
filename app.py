@@ -26,7 +26,7 @@ from routes.notificaciones import notificaciones_bp
 from routes.hitos import hitos_bp
 from routes.conceptos import conceptos_bp
 from routes.recursos_externos import recursos_externos_bp
-from routes.auth import auth_bp, registrar_gate_autenticacion
+from routes.auth import auth_bp, registrar_gate_autenticacion, registrar_csrf_global
 from routes.vistas import vistas_bp
 
 migrate = Migrate()
@@ -98,6 +98,7 @@ def create_app(auto_seed=True, database_uri=None, documentos_dir=None):
     app.register_blueprint(vistas_bp)
 
     registrar_gate_autenticacion(app)
+    registrar_csrf_global(app)
 
     os.makedirs(app.config["DOCUMENTOS_DIR"], exist_ok=True)
 

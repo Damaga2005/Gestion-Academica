@@ -2,6 +2,11 @@ const asignaturaId = window.ASIGNATURA_ID;
 let documentoAbiertoId = null;
 
 async function api(path, options = {}) {
+  const metodo = (options.method || 'GET').toUpperCase();
+  if (metodo !== 'GET' && metodo !== 'HEAD') {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    options.headers = Object.assign({}, options.headers, { 'X-CSRFToken': meta ? meta.content : '' });
+  }
   const res = await fetch(path, options);
   if (!res.ok) {
     let mensaje = `Error ${res.status}`;
@@ -197,7 +202,11 @@ document.getElementById('detalle-select-estado').addEventListener('change', asyn
 document.getElementById('btn-quitar-eleccion').addEventListener('click', async () => {
   const nombre = document.getElementById('detalle-nombre').textContent;
   if (!confirm(`¿Quitar la elección de "${nombre}"? Si viene del catálogo volverá a estar disponible como optativa por elegir. Si la creaste a mano se eliminará por completo.`)) return;
-  const res = await fetch(`/asignaturas/${asignaturaId}/quitar-eleccion`, { method: 'POST' });
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  const res = await fetch(`/asignaturas/${asignaturaId}/quitar-eleccion`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': meta ? meta.content : '' },
+  });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     alert('Error: ' + (data.error || res.status));
@@ -443,7 +452,11 @@ function renderComparacionEsquemas(esquemas) {
 
     tarjeta.querySelector('.btn-borrar-esquema').addEventListener('click', async () => {
       if (!confirm(`¿Eliminar el esquema "${esquema.nombre}" y todos sus componentes? Esta acción no se puede deshacer.`)) return;
-      const res = await fetch(`/esquemas/${esquemaId}`, { method: 'DELETE' });
+      const meta = document.querySelector('meta[name="csrf-token"]');
+      const res = await fetch(`/esquemas/${esquemaId}`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': meta ? meta.content : '' },
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         mostrarToast(data.error || 'No se pudo eliminar el esquema', 'danger');
@@ -1082,6 +1095,8 @@ function subidaConProgreso(url, formData, alActualizar) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', url);
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta) xhr.setRequestHeader('X-CSRFToken', meta.content);
     xhr.upload.addEventListener('progress', (e) => {
       if (e.lengthComputable) alActualizar(Math.round((e.loaded / e.total) * 100));
     });
@@ -1383,9 +1398,10 @@ let debounceTimerPagina = null;
 function guardarUltimaPagina(documentoId, pagina) {
   clearTimeout(debounceTimerPagina);
   debounceTimerPagina = setTimeout(() => {
+    const meta = document.querySelector('meta[name="csrf-token"]');
     fetch(`/documentos/${documentoId}/ultima-pagina`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': meta ? meta.content : '' },
       body: JSON.stringify({ pagina }),
     });
   }, 800);

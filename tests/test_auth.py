@@ -121,3 +121,138 @@ def test_proteccion_cubre_todos_los_metodos_http(client_bloqueado):
     for metodo, ruta in casos:
         r = client_bloqueado.open(ruta, method=metodo, headers={"X-GREELEC-KEY": CLAVE})
         assert r.status_code != 401, f"{metodo} {ruta} no debería dar 401 con la clave correcta"
+
+
+# --- CSRF global (Fase Web) ---
+
+def _obtener_csrf_de_meta(html):
+    m = re.search(r'name="csrf-token" content="([^"]+)"', html)
+    assert m, "no se encontró el <meta name=csrf-token> en la página"
+    return m.group(1)
+
+
+def test_csrf_valido_permite_peticion_mutable(client_csrf):
+    token = _obtener_csrf_de_meta(client_csrf.get("/vista/dashboard").get_data(as_text=True))
+    r = client_csrf.post(
+        "/tareas", json={"titulo": "x", "tipo": "tarea_general"},
+        headers={"X-CSRFToken": token},
+    )
+    assert r.status_code != 403
+
+
+def test_csrf_ausente_es_rechazado_con_403_uniforme(client_csrf):
+    r = client_csrf.post("/tareas", json={"titulo": "x", "tipo": "tarea_general"})
+    assert r.status_code == 403
+    assert r.get_json() == {"error": "invalid_csrf_token"}
+
+
+def test_csrf_invalido_es_rechazado_con_403(client_csrf):
+    r = client_csrf.post(
+        "/tareas", json={"titulo": "x", "tipo": "tarea_general"},
+        headers={"X-CSRFToken": "token-falso"},
+    )
+    assert r.status_code == 403
+    assert r.get_json() == {"error": "invalid_csrf_token"}
+
+
+def test_csrf_get_no_requiere_token(client_csrf):
+    assert client_csrf.get("/asignaturas").status_code == 200
+
+
+def test_csrf_cabecera_bearer_vacia_no_exime(client_csrf):
+    """Una cabecera Authorization: Bearer  (sin token) o vacía no debe eximir de CSRF:
+    solo cuenta como 'cliente de API' una cabecera bien formada y no vacía."""
+    r = client_csrf.post(
+        "/tareas", json={"titulo": "x", "tipo": "tarea_general"},
+        headers={"Authorization": "Bearer "},
+    )
+    assert r.status_code == 403
+
+    r = client_csrf.post(
+        "/tareas", json={"titulo": "x", "tipo": "tarea_general"},
+        headers={"X-GREELEC-KEY": ""},
+    )
+    assert r.status_code == 403
+
+
+def test_csrf_cabecera_bearer_bien_formada_exime(client_csrf):
+    """Sin GREELEC_LOCK_KEY configurada la clave nunca será 'correcta', pero eso lo
+    decide la autenticación normal DESPUÉS: a efectos de CSRF, una cabecera Bearer
+    bien formada basta para tratar la petición como no-navegador y eximirla."""
+    r = client_csrf.post(
+        "/tareas", json={"titulo": "x", "tipo": "tarea_general"},
+        headers={"Authorization": "Bearer algo-no-vacio"},
+    )
+    assert r.status_code != 403
+
+    r = client_csrf.post(
+        "/tareas", json={"titulo": "x", "tipo": "tarea_general"},
+        headers={"X-GREELEC-KEY": "algo-no-vacio"},
+    )
+    assert r.status_code != 403
+
+
+def test_csrf_no_se_aplica_a_unlock_ni_lock(client_bloqueado):
+    """/unlock y /lock conservan su propio control específico: el gate global no
+    debe interferir ni exigir un segundo token distinto."""
+    token = _extraer_csrf(client_bloqueado.get("/unlock").get_data(as_text=True))
+    r = client_bloqueado.post("/unlock", data={"csrf_token": token, "clave": CLAVE})
+    assert r.status_code != 403
+
+
+# --- Rate limit progresivo en /unlock ---
+
+def _fallar_login(client, veces, token_valido=None):
+    for _ in range(veces):
+        token = token_valido or _extraer_csrf(client.get("/unlock").get_data(as_text=True))
+        client.post("/unlock", data={"csrf_token": token, "clave": "clave-mala"})
+
+
+def test_rate_limit_bloquea_tras_varios_fallos_y_da_retry_after(client_bloqueado, monkeypatch):
+    reloj = {"ahora": 1000.0}
+    monkeypatch.setattr("routes.auth._reloj", lambda: reloj["ahora"])
+
+    _fallar_login(client_bloqueado, 3)  # alcanza el umbral de bloqueo
+
+    token = _extraer_csrf(client_bloqueado.get("/unlock").get_data(as_text=True))
+    r = client_bloqueado.post("/unlock", data={"csrf_token": token, "clave": CLAVE})
+    assert r.status_code == 429
+    assert "Retry-After" in r.headers
+    assert int(r.headers["Retry-After"]) > 0
+
+
+def test_rate_limit_deja_de_bloquear_pasado_el_backoff(client_bloqueado, monkeypatch):
+    reloj = {"ahora": 2000.0}
+    monkeypatch.setattr("routes.auth._reloj", lambda: reloj["ahora"])
+
+    _fallar_login(client_bloqueado, 3)
+
+    token = _extraer_csrf(client_bloqueado.get("/unlock").get_data(as_text=True))
+    r = client_bloqueado.post("/unlock", data={"csrf_token": token, "clave": CLAVE})
+    espera = int(r.headers["Retry-After"])
+    assert r.status_code == 429
+
+    reloj["ahora"] += espera  # avanza el reloj falso más allá del backoff, sin sleep real
+
+    token = _extraer_csrf(client_bloqueado.get("/unlock").get_data(as_text=True))
+    r = client_bloqueado.post("/unlock", data={"csrf_token": token, "clave": CLAVE})
+    assert r.status_code == 302  # login correcto, ya no bloqueado
+
+
+def test_rate_limit_se_reinicia_tras_login_correcto(client_bloqueado, monkeypatch):
+    reloj = {"ahora": 3000.0}
+    monkeypatch.setattr("routes.auth._reloj", lambda: reloj["ahora"])
+
+    _fallar_login(client_bloqueado, 2)  # por debajo del umbral de bloqueo
+
+    token = _extraer_csrf(client_bloqueado.get("/unlock").get_data(as_text=True))
+    r = client_bloqueado.post("/unlock", data={"csrf_token": token, "clave": CLAVE})
+    assert r.status_code == 302
+
+    token_lock = _extraer_csrf(client_bloqueado.get("/vista/ajustes").get_data(as_text=True))
+    client_bloqueado.post("/lock", data={"csrf_token": token_lock})  # cierra sesión para poder reintentar
+    # Tras el login correcto el contador se reinicia: dos fallos más no deberían bastar para bloquear.
+    _fallar_login(client_bloqueado, 2)
+    token = _extraer_csrf(client_bloqueado.get("/unlock").get_data(as_text=True))
+    r = client_bloqueado.post("/unlock", data={"csrf_token": token, "clave": "otra-mala"})
+    assert r.status_code == 401  # clave incorrecta normal, no 429 (no estaba bloqueado)

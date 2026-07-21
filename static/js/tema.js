@@ -17,9 +17,10 @@
     actualizarIcono(nuevo);
 
     try {
+      const meta = document.querySelector('meta[name="csrf-token"]');
       await fetch('/configuracion', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': meta ? meta.content : '' },
         body: JSON.stringify({ tema: nuevo }),
       });
     } catch (err) {
