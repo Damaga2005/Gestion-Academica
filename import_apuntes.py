@@ -47,7 +47,7 @@ ALLOWED_EXTS = {
     "odt", "ods", "odp", "csv", "md", "zip",
     "jpg", "jpeg", "png", "gif", "webp", "bmp",
 }
-ZIP_CODE_EXTS = {"c", "h", "m"}  # C y MATLAB: se agrupan en un zip por subgrupo
+ZIP_CODE_EXTS = {"c", "h", "m", "mlx", "vhd", "py"}  # código: se agrupan en un zip por subgrupo
 
 DIR_BLACKLIST = {
     "db", "incremental_db", "__pycache__", "dist", "build", "nbproject",
@@ -204,14 +204,14 @@ def imprimir_informe(directos, zips, excluidos_ext, omitidos_codigo_ext):
     print(f"  TOTAL omitidos: {sum(omitidos_codigo_ext.values())}")
 
 
-def ejecutar_importacion(directos, zips):
+def ejecutar_importacion(directos, zips, database_uri=None, documentos_dir=None, solo_zips=False):
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from app import create_app
     from models import db, Asignatura, GrupoDocumento, Documento
     from utils import carpeta_categoria, carpeta_grupo, nombre_archivo_disponible
     from routes.documentos import _indexar_texto_pdf
 
-    app = create_app(auto_seed=False)
+    app = create_app(auto_seed=False, database_uri=database_uri, documentos_dir=documentos_dir)
     creados = 0
     with app.app_context():
         grupo_cache = {}
@@ -272,13 +272,14 @@ def ejecutar_importacion(directos, zips):
             return asignatura_cache[asignatura_id]
 
         # 1) Archivos directos
-        for asignatura_id, categoria, subgrupo, ruta_abs, nombre in directos:
-            asignatura = get_asignatura(asignatura_id)
-            if asignatura is None:
-                print(f"AVISO: asignatura {asignatura_id} no existe, se omite {ruta_abs}", file=sys.stderr)
-                continue
-            grupo = get_or_create_grupo(asignatura_id, categoria, subgrupo)
-            subir(asignatura, categoria, grupo, ruta_abs, nombre)
+        if not solo_zips:
+            for asignatura_id, categoria, subgrupo, ruta_abs, nombre in directos:
+                asignatura = get_asignatura(asignatura_id)
+                if asignatura is None:
+                    print(f"AVISO: asignatura {asignatura_id} no existe, se omite {ruta_abs}", file=sys.stderr)
+                    continue
+                grupo = get_or_create_grupo(asignatura_id, categoria, subgrupo)
+                subir(asignatura, categoria, grupo, ruta_abs, nombre)
 
         db.session.commit()
 
@@ -311,6 +312,10 @@ def main():
     grupo = parser.add_mutually_exclusive_group(required=True)
     grupo.add_argument("--dry-run", action="store_true")
     grupo.add_argument("--apply", action="store_true")
+    parser.add_argument("--target", choices=["dev", "dist"], default="dev",
+                         help="dev = academico.db del proyecto; dist = dist/academico.db del .exe empaquetado")
+    parser.add_argument("--only-zips", action="store_true",
+                         help="no vuelve a subir los archivos directos, solo (re)genera los zips de código")
     args = parser.parse_args()
 
     directos, zips, excluidos_ext, omitidos_codigo_ext = construir_items()
@@ -319,8 +324,16 @@ def main():
         imprimir_informe(directos, zips, excluidos_ext, omitidos_codigo_ext)
     else:
         imprimir_informe(directos, zips, excluidos_ext, omitidos_codigo_ext)
-        print("\nEjecutando importación real...\n")
-        ejecutar_importacion(directos, zips)
+        print(f"\nEjecutando importación real (target={args.target})...\n")
+        base = os.path.dirname(os.path.abspath(__file__))
+        if args.target == "dist":
+            database_uri = f"sqlite:///{os.path.join(base, 'dist', 'academico.db')}"
+            documentos_dir = os.path.join(base, "dist", "documentos")
+        else:
+            database_uri = None
+            documentos_dir = None
+        ejecutar_importacion(directos, zips, database_uri=database_uri, documentos_dir=documentos_dir,
+                             solo_zips=args.only_zips)
 
 
 if __name__ == "__main__":

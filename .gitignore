@@ -18,6 +18,7 @@ documentos/
 
 # Backups reales exportados
 backup_*.zip
+backups/
 
 # Logs y temporales
 *.log
