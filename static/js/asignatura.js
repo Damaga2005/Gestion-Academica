@@ -121,7 +121,11 @@ async function cargarCabeceraYResumen() {
 
   // Resumen
   document.getElementById('resumen-tipo').textContent = asignatura.tipo === 'optativa' ? 'Optativa' : 'Obligatoria';
-  document.getElementById('resumen-nota').textContent = asignatura.nota_final != null ? asignatura.nota_final : '—';
+
+  const inputNota = document.getElementById('resumen-nota-input');
+  if (document.activeElement !== inputNota) {
+    inputNota.value = asignatura.nota_final != null ? asignatura.nota_final : '';
+  }
 
   if (asignatura.prerrequisitos.length > 0) {
     const filaPrerrequisitos = document.getElementById('resumen-fila-prerrequisitos');
@@ -185,6 +189,41 @@ async function cargarCurso(cuatrimestreId) {
         setTimeout(() => { estado.textContent = ''; }, 2000);
       } catch (err) {
         mostrarErrorCampo('resumen-siglas-error', err.message);
+      }
+    }, 600);
+  });
+})();
+
+// --- Nota final (autoguardado, para colgarla directamente sin desglose) ---
+
+(function () {
+  const input = document.getElementById('resumen-nota-input');
+  const error = document.getElementById('resumen-nota-error');
+  const estado = document.getElementById('resumen-nota-estado');
+  let timer = null;
+
+  input.addEventListener('input', () => {
+    estado.textContent = '';
+    mostrarErrorCampo('resumen-nota-error', '');
+
+    if (input.value && !input.validity.valid) {
+      mostrarErrorCampo('resumen-nota-error', 'Indica un número entre 0 y 10.');
+      clearTimeout(timer);
+      return;
+    }
+
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      try {
+        await api(`/asignaturas/${asignaturaId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nota_final: input.value === '' ? null : Number(input.value) }),
+        });
+        estado.textContent = 'Guardado ✓';
+        setTimeout(() => { estado.textContent = ''; }, 2000);
+      } catch (err) {
+        mostrarErrorCampo('resumen-nota-error', err.message);
       }
     }, 600);
   });
