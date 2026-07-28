@@ -111,16 +111,15 @@
   margin-top: var(--ds-space-5);
 }
 
-/* --- Profesor --- */
+/* --- Profesorado --- */
 
-.profesor-acciones {
-  display: flex;
-  gap: var(--ds-space-3);
-  flex-wrap: wrap;
+.detalle-fila-edicion {
+  display: block;
 }
-.profesor-acciones .ds-btn .ds-icon {
-  width: 16px;
-  height: 16px;
+.detalle-fila-edicion .form-editar-profesor {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 
 /* --- Evaluación --- */

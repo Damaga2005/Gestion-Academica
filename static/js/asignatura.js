@@ -229,14 +229,10 @@ document.getElementById('btn-borrar-asignatura').addEventListener('click', async
 
 // --- Profesorado ---
 
-function renderProfesores(profesores) {
-  const contenedor = document.getElementById('profesores-lista');
-  if (!profesores || profesores.length === 0) {
-    contenedor.innerHTML = '<p class="sin-elementos">Sin profesorado todavía.</p>';
-    return;
-  }
+let profesoresCache = [];
 
-  contenedor.innerHTML = profesores.map((p) => `
+function filaProfesorVista(p) {
+  return `
     <div class="detalle-fila" data-id="${p.id}">
       <div class="recurso-fila-icono">
         <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-graduation-cap"></use></svg>
@@ -255,12 +251,58 @@ function renderProfesores(profesores) {
         <a class="fila-icono-btn" href="${escapeHtml(p.aula_virtual)}" target="_blank" rel="noopener" title="Abrir aula virtual">
           <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-external-link"></use></svg>
         </a>` : ''}
+        <button type="button" class="fila-icono-btn btn-editar-profesor" title="Editar">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-pencil"></use></svg>
+        </button>
         <button type="button" class="fila-icono-btn btn-borrar-profesor" title="Eliminar">
           <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
         </button>
       </div>
     </div>
-  `).join('');
+  `;
+}
+
+function filaProfesorEdicion(p) {
+  return `
+    <div class="detalle-fila detalle-fila-edicion" data-id="${p.id}">
+      <form class="detalle-form-anadir form-editar-profesor">
+        <div class="ds-field">
+          <label class="ds-label">Nombre</label>
+          <input type="text" class="ds-input campo-editar-nombre" value="${escapeHtml(p.nombre)}" required>
+        </div>
+        <div class="ds-field" style="flex-basis:160px">
+          <label class="ds-label">Rol / grupos</label>
+          <input type="text" class="ds-input campo-editar-rol" value="${escapeHtml(p.rol || '')}">
+        </div>
+        <div class="ds-field">
+          <label class="ds-label">Correo</label>
+          <input type="email" class="ds-input campo-editar-correo" value="${escapeHtml(p.correo || '')}">
+        </div>
+        <div class="ds-field">
+          <label class="ds-label">Despacho</label>
+          <input type="text" class="ds-input campo-editar-despacho" value="${escapeHtml(p.despacho || '')}">
+        </div>
+        <div class="ds-field">
+          <label class="ds-label">Aula virtual</label>
+          <input type="url" class="ds-input campo-editar-aula" value="${escapeHtml(p.aula_virtual || '')}">
+        </div>
+        <button type="submit" class="ds-btn ds-btn-secondary">Guardar</button>
+        <button type="button" class="ds-btn ds-btn-secondary btn-cancelar-edicion-profesor">Cancelar</button>
+      </form>
+      <p class="ds-field-error campo-editar-error"></p>
+    </div>
+  `;
+}
+
+function renderProfesores(profesores) {
+  profesoresCache = profesores || [];
+  const contenedor = document.getElementById('profesores-lista');
+  if (profesoresCache.length === 0) {
+    contenedor.innerHTML = '<p class="sin-elementos">Sin profesorado todavía.</p>';
+    return;
+  }
+
+  contenedor.innerHTML = profesoresCache.map(filaProfesorVista).join('');
   reanimar(contenedor);
 
   contenedor.querySelectorAll('.btn-borrar-profesor').forEach((btn) => {
@@ -270,6 +312,60 @@ function renderProfesores(profesores) {
       await api(`/profesores/${id}`, { method: 'DELETE' });
       await cargarCabeceraYResumen();
       mostrarToast('Profesor eliminado', 'success');
+    });
+  });
+
+  contenedor.querySelectorAll('.btn-editar-profesor').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const fila = btn.closest('.detalle-fila');
+      const id = Number(fila.dataset.id);
+      const profesor = profesoresCache.find((p) => p.id === id);
+      if (!profesor) return;
+      fila.outerHTML = filaProfesorEdicion(profesor);
+      const nuevaFila = contenedor.querySelector(`.detalle-fila-edicion[data-id="${id}"]`);
+      reanimar(nuevaFila);
+
+      nuevaFila.querySelector('.btn-cancelar-edicion-profesor').addEventListener('click', () => {
+        nuevaFila.outerHTML = filaProfesorVista(profesor);
+        reanimar(contenedor.querySelector(`.detalle-fila[data-id="${id}"]`));
+      });
+
+      nuevaFila.querySelector('.form-editar-profesor').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const nombre = nuevaFila.querySelector('.campo-editar-nombre').value.trim();
+        const correoInput = nuevaFila.querySelector('.campo-editar-correo');
+        const errorEl = nuevaFila.querySelector('.campo-editar-error');
+        errorEl.textContent = '';
+        if (!nombre) {
+          errorEl.textContent = 'Indica un nombre.';
+          return;
+        }
+        if (correoInput.value && !correoInput.validity.valid) {
+          errorEl.textContent = 'Ese correo no tiene un formato válido.';
+          return;
+        }
+        const boton = e.submitter || e.target.querySelector('button[type="submit"]');
+        boton.classList.add('is-loading');
+        try {
+          await api(`/profesores/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nombre,
+              rol: nuevaFila.querySelector('.campo-editar-rol').value.trim() || null,
+              correo: correoInput.value.trim() || null,
+              despacho: nuevaFila.querySelector('.campo-editar-despacho').value.trim() || null,
+              aula_virtual: nuevaFila.querySelector('.campo-editar-aula').value.trim() || null,
+            }),
+          });
+          await cargarCabeceraYResumen();
+          mostrarToast('Profesor actualizado', 'success');
+        } catch (err) {
+          errorEl.textContent = err.message;
+        } finally {
+          boton.classList.remove('is-loading');
+        }
+      });
     });
   });
 }
