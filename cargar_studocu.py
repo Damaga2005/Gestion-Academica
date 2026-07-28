@@ -1,14 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 Script puntual: añade un recurso "Studocu" a las asignaturas cuya página de
-curso en Studocu se pudo confirmar de forma fiable (el código oficial UPC
-aparece literalmente en el título de la página de Studocu, p. ej.
-"Components i Circuits Electrònics - 230900 - UPC - Studocu").
-
-La búsqueda por código para el resto de asignaturas fue demasiado ruidosa
-(códigos numéricos de 6 cifras coinciden con IDs de documentos de cualquier
-universidad del mundo) como para confirmar el resto sin arriesgarse a
-enlazar la asignatura equivocada, así que solo se cargan las confirmadas.
+curso en Studocu se pudo confirmar (5 por código oficial UPC en el título de
+la página; el resto verificados a mano por el usuario navegando el índice de
+cursos de la universidad en Studocu, que no se pudo automatizar de forma
+fiable — ver conversación).
 
 Uso:
     python cargar_studocu.py --target dev
@@ -20,15 +16,39 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-BASE_URL = "https://www.studocu.com/ca-es/course/universitat-politecnica-de-catalunya/"
-
-# asignatura_id -> slug/id de Studocu (confirmados por código oficial UPC en el título)
+# asignatura_id -> URL completa de la página de curso en Studocu
 CONFIRMADOS = {
-    4: "components-i-circuits-electronics/4303914",    # CCE - 230900
-    12: "dispositius-electronics/4337755",              # DE - 230910
-    13: "electromagnetisme-i-fotonica-aplicada/5479023",  # EAFO - 230912
-    15: "senyals-i-sistemes/1666674",                    # SST - 230913 (código legado 230088 en la página)
-    28: "sistemes-encastats/4530428",                    # EMB - 230916
+    1: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/algebra-lineal/1665471",
+    3: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/calculo/3108508",
+    4: "https://www.studocu.com/ca-es/course/universitat-politecnica-de-catalunya/components-i-circuits-electronics/4303914",  # CCE - 230900
+    5: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/fisica/4303911",
+    7: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/circuit-analysis/2129453",
+    8: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/calcul-vectorial/1665614",
+    9: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/matematiques-de-la-telecomunicacio/1668883",
+    10: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/electromagnetismo/3108591",
+    12: "https://www.studocu.com/ca-es/course/universitat-politecnica-de-catalunya/dispositius-electronics/4337755",  # DE - 230910
+    13: "https://www.studocu.com/ca-es/course/universitat-politecnica-de-catalunya/electromagnetisme-i-fotonica-aplicada/5479023",  # EAFO - 230912
+    14: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/ppe-probabilitat-i-procesos-estocastics/5133866",
+    15: "https://www.studocu.com/ca-es/course/universitat-politecnica-de-catalunya/senyals-i-sistemes/1666674",  # SST - 230913
+    16: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/disseny-digital/1668545",
+    25: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/circuits-analogics/5586657",
+    26: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/ep-empresa-y-proyectos/5285450",
+    27: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/icaf-introduccion-a-los-circuitos-de-alta-frecuencia/5285452",
+    28: "https://www.studocu.com/ca-es/course/universitat-politecnica-de-catalunya/sistemes-encastats/4530428",  # EMB - 230916
+    29: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/tractament-del-senyal/4839756",
+    30: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/ciencia-e-ingenieria-de-materiales/6918960",
+    31: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/sistemes-de-control/5158889",
+    32: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/sistemes-de-mesura/4824492",
+    33: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/sistemes-digitals-configurables/5072376",
+    34: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/circuits-dalta-frequencia/5072375",
+    38: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/iot/3108664",
+    39: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/processat-denergia-electrica/6976375",
+    40: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/sistemes-en-temps-real/6176247",
+    41: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/tem-tecnicas-para-el-emprendimiento/6003876",
+    42: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/tecnologia-electronica/5289135",
+    44: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/disseny-microelectronic/6599387",
+    47: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/telecomunicacio-espacial/6953678",
+    52: "https://www.studocu.com/es/course/universitat-politecnica-de-catalunya/matlab-y-sus-aplicaciones-en-la-ingenieria/3108677",
 }
 
 
@@ -39,13 +59,12 @@ def ejecutar(database_uri=None, documentos_dir=None):
 
     app = create_app(auto_seed=False, database_uri=database_uri, documentos_dir=documentos_dir)
     with app.app_context():
-        for asignatura_id, ruta in CONFIRMADOS.items():
+        for asignatura_id, url in CONFIRMADOS.items():
             asignatura = Asignatura.query.get(asignatura_id)
             if asignatura is None:
                 print(f"AVISO: asignatura {asignatura_id} no existe, se omite")
                 continue
 
-            url = f"{BASE_URL}{ruta}"
             existente = RecursoExterno.query.filter_by(asignatura_id=asignatura_id, nombre="Studocu").first()
             if existente:
                 existente.url = url
