@@ -175,6 +175,10 @@ class Asignatura(db.Model):
         "RecursoExterno", back_populates="asignatura", cascade="all, delete-orphan",
         order_by="RecursoExterno.orden"
     )
+    profesores = db.relationship(
+        "Profesor", back_populates="asignatura", cascade="all, delete-orphan",
+        order_by="Profesor.orden"
+    )
 
     prerrequisitos = db.relationship(
         "Asignatura",
@@ -248,6 +252,7 @@ class Asignatura(db.Model):
             "correo_profesor": self.correo_profesor,
             "link_aula_virtual": self.link_aula_virtual,
             "recursos_externos": [r.to_dict() for r in self.recursos_externos],
+            "profesores": [p.to_dict() for p in self.profesores],
             "prerrequisitos": [{"id": p.id, "nombre": p.nombre} for p in self.prerrequisitos],
             "prerrequisitos_cumplidos": prerrequisitos_cumplidos,
         }
@@ -930,5 +935,50 @@ class RecursoExterno(db.Model):
             "nombre": self.nombre,
             "url": self.url,
             "tipo": self.tipo,
+            "orden": self.orden,
+        }
+
+
+class Profesor(db.Model):
+    """
+    Profesorado de una asignatura (1:N): a diferencia de nombre_profesor/correo_profesor/
+    despacho_profesor/link_aula_virtual de Asignatura (un único profesor "de contacto",
+    conservados por compatibilidad con datos ya existentes), esta entidad permite que una
+    asignatura tenga varios profesores (p. ej. uno de teoría y otro de laboratorio).
+    """
+    __tablename__ = "profesor"
+
+    id = db.Column(db.Integer, primary_key=True)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=False)
+    nombre = db.Column(db.String(200), nullable=False)
+    rol = db.Column(db.String(100), nullable=True)  # texto libre: "Responsable", "Grupos 11, 12", "Laboratorio"...
+    correo = db.Column(db.String(200), nullable=True)
+    despacho = db.Column(db.String(200), nullable=True)
+    aula_virtual = db.Column(db.String(500), nullable=True)
+    orden = db.Column(db.Integer, nullable=False, default=0)
+
+    asignatura = db.relationship("Asignatura", back_populates="profesores")
+
+    @validates("correo")
+    def validar_correo(self, key, value):
+        if value and not PATRON_EMAIL.match(value.strip()):
+            raise ValueError("correo de Profesor no tiene un formato de email válido")
+        return value
+
+    @validates("aula_virtual")
+    def validar_aula_virtual(self, key, value):
+        if value and not PATRON_URL.match(value.strip()):
+            raise ValueError("aula_virtual de Profesor debe ser una URL http(s) válida")
+        return value
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "asignatura_id": self.asignatura_id,
+            "nombre": self.nombre,
+            "rol": self.rol,
+            "correo": self.correo,
+            "despacho": self.despacho,
+            "aula_virtual": self.aula_virtual,
             "orden": self.orden,
         }

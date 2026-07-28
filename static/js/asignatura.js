@@ -139,7 +139,7 @@ async function cargarCabeceraYResumen() {
   cargarCurso(asignatura.cuatrimestre_id);
   renderEvaluacionAsignatura(asignatura);
   renderRecursos(asignatura.recursos_externos);
-  poblarCamposProfesor(asignatura);
+  renderProfesores(asignatura.profesores);
 
   const notasTextarea = document.getElementById('notas-rapidas');
   if (document.activeElement !== notasTextarea) {
@@ -227,84 +227,88 @@ document.getElementById('btn-borrar-asignatura').addEventListener('click', async
   window.location.href = '/vista';
 });
 
-// --- Profesor ---
+// --- Profesorado ---
 
-function poblarCamposProfesor(asignatura) {
-  document.getElementById('profesor-nombre').value = asignatura.nombre_profesor || '';
-  document.getElementById('profesor-correo').value = asignatura.correo_profesor || '';
-  document.getElementById('profesor-despacho').value = asignatura.despacho_profesor || '';
-  document.getElementById('profesor-aula-virtual').value = asignatura.link_aula_virtual || '';
-  actualizarAccionesProfesor(asignatura.correo_profesor, asignatura.link_aula_virtual);
-}
-
-function actualizarAccionesProfesor(correo, aulaVirtual) {
-  const btnEmail = document.getElementById('btn-enviar-email');
-  const btnAula = document.getElementById('btn-abrir-aula');
-  if (correo) {
-    btnEmail.href = `mailto:${correo}`;
-  } else {
-    btnEmail.removeAttribute('href');
+function renderProfesores(profesores) {
+  const contenedor = document.getElementById('profesores-lista');
+  if (!profesores || profesores.length === 0) {
+    contenedor.innerHTML = '<p class="sin-elementos">Sin profesorado todavía.</p>';
+    return;
   }
-  btnEmail.setAttribute('aria-disabled', correo ? 'false' : 'true');
-  btnEmail.style.opacity = correo ? '1' : '0.5';
-  btnEmail.style.pointerEvents = correo ? '' : 'none';
 
-  if (aulaVirtual) {
-    btnAula.href = aulaVirtual;
-  } else {
-    btnAula.removeAttribute('href');
-  }
-  btnAula.style.opacity = aulaVirtual ? '1' : '0.5';
-  btnAula.style.pointerEvents = aulaVirtual ? '' : 'none';
-}
+  contenedor.innerHTML = profesores.map((p) => `
+    <div class="detalle-fila" data-id="${p.id}">
+      <div class="recurso-fila-icono">
+        <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-graduation-cap"></use></svg>
+      </div>
+      <div class="recurso-fila-info">
+        <span class="ds-body">${escapeHtml(p.nombre)}</span>
+        ${p.rol ? `<p class="ds-caption">${escapeHtml(p.rol)}</p>` : ''}
+        ${p.despacho ? `<p class="ds-caption">${escapeHtml(p.despacho)}</p>` : ''}
+      </div>
+      <div class="fila-acciones">
+        ${p.correo ? `
+        <a class="fila-icono-btn" href="mailto:${escapeHtml(p.correo)}" title="Enviar email">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-mail"></use></svg>
+        </a>` : ''}
+        ${p.aula_virtual ? `
+        <a class="fila-icono-btn" href="${escapeHtml(p.aula_virtual)}" target="_blank" rel="noopener" title="Abrir aula virtual">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-external-link"></use></svg>
+        </a>` : ''}
+        <button type="button" class="fila-icono-btn btn-borrar-profesor" title="Eliminar">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
+        </button>
+      </div>
+    </div>
+  `).join('');
+  reanimar(contenedor);
 
-(function () {
-  const campos = ['profesor-nombre', 'profesor-correo', 'profesor-despacho', 'profesor-aula-virtual'];
-  const estado = document.getElementById('profesor-guardado-estado');
-  const correoInput = document.getElementById('profesor-correo');
-  let timer = null;
-
-  campos.forEach((id) => {
-    document.getElementById(id).addEventListener('input', () => {
-      estado.textContent = '';
-
-      if (correoInput.value && !correoInput.validity.valid) {
-        correoInput.classList.add('is-invalid');
-        mostrarErrorCampo('profesor-correo-error', 'Ese correo no tiene un formato válido.');
-        clearTimeout(timer);
-        return;
-      }
-      correoInput.classList.remove('is-invalid');
-      mostrarErrorCampo('profesor-correo-error', '');
-
-      clearTimeout(timer);
-      timer = setTimeout(async () => {
-        try {
-          await api(`/asignaturas/${asignaturaId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              nombre_profesor: document.getElementById('profesor-nombre').value.trim() || null,
-              correo_profesor: document.getElementById('profesor-correo').value.trim() || null,
-              despacho_profesor: document.getElementById('profesor-despacho').value.trim() || null,
-              link_aula_virtual: document.getElementById('profesor-aula-virtual').value.trim() || null,
-            }),
-          });
-          actualizarAccionesProfesor(
-            document.getElementById('profesor-correo').value.trim(),
-            document.getElementById('profesor-aula-virtual').value.trim(),
-          );
-          estado.textContent = 'Guardado ✓';
-          estado.classList.remove('es-error');
-          setTimeout(() => { estado.textContent = ''; }, 2000);
-        } catch (err) {
-          estado.textContent = 'Error al guardar: ' + err.message;
-          estado.classList.add('es-error');
-        }
-      }, 600);
+  contenedor.querySelectorAll('.btn-borrar-profesor').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.closest('.detalle-fila').dataset.id;
+      if (!confirm('¿Eliminar este profesor?')) return;
+      await api(`/profesores/${id}`, { method: 'DELETE' });
+      await cargarCabeceraYResumen();
+      mostrarToast('Profesor eliminado', 'success');
     });
   });
-})();
+}
+
+document.getElementById('form-nuevo-profesor').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  mostrarErrorCampo('profesor-error', '');
+  const nombre = document.getElementById('profesor-nombre').value.trim();
+  const correoInput = document.getElementById('profesor-correo');
+  if (!nombre) {
+    mostrarErrorCampo('profesor-error', 'Indica un nombre.');
+    return;
+  }
+  if (correoInput.value && !correoInput.validity.valid) {
+    mostrarErrorCampo('profesor-error', 'Ese correo no tiene un formato válido.');
+    return;
+  }
+  const boton = e.submitter || e.target.querySelector('button[type="submit"]');
+  boton.classList.add('is-loading');
+  try {
+    await api(`/asignaturas/${asignaturaId}/profesores`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre,
+        rol: document.getElementById('profesor-rol').value.trim() || null,
+        correo: correoInput.value.trim() || null,
+        despacho: document.getElementById('profesor-despacho').value.trim() || null,
+        aula_virtual: document.getElementById('profesor-aula-virtual').value.trim() || null,
+      }),
+    });
+    e.target.reset();
+    await cargarCabeceraYResumen();
+  } catch (err) {
+    mostrarErrorCampo('profesor-error', err.message);
+  } finally {
+    boton.classList.remove('is-loading');
+  }
+});
 
 // --- Evaluación ---
 

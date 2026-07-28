@@ -132,35 +132,35 @@
             </section>
 
             <section class="ds-card">
-              <h2 class="ds-h2 detalle-bloque-titulo">Profesor</h2>
-              <div class="ds-field">
-                <label for="profesor-nombre" class="ds-label">Nombre</label>
-                <input type="text" id="profesor-nombre" class="ds-input" placeholder="Ej. María García">
-              </div>
-              <div class="ds-field">
-                <label for="profesor-correo" class="ds-label">Correo</label>
-                <input type="email" id="profesor-correo" class="ds-input" placeholder="profesor@universidad.es">
-                <p class="ds-field-error" id="profesor-correo-error"></p>
-              </div>
-              <div class="ds-field">
-                <label for="profesor-despacho" class="ds-label">Despacho</label>
-                <input type="text" id="profesor-despacho" class="ds-input" placeholder="Ej. Edificio A, 2ª planta">
-              </div>
-              <div class="ds-field">
-                <label for="profesor-aula-virtual" class="ds-label">Aula virtual</label>
-                <input type="url" id="profesor-aula-virtual" class="ds-input" placeholder="https://...">
-              </div>
-              <span class="ds-form-mensaje" id="profesor-guardado-estado"></span>
-              <div class="profesor-acciones">
-                <a id="btn-enviar-email" class="ds-btn ds-btn-secondary" href="#">
-                  <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-mail"></use></svg>
-                  Enviar email
-                </a>
-                <a id="btn-abrir-aula" class="ds-btn ds-btn-secondary" href="#" target="_blank" rel="noopener">
-                  <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-external-link"></use></svg>
-                  Abrir aula virtual
-                </a>
-              </div>
+              <h2 class="ds-h2 detalle-bloque-titulo">Profesorado</h2>
+              <div id="profesores-lista"></div>
+              <form id="form-nuevo-profesor" class="detalle-form-anadir">
+                <div class="ds-field">
+                  <label for="profesor-nombre" class="ds-label">Nombre</label>
+                  <input type="text" id="profesor-nombre" class="ds-input" placeholder="Ej. María García" required>
+                </div>
+                <div class="ds-field" style="flex-basis:160px">
+                  <label for="profesor-rol" class="ds-label">Rol / grupos</label>
+                  <input type="text" id="profesor-rol" class="ds-input" placeholder="Ej. Laboratorio, grupo 12">
+                </div>
+                <div class="ds-field">
+                  <label for="profesor-correo" class="ds-label">Correo</label>
+                  <input type="email" id="profesor-correo" class="ds-input" placeholder="profesor@universidad.es">
+                </div>
+                <div class="ds-field">
+                  <label for="profesor-despacho" class="ds-label">Despacho</label>
+                  <input type="text" id="profesor-despacho" class="ds-input" placeholder="Ej. Edificio A, 2ª planta">
+                </div>
+                <div class="ds-field">
+                  <label for="profesor-aula-virtual" class="ds-label">Aula virtual</label>
+                  <input type="url" id="profesor-aula-virtual" class="ds-input" placeholder="https://...">
+                </div>
+                <button type="submit" class="ds-btn ds-btn-secondary">
+                  <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-plus"></use></svg>
+                  Añadir profesor
+                </button>
+              </form>
+              <p class="ds-field-error" id="profesor-error"></p>
             </section>
 
             <section class="ds-card detalle-bloque--ancho" id="tarjeta-evaluacion">
