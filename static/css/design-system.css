@@ -266,6 +266,7 @@ html, body {
 }
 
 .ds-text-secondary { color: var(--ds-color-text-secondary); }
+.ds-text-danger { color: var(--ds-color-danger); }
 
 /* --------------------------------------------------------------------------
    7. Animación — transición global y accesibilidad
@@ -1159,4 +1160,30 @@ dialog.ds-modal:not([open]) {
   font-family: var(--ds-font-family);
   font-size: var(--ds-font-size-caption);
   font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   29. Componente — Checkbox (V2.3, Espacios de Estudio)
+   -------------------------------------------------------------------------- */
+
+.ds-checkbox-nativo {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--ds-color-accent);
+  cursor: pointer;
+}
+
+.ds-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-body);
+  color: var(--ds-color-text-primary);
+  cursor: pointer;
+}
+
+.ds-field-checkbox {
+  margin-bottom: var(--ds-space-4);
 }

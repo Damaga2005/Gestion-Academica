@@ -1,0 +1,252 @@
+/* ==========================================================================
+   Detalle de Espacio de Estudio. Construido sobre static/css/design-system.css;
+   autocontenido (no depende de asignatura-detalle.css/calendario.css).
+   ========================================================================== */
+
+/* --- Cabecera --- */
+
+.detalle-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  color: var(--ds-color-text-secondary);
+  text-decoration: none;
+  font-size: var(--ds-font-size-caption);
+  font-weight: var(--ds-font-weight-button);
+  margin-bottom: var(--ds-space-4);
+}
+.detalle-volver:hover { color: var(--ds-color-text-primary); }
+.detalle-volver .ds-icon { width: 16px; height: 16px; }
+
+.detalle-header-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--ds-space-3);
+  flex-wrap: wrap;
+}
+
+.detalle-btn-icono {
+  padding: var(--ds-space-2);
+  line-height: 0;
+}
+.detalle-btn-icono .ds-icon { width: 16px; height: 16px; margin: 0; }
+
+/* --- Cuenta atrás + progreso --- */
+
+.espacio-cuenta-atras-card {
+  margin-top: var(--ds-space-6);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-6);
+}
+
+.espacio-cuenta-atras {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-4);
+}
+.espacio-cuenta-atras-icono {
+  font-size: 2rem;
+}
+.espacio-cuenta-atras.es-urgente .ds-h2 {
+  color: var(--ds-color-danger);
+}
+
+.espacio-progreso {
+  flex: 1 1 260px;
+  min-width: 220px;
+}
+.espacio-progreso-texto {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--ds-space-2);
+}
+
+/* --- Grid de bloques --- */
+
+.detalle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--ds-space-6);
+  align-items: start;
+  margin-top: var(--ds-space-8);
+}
+
+.detalle-bloque--ancho {
+  grid-column: 1 / -1;
+}
+
+.detalle-bloque-titulo {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  margin-bottom: 0;
+}
+
+.espacio-bloque-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--ds-space-5);
+}
+.espacio-bloque-cabecera .ds-btn .ds-icon { width: 16px; height: 16px; }
+
+/* --- Filas de documento --- */
+
+.documentos-dropzone-seccion {
+  min-height: 40px;
+  border-radius: var(--ds-radius-md);
+  transition: background-color var(--ds-duration-fast) var(--ds-ease-standard);
+}
+.documentos-dropzone-seccion.dragover {
+  background: color-mix(in srgb, var(--ds-color-accent) 8%, transparent);
+}
+
+.espacio-doc-fila {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-3) var(--ds-space-2);
+  margin: 0 calc(-1 * var(--ds-space-2));
+  border-bottom: 1px solid var(--ds-color-border);
+  border-radius: var(--ds-radius-sm);
+  cursor: grab;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease-standard);
+}
+.espacio-doc-fila:last-child { border-bottom: none; }
+.espacio-doc-fila:hover { background: var(--ds-color-surface-secondary); }
+
+.espacio-doc-fila-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.espacio-doc-fila-nombre {
+  color: var(--ds-color-text-primary);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.espacio-doc-fila-nombre:hover { text-decoration: underline; }
+.espacio-doc-fila-meta { margin-top: 2px; }
+.espacio-doc-fila.es-leido .espacio-doc-fila-nombre {
+  color: var(--ds-color-text-secondary);
+  text-decoration: line-through;
+}
+
+.espacio-doc-fila-acciones {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-1);
+  flex-shrink: 0;
+}
+.espacio-fila-icono-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--ds-radius-sm);
+  background: none;
+  color: var(--ds-color-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease-standard), color var(--ds-duration-fast) var(--ds-ease-standard);
+}
+.espacio-fila-icono-btn:hover { background: var(--ds-color-surface-secondary); color: var(--ds-color-text-primary); }
+.espacio-fila-icono-btn.es-destacado { color: var(--ds-color-warning); }
+.espacio-fila-icono-btn .ds-icon { width: 16px; height: 16px; }
+
+/* --- Checklist de objetivos --- */
+
+.espacio-objetivo-fila {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-2) var(--ds-space-2);
+  margin: 0 calc(-1 * var(--ds-space-2));
+  border-bottom: 1px solid var(--ds-color-border);
+}
+.espacio-objetivo-fila:last-child { border-bottom: none; }
+.espacio-objetivo-texto {
+  flex: 1;
+}
+.espacio-objetivo-fila.es-completada .espacio-objetivo-texto {
+  color: var(--ds-color-text-secondary);
+  text-decoration: line-through;
+}
+
+.detalle-form-anadir {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--ds-space-3);
+  margin-top: var(--ds-space-5);
+  padding-top: var(--ds-space-5);
+  border-top: 1px solid var(--ds-color-border);
+}
+.detalle-form-anadir .ds-field { flex: 1 1 140px; margin-bottom: 0; }
+.detalle-form-anadir .ds-btn .ds-icon { width: 16px; height: 16px; }
+
+/* --- Diálogo "Añadir documento" --- */
+
+.espacio-dialog-anadir-doc {
+  max-width: 640px;
+}
+.espacio-resultados-buscador {
+  max-height: 320px;
+  overflow-y: auto;
+  margin-top: var(--ds-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-1);
+}
+.espacio-resultado-doc {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-3);
+  border-radius: var(--ds-radius-md);
+  border: 1px solid var(--ds-color-border);
+  cursor: pointer;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: var(--ds-font-family);
+  transition: border-color var(--ds-duration-fast) var(--ds-ease-standard);
+}
+.espacio-resultado-doc:hover { border-color: var(--ds-color-accent); }
+
+.espacio-dialog-menu {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ds-space-3);
+  padding: 0;
+  margin: var(--ds-space-6) 0 0;
+}
+
+.sin-elementos {
+  color: var(--ds-color-text-secondary);
+  font-size: var(--ds-font-size-body);
+  padding: var(--ds-space-3) 0;
+}
+
+.ds-checkbox-nativo {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--ds-color-accent);
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .detalle-grid { grid-template-columns: 1fr; }
+}

@@ -78,6 +78,21 @@ const BADGE_POR_ESTADO = {
   no_elegida: 'ds-badge',
 };
 
+// "Estado de las Asignaturas" (spec): indicador calculado solo a partir de las
+// notas, independiente del estado manual de arriba.
+const ETIQUETA_ESTADO_NOTAS = {
+  aprobada: '🟢 Aprobada',
+  en_progreso: '🟡 En progreso',
+  suspendida: '🔴 Suspendida',
+  sin_evaluar: '⚪ Sin evaluar',
+};
+const BADGE_POR_ESTADO_NOTAS = {
+  aprobada: 'ds-badge-success',
+  en_progreso: 'ds-badge-warning',
+  suspendida: 'ds-badge-danger',
+  sin_evaluar: 'ds-badge-outline',
+};
+
 // --- Cabecera + Resumen (comparten la misma carga de datos) ---
 
 function progresoDe(asignatura) {
@@ -106,6 +121,10 @@ async function cargarCabeceraYResumen() {
   const badge = document.getElementById('detalle-badge-estado');
   badge.textContent = ETIQUETA_ESTADO[asignatura.estado] || asignatura.estado;
   badge.className = `ds-badge ${BADGE_POR_ESTADO[asignatura.estado] || ''}`;
+
+  const badgeNotas = document.getElementById('detalle-badge-estado-notas');
+  badgeNotas.textContent = ETIQUETA_ESTADO_NOTAS[asignatura.estado_notas] || '';
+  badgeNotas.className = `ds-badge ${BADGE_POR_ESTADO_NOTAS[asignatura.estado_notas] || ''}`;
 
   document.getElementById('detalle-creditos').textContent =
     `${asignatura.creditos_ects} ECTS · ${asignatura.tipo === 'optativa' ? 'Optativa' : 'Obligatoria'}`;

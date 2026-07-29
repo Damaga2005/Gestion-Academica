@@ -40,15 +40,15 @@
             </a>
           </li>
           <li>
-            <a class="ds-sidebar-link" href="{{ url_for('vistas.index') }}">
-              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-folder"></use></svg>
-              Documentos
-            </a>
-          </li>
-          <li>
             <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_repaso') }}">
               <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-check"></use></svg>
               Repaso
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_espacios_estudio') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-open"></use></svg>
+              Espacios de Estudio
             </a>
           </li>
           <li>
@@ -72,6 +72,7 @@
               <h1 class="ds-h1 ds-page-header-title" id="detalle-nombre">Cargando…</h1>
               <div class="detalle-header-meta">
                 <span class="ds-badge" id="detalle-badge-estado"></span>
+                <span class="ds-badge" id="detalle-badge-estado-notas"></span>
                 <span class="ds-body ds-text-secondary" id="detalle-creditos"></span>
               </div>
             </div>
@@ -408,6 +409,12 @@
           <a class="ds-bottom-nav-link" href="{{ url_for('vistas.vista_repaso') }}">
             <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-check"></use></svg>
             Repaso
+          </a>
+        </li>
+        <li>
+          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.vista_espacios_estudio') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-open"></use></svg>
+            Espacios de Estudio
           </a>
         </li>
         <li>

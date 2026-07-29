@@ -1,0 +1,47 @@
+/* ==========================================================================
+   Espacios de Estudio — lista (tarjetas ordenadas por cuenta atrás).
+   Construido sobre static/css/design-system.css.
+   ========================================================================== */
+
+.espacios-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--ds-space-6);
+}
+
+.espacio-card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--ds-space-8);
+  text-decoration: none;
+  color: var(--ds-color-text-primary);
+}
+
+.espacio-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+}
+
+.espacio-card-cuenta-atras {
+  margin-top: var(--ds-space-4);
+  display: flex;
+  align-items: baseline;
+  gap: var(--ds-space-2);
+}
+
+.espacio-card-dias {
+  font-size: var(--ds-font-size-h2);
+  font-weight: 700;
+}
+
+.espacio-card-progreso {
+  margin-top: var(--ds-space-6);
+}
+
+.espacio-card-progreso-texto {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--ds-space-2);
+}

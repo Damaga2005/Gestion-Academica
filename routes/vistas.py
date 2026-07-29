@@ -54,6 +54,19 @@ def vista_repaso():
     return render_template("repaso.html")
 
 
+@vistas_bp.get("/vista/espacios-estudio")
+def vista_espacios_estudio():
+    return render_template("espacios_estudio.html")
+
+
+@vistas_bp.get("/vista/espacios-estudio/<int:espacio_id>")
+def vista_espacio_estudio_detalle(espacio_id):
+    from models import EspacioEstudio
+
+    EspacioEstudio.query.get_or_404(espacio_id)
+    return render_template("espacio_estudio_detalle.html", espacio_id=espacio_id)
+
+
 @vistas_bp.get("/vista/ajustes")
 def vista_ajustes():
     return render_template(

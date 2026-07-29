@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="es" data-theme="{{ tema_actual }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title id="titulo-pagina">Espacio de Estudio · GREELEC</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/buscador_global.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/espacio-estudio-detalle.css') }}">
+</head>
+<body>
+  <a class="ds-skip-link" href="#contenido">Saltar al contenido</a>
+  <div class="ds-scope">
+    <div class="ds-shell">
+      <aside class="ds-sidebar">
+        <ul class="ds-sidebar-nav">
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.dashboard') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-layout-dashboard"></use></svg>
+              Resumen
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.index') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-graduation-cap"></use></svg>
+              Asignaturas
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_calendario') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-calendar"></use></svg>
+              Calendario
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_horario') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-history"></use></svg>
+              Horario
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_repaso') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-check"></use></svg>
+              Repaso
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link is-active" href="{{ url_for('vistas.vista_espacios_estudio') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-open"></use></svg>
+              Espacios de Estudio
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_ajustes') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-settings"></use></svg>
+              Configuración
+            </a>
+          </li>
+        </ul>
+      </aside>
+
+      <main class="ds-shell-main">
+        <div class="ds-shell-content" id="contenido">
+          <a class="detalle-volver" href="{{ url_for('vistas.vista_espacios_estudio') }}">
+            <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-arrow-left"></use></svg>
+            Espacios de Estudio
+          </a>
+
+          <header class="ds-page-header espacio-cabecera">
+            <div>
+              <h1 class="ds-h1 ds-page-header-title" id="espacio-nombre">Cargando…</h1>
+              <p class="ds-body ds-text-secondary" id="espacio-asignatura"></p>
+            </div>
+            <div class="detalle-header-actions">
+              <a id="espacio-btn-calendario" class="ds-btn ds-btn-secondary" href="#">
+                <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-calendar"></use></svg>
+                Ver en calendario
+              </a>
+              {% include "_buscador_global.html" %}
+              <button id="toggle-tema" class="ds-btn ds-btn-secondary detalle-btn-icono" type="button" data-tooltip="Cambiar tema" aria-label="Cambiar tema"></button>
+              <button id="btn-borrar-espacio" class="ds-btn ds-btn-secondary detalle-btn-icono" type="button" data-tooltip="Eliminar espacio de estudio" aria-label="Eliminar espacio de estudio">
+                <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-x"></use></svg>
+              </button>
+              {% if lock_activo %}
+              <form method="post" action="{{ url_for('auth.cerrar_sesion') }}" class="form-lock">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="ds-btn ds-btn-secondary detalle-btn-icono" data-tooltip="Bloquear la app" aria-label="Bloquear la app">🔒</button>
+              </form>
+              {% endif %}
+            </div>
+          </header>
+
+          <section class="ds-card espacio-cuenta-atras-card">
+            <div class="espacio-cuenta-atras" id="espacio-cuenta-atras">
+              <span class="espacio-cuenta-atras-icono">📅</span>
+              <div>
+                <p class="ds-body ds-text-secondary" id="espacio-fecha"></p>
+                <p class="ds-h2" id="espacio-dias-restantes"></p>
+              </div>
+            </div>
+            <div class="espacio-progreso">
+              <div class="espacio-progreso-texto">
+                <span class="ds-caption"><span id="espacio-total-docs">0</span> documentos · <span id="espacio-docs-leidos">0</span> leídos · <span id="espacio-docs-pendientes">0</span> pendientes</span>
+                <span class="ds-caption ds-body" id="espacio-progreso-pct">0%</span>
+              </div>
+              <div class="ds-progress"><div class="ds-progress-bar" id="espacio-progreso-barra" style="width:0%"></div></div>
+            </div>
+          </section>
+
+          <div class="detalle-grid">
+
+            <section class="ds-card detalle-bloque--ancho">
+              <div class="espacio-bloque-cabecera">
+                <h2 class="ds-h2 detalle-bloque-titulo">⭐ Material importante</h2>
+              </div>
+              <div id="lista-destacados"></div>
+            </section>
+
+            <section class="ds-card detalle-bloque--ancho" data-seccion="examenes_anteriores">
+              <div class="espacio-bloque-cabecera">
+                <h2 class="ds-h2 detalle-bloque-titulo">📄 Exámenes de años anteriores</h2>
+                <button type="button" class="ds-btn ds-btn-secondary btn-anadir-documento" data-seccion="examenes_anteriores">
+                  <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-plus"></use></svg>
+                  Añadir documento
+                </button>
+              </div>
+              <div class="documentos-dropzone-seccion" id="lista-examenes_anteriores"></div>
+            </section>
+
+            <section class="ds-card detalle-bloque--ancho" data-seccion="teoria">
+              <div class="espacio-bloque-cabecera">
+                <h2 class="ds-h2 detalle-bloque-titulo">📚 Teoría</h2>
+                <button type="button" class="ds-btn ds-btn-secondary btn-anadir-documento" data-seccion="teoria">
+                  <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-plus"></use></svg>
+                  Añadir documento
+                </button>
+              </div>
+              <div class="documentos-dropzone-seccion" id="lista-teoria"></div>
+            </section>
+
+            <section class="ds-card detalle-bloque--ancho" data-seccion="ejercicios">
+              <div class="espacio-bloque-cabecera">
+                <h2 class="ds-h2 detalle-bloque-titulo">📝 Ejercicios</h2>
+                <button type="button" class="ds-btn ds-btn-secondary btn-anadir-documento" data-seccion="ejercicios">
+                  <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-plus"></use></svg>
+                  Añadir documento
+                </button>
+              </div>
+              <div class="documentos-dropzone-seccion" id="lista-ejercicios"></div>
+            </section>
+
+            <section class="ds-card detalle-bloque--ancho">
+              <h2 class="ds-h2 detalle-bloque-titulo">✅ Tareas</h2>
+              <div id="lista-objetivos"></div>
+              <form id="form-nuevo-objetivo" class="detalle-form-anadir">
+                <div class="ds-field" style="flex:1">
+                  <input type="text" id="objetivo-texto" class="ds-input" placeholder="Ej. Leer Tema 4" required maxlength="300">
+                </div>
+                <button type="submit" class="ds-btn ds-btn-secondary">
+                  <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-plus"></use></svg>
+                  Añadir
+                </button>
+              </form>
+            </section>
+
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="ds-scope">
+    <dialog id="dialog-anadir-documento" class="ds-modal espacio-dialog-anadir-doc">
+      <h3 class="ds-h3">Añadir documento</h3>
+      <div class="ds-field-row">
+        <div class="ds-field" style="flex:2">
+          <label for="buscar-doc-nombre" class="ds-label">Nombre</label>
+          <input type="search" id="buscar-doc-nombre" class="ds-input" placeholder="Buscar por nombre…">
+        </div>
+        <div class="ds-field">
+          <label for="buscar-doc-asignatura" class="ds-label">Asignatura</label>
+          <select id="buscar-doc-asignatura" class="ds-select">
+            <option value="">Todas</option>
+          </select>
+        </div>
+      </div>
+      <div class="ds-field-row">
+        <div class="ds-field">
+          <label for="buscar-doc-categoria" class="ds-label">Categoría</label>
+          <select id="buscar-doc-categoria" class="ds-select">
+            <option value="">Todas</option>
+            <option value="teoria">Teoría</option>
+            <option value="examenes">Exámenes</option>
+            <option value="laboratorios">Laboratorios</option>
+            <option value="otros">Otros</option>
+          </select>
+        </div>
+        <div class="ds-field">
+          <label for="buscar-doc-etiqueta" class="ds-label">Etiqueta</label>
+          <input type="text" id="buscar-doc-etiqueta" class="ds-input" placeholder="Ej. examen">
+        </div>
+      </div>
+      <div id="resultados-buscar-documento" class="espacio-resultados-buscador"></div>
+      <menu class="espacio-dialog-menu">
+        <button type="button" id="btn-cerrar-anadir-documento" class="ds-btn ds-btn-secondary">Cerrar</button>
+      </menu>
+    </dialog>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/tooltip.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/context-menu.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/layout-state.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/atajos.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/tema.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/buscador_global.js') }}"></script>
+  <script>
+    const ESPACIO_ID = {{ espacio_id }};
+  </script>
+  <script src="{{ url_for('static', filename='js/espacio-estudio-detalle.js') }}"></script>
+</body>
+</html>

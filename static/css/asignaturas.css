@@ -180,6 +180,13 @@
   margin-top: var(--ds-space-2);
 }
 
+.asignatura-card-estado-notas {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  margin-top: var(--ds-space-3);
+}
+
 .asignatura-card-progreso {
   margin-top: var(--ds-space-6);
 }

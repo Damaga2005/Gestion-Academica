@@ -268,7 +268,30 @@ async function cargarContinuar() {
   }
 }
 
+function formatoNota(nota) {
+  return nota.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+}
+
+async function cargarMediaCurso() {
+  try {
+    const resumen = await api('/asignaturas/media-curso');
+    document.getElementById('media-curso-valor').textContent =
+      resumen.media_general != null ? formatoNota(resumen.media_general) : '—';
+    document.getElementById('media-curso-total').textContent = resumen.total;
+    document.getElementById('media-curso-aprobadas').textContent = resumen.aprobadas;
+    document.getElementById('media-curso-suspendidas').textContent = resumen.suspendidas;
+    document.getElementById('media-curso-pendientes').textContent = resumen.pendientes_evaluar;
+    document.getElementById('media-curso-nota-alta').textContent =
+      resumen.nota_mas_alta != null ? formatoNota(resumen.nota_mas_alta) : '—';
+    document.getElementById('media-curso-nota-baja').textContent =
+      resumen.nota_mas_baja != null ? formatoNota(resumen.nota_mas_baja) : '—';
+  } catch (err) {
+    mostrarToast('Error al cargar la media del curso: ' + err.message, 'danger');
+  }
+}
+
 mostrarSaludo();
 cargarAsignaturas();
 cargarEntregas();
 cargarContinuar();
+cargarMediaCurso();

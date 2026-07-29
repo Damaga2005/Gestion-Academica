@@ -2,7 +2,7 @@ from datetime import datetime
 
 from flask import Blueprint, request, jsonify
 
-from models import db, Asignatura, Cuatrimestre, TareaEvento, ESTADOS_ASIGNATURA, resolver_asignatura
+from models import db, Asignatura, Cuatrimestre, TareaEvento, ESTADOS_ASIGNATURA, resolver_asignatura, calcular_estado_notas
 from routes.errors import ApiError
 from utils import crear_apartados_por_defecto, borrar_carpeta_asignatura
 
@@ -81,6 +81,34 @@ def listar_asignaturas():
         query = query.filter_by(estado=estado)
     asignaturas = query.order_by(Asignatura.nombre).all()
     return jsonify([a.to_dict(include_componentes=False) for a in asignaturas])
+
+
+@asignaturas_bp.get("/asignaturas/media-curso")
+def media_curso():
+    """
+    Agregado para la tarjeta "Media del Curso" (Dashboard): media general y
+    estadísticas de aprobadas/suspendidas/pendientes a partir del indicador
+    calcular_estado_notas (independiente del campo `estado` manual). Se
+    excluyen las 'no_elegida' (catálogo de optativas sin elegir todavía, no
+    son asignaturas "en curso" del usuario).
+    """
+    asignaturas = Asignatura.query.filter(Asignatura.estado != "no_elegida").all()
+    estados = [calcular_estado_notas(a) for a in asignaturas]
+
+    aprobadas = sum(1 for e in estados if e["estado_notas"] == "aprobada")
+    suspendidas = sum(1 for e in estados if e["estado_notas"] == "suspendida")
+    pendientes_evaluar = sum(1 for e in estados if e["estado_notas"] in ("en_progreso", "sin_evaluar"))
+    notas = [e["nota_actual"] for e in estados if e["nota_actual"] is not None]
+
+    return jsonify({
+        "total": len(asignaturas),
+        "aprobadas": aprobadas,
+        "suspendidas": suspendidas,
+        "pendientes_evaluar": pendientes_evaluar,
+        "nota_mas_alta": max(notas) if notas else None,
+        "nota_mas_baja": min(notas) if notas else None,
+        "media_general": round(sum(notas) / len(notas), 2) if notas else None,
+    })
 
 
 @asignaturas_bp.get("/asignaturas/<string:identificador>")

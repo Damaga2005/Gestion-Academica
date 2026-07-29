@@ -138,14 +138,21 @@ function chipTarea(tarea, { detallado = false } = {}) {
     e.dataTransfer.setData('application/x-tarea-id', String(tarea.id));
     e.dataTransfer.effectAllowed = 'move';
   });
-  item.addEventListener('contextmenu', (e) => {
+  item.addEventListener('contextmenu', async (e) => {
     e.preventDefault();
-    abrirMenuContextual([
+    const opciones = [
       { etiqueta: 'Editar', accion: () => abrirDialogoEdicion(tarea) },
       { etiqueta: 'Duplicar', accion: () => duplicarTarea(tarea) },
-      { separador: true },
-      { etiqueta: 'Eliminar', peligroso: true, accion: () => confirmarBorrarTarea(tarea) },
-    ], { x: e.clientX, y: e.clientY, anclaEl: item });
+    ];
+    try {
+      const espacio = await api(`/tareas/${tarea.id}/espacio-estudio`);
+      opciones.push({ etiqueta: '📚 Abrir Espacio de Estudio', accion: () => { window.location.href = `/vista/espacios-estudio/${espacio.id}`; } });
+    } catch (err) {
+      // 404: sin Espacio de Estudio vinculado, no se añade la opción.
+    }
+    opciones.push({ separador: true });
+    opciones.push({ etiqueta: 'Eliminar', peligroso: true, accion: () => confirmarBorrarTarea(tarea) });
+    abrirMenuContextual(opciones, { x: e.clientX, y: e.clientY, anclaEl: item });
   });
 
   const cuerpo = document.createElement('div');
@@ -407,6 +414,22 @@ document.getElementById('filtro-tipo').addEventListener('change', (e) => {
 
 // --- Diálogo crear/editar tarea ---
 
+// Tipos para los que tiene sentido preparar un Espacio de Estudio (spec "Espacios
+// de Estudio Inteligentes"): exámenes, entregas y eventos (exposiciones); se
+// excluyen tarea_general/tutoria por no ser "objetivos" concretos que preparar.
+const TIPOS_CON_ESPACIO_ESTUDIO = ['examen_parcial', 'examen_final', 'recuperacion', 'entrega', 'evento'];
+
+function actualizarVisibilidadCampoEspacio() {
+  const tipo = document.getElementById('tarea-tipo').value;
+  const aplica = TIPOS_CON_ESPACIO_ESTUDIO.includes(tipo);
+  const verEspacio = document.getElementById('tarea-espacio-ver');
+  const yaTieneEspacio = verEspacio.style.display !== 'none';
+  document.getElementById('campo-crear-espacio').style.display = (aplica && !yaTieneEspacio) ? '' : 'none';
+  if (!aplica) verEspacio.style.display = 'none';
+}
+
+document.getElementById('tarea-tipo').addEventListener('change', actualizarVisibilidadCampoEspacio);
+
 function limpiarFormularioTarea() {
   document.getElementById('form-tarea').reset();
   document.getElementById('tarea-id').value = '';
@@ -414,6 +437,9 @@ function limpiarFormularioTarea() {
   document.getElementById('tarea-form-error').textContent = '';
   poblarSelectDocumentos(null, null);
   document.getElementById('tarea-documento-ver').style.display = 'none';
+  document.getElementById('tarea-crear-espacio').checked = false;
+  document.getElementById('tarea-espacio-ver').style.display = 'none';
+  actualizarVisibilidadCampoEspacio();
 }
 
 document.getElementById('btn-nueva-tarea').addEventListener('click', () => {
@@ -454,6 +480,17 @@ async function abrirDialogoEdicion(tarea) {
   const btnExportar = document.getElementById('btn-exportar-tarea-ics');
   btnExportar.style.display = '';
   btnExportar.href = `/tareas/${tarea.id}/ics`;
+
+  actualizarVisibilidadCampoEspacio();
+  try {
+    const espacio = await api(`/tareas/${tarea.id}/espacio-estudio`);
+    const verEspacio = document.getElementById('tarea-espacio-ver');
+    verEspacio.href = `/vista/espacios-estudio/${espacio.id}`;
+    verEspacio.style.display = '';
+    document.getElementById('campo-crear-espacio').style.display = 'none';
+  } catch (err) {
+    // 404: esta tarea todavía no tiene Espacio de Estudio, se deja el checkbox visible.
+  }
 
   document.getElementById('dialog-tarea').showModal();
 }
@@ -546,22 +583,38 @@ document.getElementById('form-tarea').addEventListener('submit', async (e) => {
     link_relacionado: document.getElementById('tarea-link').value.trim() || null,
   };
 
+  const crearEspacio = document.getElementById('tarea-crear-espacio').checked
+    && document.getElementById('campo-crear-espacio').style.display !== 'none';
+
   const btnGuardar = document.getElementById('btn-guardar-tarea');
   btnGuardar.classList.add('is-loading');
   try {
+    let tareaGuardada;
     if (id) {
-      await api(`/tareas/${id}`, {
+      tareaGuardada = await api(`/tareas/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
     } else {
-      await api('/tareas', {
+      tareaGuardada = await api('/tareas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
     }
+
+    if (crearEspacio) {
+      const espacio = await api('/espacios-estudio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tarea_evento_id: tareaGuardada.id }),
+      });
+      cerrarDialogoTarea();
+      window.location.href = `/vista/espacios-estudio/${espacio.id}`;
+      return;
+    }
+
     cerrarDialogoTarea();
     await cargarDatos();
     mostrarToast(`"${body.titulo}" ${id ? 'actualizada' : 'añadida'}`, 'success');

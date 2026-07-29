@@ -35,10 +35,31 @@ const BADGE_POR_ESTADO = {
   no_superada: 'ds-badge-danger',
 };
 
+// "Estado de las Asignaturas" (spec): indicador calculado solo a partir de las
+// notas (ver calcular_estado_notas en el backend), independiente del estado
+// manual de arriba.
+const TIPOS_TAREA_EXAMEN = ['examen', 'examen_parcial', 'examen_final', 'recuperacion'];
+const ETIQUETA_ESTADO_NOTAS = {
+  aprobada: '🟢 Aprobada',
+  en_progreso: '🟡 En progreso',
+  suspendida: '🔴 Suspendida',
+  sin_evaluar: '⚪ Sin evaluar',
+};
+const BADGE_POR_ESTADO_NOTAS = {
+  aprobada: 'ds-badge-success',
+  en_progreso: 'ds-badge-warning',
+  suspendida: 'ds-badge-danger',
+  sin_evaluar: 'ds-badge-outline',
+};
+
+function formatoNota(nota) {
+  return nota.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+}
+
 let TODAS_ASIGNATURAS = [];
 let OPTATIVAS_POR_ELEGIR = [];
 let PROXIMA_ENTREGA_POR_ASIGNATURA = {};
-let PROGRESO_CURSANDO = {};
+let PROXIMA_EVALUACION_POR_ASIGNATURA = {};
 let cargaInicial = true;
 
 function tarjetaEsqueleto() {
@@ -54,9 +75,9 @@ document.getElementById('asignaturas-grid').innerHTML = tarjetaEsqueleto().repea
 
 let filtroEstado = layoutState.get('asignaturas-filtro-estado', 'todas');
 let filtroTipo = layoutState.get('asignaturas-filtro-tipo', 'todos');
-let filtroCurso = 'todos';
-let terminoBusqueda = '';
-let ordenActual = layoutState.get('asignaturas-orden', 'nombre');
+let filtroCurso = layoutState.get('asignaturas-filtro-curso', 'todos');
+let terminoBusqueda = layoutState.get('asignaturas-busqueda', '');
+let ordenActual = layoutState.get('asignaturas-orden', 'curso');
 
 document.querySelectorAll('#filtros-estado .filtro-chip').forEach((b) => {
   b.classList.toggle('is-active', b.dataset.estado === filtroEstado);
@@ -65,10 +86,11 @@ document.querySelectorAll('#filtros-tipo .filtro-chip').forEach((b) => {
   b.classList.toggle('is-active', b.dataset.tipo === filtroTipo);
 });
 document.getElementById('orden-asignaturas').value = ordenActual;
+document.getElementById('buscador-asignaturas').value = terminoBusqueda;
 
 function progresoDe(asignatura) {
   if (asignatura.estado === 'superada' || asignatura.estado === 'no_superada') return 100;
-  if (asignatura.estado === 'cursando') return PROGRESO_CURSANDO[asignatura.id] ?? 0;
+  if (asignatura.estado === 'cursando') return asignatura.porcentaje_evaluado ?? 0;
   return 0;
 }
 
@@ -77,6 +99,7 @@ function poblarFiltroCurso(anios) {
   const numeros = anios.map((a) => a.numero).sort((a, b) => a - b);
   select.innerHTML = '<option value="todos">Todos los cursos</option>' +
     numeros.map((n) => `<option value="${n}">Año ${n}</option>`).join('');
+  select.value = filtroCurso;
 }
 
 function aplicarFiltrosYOrden() {
@@ -136,6 +159,15 @@ function renderizar() {
       ? `Próxima entrega: ${escapeHtml(entrega.titulo)} · ${calcularCountdown(entrega.fecha)}`
       : 'Sin próxima entrega';
 
+    const evaluacion = PROXIMA_EVALUACION_POR_ASIGNATURA[a.id];
+    const evaluacionTexto = evaluacion
+      ? `Próxima evaluación: ${escapeHtml(evaluacion.titulo)} · ${calcularCountdown(evaluacion.fecha)}`
+      : null;
+
+    const notaTexto = a.nota_actual != null
+      ? `Nota: ${formatoNota(a.nota_actual)}`
+      : (a.evaluaciones_pendientes > 0 ? `Evaluaciones restantes: ${a.evaluaciones_pendientes}` : null);
+
     return `
       <a class="ds-card ds-card--interactive asignatura-card" href="/vista/asignaturas/${a.id}" data-id="${a.id}">
         <div class="asignatura-card-header">
@@ -146,10 +178,14 @@ function renderizar() {
           </div>
         </div>
         <p class="ds-caption asignatura-card-meta">${a.creditos_ects} ECTS · Año ${a.anio_numero} · Cuatrimestre ${a.cuatrimestre_numero}</p>
+        <div class="asignatura-card-estado-notas">
+          <span class="ds-badge ${BADGE_POR_ESTADO_NOTAS[a.estado_notas]}">${ETIQUETA_ESTADO_NOTAS[a.estado_notas]}</span>
+          ${notaTexto ? `<span class="ds-caption">${notaTexto}</span>` : ''}
+        </div>
         <div class="asignatura-card-progreso">
           <div class="ds-progress"><div class="ds-progress-bar" style="width:${progresoDe(a)}%"></div></div>
         </div>
-        <p class="ds-caption asignatura-card-entrega">${entregaTexto}</p>
+        <p class="ds-caption asignatura-card-entrega">${evaluacionTexto || entregaTexto}</p>
       </a>
     `;
   }).join('');
@@ -216,6 +252,7 @@ async function eliminarAsignatura(id, nombre) {
 
 document.getElementById('buscador-asignaturas').addEventListener('input', (e) => {
   terminoBusqueda = e.target.value;
+  layoutState.set('asignaturas-busqueda', terminoBusqueda);
   renderizar();
 });
 
@@ -241,6 +278,7 @@ document.getElementById('filtros-tipo').addEventListener('click', (e) => {
 
 document.getElementById('filtro-curso').addEventListener('change', (e) => {
   filtroCurso = e.target.value;
+  layoutState.set('asignaturas-filtro-curso', filtroCurso);
   renderizar();
 });
 
@@ -407,23 +445,19 @@ async function cargarDatos() {
 
   const tareas = await api('/tareas?completada=false');
   PROXIMA_ENTREGA_POR_ASIGNATURA = {};
+  PROXIMA_EVALUACION_POR_ASIGNATURA = {};
   for (const tarea of tareas) {
     if (!tarea.asignatura_id) continue;
     const actual = PROXIMA_ENTREGA_POR_ASIGNATURA[tarea.asignatura_id];
     if (!actual || tarea.fecha < actual.fecha) {
       PROXIMA_ENTREGA_POR_ASIGNATURA[tarea.asignatura_id] = tarea;
     }
-  }
-
-  const cursando = TODAS_ASIGNATURAS.filter((a) => a.estado === 'cursando');
-  const detallesCursando = await Promise.all(cursando.map((a) => api(`/asignaturas/${a.id}`)));
-  PROGRESO_CURSANDO = {};
-  for (const detalle of detallesCursando) {
-    const totalPeso = detalle.componentes.reduce((suma, c) => suma + c.porcentaje, 0);
-    const pesoHecho = detalle.componentes
-      .filter((c) => c.nota !== null)
-      .reduce((suma, c) => suma + c.porcentaje, 0);
-    PROGRESO_CURSANDO[detalle.id] = totalPeso > 0 ? (pesoHecho / totalPeso) * 100 : 0;
+    if (TIPOS_TAREA_EXAMEN.includes(tarea.tipo)) {
+      const actualEval = PROXIMA_EVALUACION_POR_ASIGNATURA[tarea.asignatura_id];
+      if (!actualEval || tarea.fecha < actualEval.fecha) {
+        PROXIMA_EVALUACION_POR_ASIGNATURA[tarea.asignatura_id] = tarea;
+      }
+    }
   }
 
   poblarFiltroCurso(detalles);

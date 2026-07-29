@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <title>Asignaturas · GREELEC</title>
+  <title>Espacios de Estudio · GREELEC</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/buscador_global.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/asignaturas.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/espacios-estudio.css') }}">
 </head>
 <body>
   <a class="ds-skip-link" href="#contenido">Saltar al contenido</a>
@@ -22,7 +22,7 @@
             </a>
           </li>
           <li>
-            <a class="ds-sidebar-link is-active" href="{{ url_for('vistas.index') }}">
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.index') }}">
               <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-graduation-cap"></use></svg>
               Asignaturas
             </a>
@@ -46,7 +46,7 @@
             </a>
           </li>
           <li>
-            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_espacios_estudio') }}">
+            <a class="ds-sidebar-link is-active" href="{{ url_for('vistas.vista_espacios_estudio') }}">
               <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-open"></use></svg>
               Espacios de Estudio
             </a>
@@ -64,8 +64,8 @@
         <div class="ds-shell-content" id="contenido">
           <header class="ds-page-header">
             <div>
-              <h1 class="ds-h1 ds-page-header-title">Asignaturas</h1>
-              <p class="ds-body ds-text-secondary ds-page-header-subtitle">Plan de estudios completo</p>
+              <h1 class="ds-h1 ds-page-header-title">Espacios de Estudio</h1>
+              <p class="ds-body ds-text-secondary ds-page-header-subtitle">Prepara exámenes, entregas y proyectos con todo el material en un solo lugar</p>
             </div>
             <div class="ds-page-header-actions">
               {% include "_buscador_global.html" %}
@@ -79,56 +79,7 @@
             </div>
           </header>
 
-          <div class="asignaturas-toolbar">
-            <div class="ds-field asignaturas-field-buscador">
-              <label for="buscador-asignaturas" class="ds-label">Buscar</label>
-              <input type="search" id="buscador-asignaturas" class="ds-input asignaturas-buscador" placeholder="Nombre de la asignatura">
-            </div>
-            <div class="ds-field">
-              <span class="ds-label">Estado</span>
-              <div class="asignaturas-filtros-chips" id="filtros-estado">
-                <button type="button" class="filtro-chip is-active" data-estado="todas">Todas</button>
-                <button type="button" class="filtro-chip" data-estado="cursando">Cursando</button>
-                <button type="button" class="filtro-chip" data-estado="superada">Superadas</button>
-                <button type="button" class="filtro-chip" data-estado="pendiente">Pendientes</button>
-                <button type="button" class="filtro-chip" data-estado="no_superada">No superadas</button>
-              </div>
-            </div>
-            <div class="ds-field">
-              <span class="ds-label">Tipo</span>
-              <div class="asignaturas-filtros-chips" id="filtros-tipo">
-                <button type="button" class="filtro-chip is-active" data-tipo="todos">Todas</button>
-                <button type="button" class="filtro-chip" data-tipo="obligatoria">Obligatorias</button>
-                <button type="button" class="filtro-chip" data-tipo="optativa">Optativas</button>
-              </div>
-            </div>
-            <div class="ds-field asignaturas-field-select">
-              <label for="filtro-curso" class="ds-label">Curso</label>
-              <select id="filtro-curso" class="ds-select asignaturas-select">
-                <option value="todos">Todos los cursos</option>
-              </select>
-            </div>
-            <div class="ds-field asignaturas-field-select">
-              <label for="orden-asignaturas" class="ds-label">Ordenar por</label>
-              <select id="orden-asignaturas" class="ds-select asignaturas-select">
-                <option value="nombre">Nombre (A-Z)</option>
-                <option value="creditos">Créditos (mayor a menor)</option>
-                <option value="curso">Curso</option>
-                <option value="entrega">Próxima entrega</option>
-              </select>
-            </div>
-          </div>
-
-          <section class="ds-card optativas-panel" id="optativas-panel" style="display:none">
-            <button type="button" class="optativas-panel-header" id="btn-toggle-optativas">
-              <h2 class="ds-h2 detalle-bloque-titulo" style="margin-bottom:0">Optativas por elegir</h2>
-              <span class="ds-badge ds-badge-accent" id="optativas-panel-contador">0</span>
-              <svg class="ds-icon optativas-panel-caret" id="optativas-panel-caret"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-arrow-down"></use></svg>
-            </button>
-            <div id="optativas-panel-body" style="display:none"></div>
-          </section>
-
-          <div class="asignaturas-grid" id="asignaturas-grid"></div>
+          <div class="espacios-grid" id="espacios-grid"></div>
         </div>
       </main>
     </div>
@@ -142,7 +93,7 @@
           </a>
         </li>
         <li>
-          <a class="ds-bottom-nav-link is-active" href="{{ url_for('vistas.index') }}">
+          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.index') }}">
             <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-graduation-cap"></use></svg>
             Asignaturas
           </a>
@@ -166,7 +117,7 @@
           </a>
         </li>
         <li>
-          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.vista_espacios_estudio') }}">
+          <a class="ds-bottom-nav-link is-active" href="{{ url_for('vistas.vista_espacios_estudio') }}">
             <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-open"></use></svg>
             Espacios de Estudio
           </a>
@@ -188,6 +139,6 @@
   <script src="{{ url_for('static', filename='js/tema.js') }}"></script>
   <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
   <script src="{{ url_for('static', filename='js/buscador_global.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/asignaturas-lista.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/espacios-estudio.js') }}"></script>
 </body>
 </html>

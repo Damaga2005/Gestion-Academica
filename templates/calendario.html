@@ -40,15 +40,15 @@
             </a>
           </li>
           <li>
-            <a class="ds-sidebar-link" href="{{ url_for('vistas.index') }}">
-              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-folder"></use></svg>
-              Documentos
-            </a>
-          </li>
-          <li>
             <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_repaso') }}">
               <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-check"></use></svg>
               Repaso
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_espacios_estudio') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-open"></use></svg>
+              Espacios de Estudio
             </a>
           </li>
           <li>
@@ -176,6 +176,12 @@
           </a>
         </li>
         <li>
+          <a class="ds-bottom-nav-link" href="{{ url_for('vistas.vista_espacios_estudio') }}">
+            <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-open"></use></svg>
+            Espacios de Estudio
+          </a>
+        </li>
+        <li>
           <a class="ds-bottom-nav-link" href="{{ url_for('vistas.vista_ajustes') }}">
             <svg class="ds-icon" width="20" height="20"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-settings"></use></svg>
             Ajustes
@@ -216,6 +222,17 @@
             </select>
           </div>
         </div>
+
+        <div class="ds-field ds-field-checkbox" id="campo-crear-espacio" style="display:none">
+          <label class="ds-checkbox-label">
+            <input type="checkbox" id="tarea-crear-espacio" class="ds-checkbox-nativo">
+            Crear Espacio de Estudio automáticamente
+          </label>
+        </div>
+        <a id="tarea-espacio-ver" class="ds-btn ds-btn-secondary" href="#" style="display:none">
+          <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-open"></use></svg>
+          Abrir Espacio de Estudio
+        </a>
 
         <div class="ds-field-row">
           <div class="ds-field">

@@ -49,12 +49,22 @@ WIDGETS_POR_DEFECTO = ("recordatorios", "calendario", "certificaciones", "sateli
 ORDEN_ESTADOS_CONCEPTO = ("no_visto", "flojo", "dominado")
 # Días hasta la próxima revisión según nivel (repetición espaciada simplificada, spec punto 7)
 INTERVALO_DIAS_CONCEPTO = {"no_visto": 0, "flojo": 3, "dominado": 18}
+# Secciones fijas de un Espacio de Estudio (spec "Espacios de Estudio Inteligentes"):
+# los documentos se referencian, nunca se copian ni se mueven de su ubicación original.
+# "Material importante" no es una sección propia: es una vista filtrada de las
+# referencias con destacado=True (ver EspacioEstudioDocumento).
+SECCIONES_ESPACIO_ESTUDIO = ("examenes_anteriores", "teoria", "ejercicios")
 # Tipos de entidad indexables por la búsqueda global (V2.1): identifican qué modelo/tabla
 # referencia entidad_id en BusquedaFavorito/BusquedaReciente, ya que ambas tablas son
 # genéricas y no tienen una FK real a cada tabla posible.
 TIPOS_ENTIDAD_BUSQUEDA = (
     "asignatura", "profesor", "documento", "pagina_pdf", "tarea", "examen", "evento", "etiqueta",
 )
+# Nota de corte del indicador visual "Estado de las Asignaturas" (🟢/🟡/🔴/⚪),
+# calculado solo a partir de las notas: no toca ni depende del campo `estado`
+# manual de Asignatura (cursando/superada/pendiente/no_superada/no_elegida),
+# que nunca ha exigido nota para marcarse (ver cambiar_estado_asignatura).
+NOTA_MINIMA_APROBADO = 5.0
 
 
 # Tabla de asociación many-to-many para prerrequisitos (auto-referencial sobre Asignatura)
@@ -261,6 +271,7 @@ class Asignatura(db.Model):
             "profesores": [p.to_dict() for p in self.profesores],
             "prerrequisitos": [{"id": p.id, "nombre": p.nombre} for p in self.prerrequisitos],
             "prerrequisitos_cumplidos": prerrequisitos_cumplidos,
+            **calcular_estado_notas(self),
         }
         if include_componentes:
             data["componentes"] = [c.to_dict() for c in self.componentes]
@@ -418,6 +429,62 @@ def esquemas_con_ganador(esquemas, regla):
     for e in lista:
         e["aplicado"] = False
     return lista
+
+
+def calcular_estado_notas(asignatura):
+    """
+    Indicador visual "Estado de las Asignaturas" (🟢 Aprobada / 🟡 En progreso /
+    🔴 Suspendida / ⚪ Sin evaluar), calculado solo a partir de las notas —
+    independiente del campo `estado` manual (ver NOTA_MINIMA_APROBADO).
+
+    Prioridad: nota_final (override manual, ver Asignatura.nota_final) por
+    encima de cualquier cálculo por componentes, igual que ya hace la ficha de
+    asignatura para las que no tienen desglose claro. Si no hay nota_final, se
+    usa el esquema con mejor media_ponderada (misma regla "maximo" que
+    esquemas_con_ganador) y solo se da por evaluada si ese esquema tiene el
+    100% del peso puntuado (comparando pesos en crudo, no el porcentaje ya
+    redondeado, para evitar falsos negativos por redondeo).
+    """
+    evaluaciones_realizadas = 0
+    evaluaciones_pendientes = 0
+    porcentaje_evaluado = 0.0
+
+    if asignatura.nota_final is not None:
+        nota = asignatura.nota_final
+        evaluada = True
+        componentes = [c for e in asignatura.esquemas for c in e.componentes] or asignatura.componentes
+        evaluaciones_realizadas = sum(1 for c in componentes if c.nota is not None)
+        evaluaciones_pendientes = sum(1 for c in componentes if c.nota is None)
+        porcentaje_evaluado = 100.0
+    else:
+        nota = None
+        evaluada = False
+        resultados = [(e, calcular_resultado_componentes(e.componentes)) for e in asignatura.esquemas]
+        candidatos = [(e, r) for e, r in resultados if r["media_ponderada"] is not None]
+
+        if candidatos:
+            esquema, resultado = max(candidatos, key=lambda par: par[1]["media_ponderada"])
+            porcentaje_evaluado = resultado["porcentaje_evaluado"]
+            evaluaciones_realizadas = sum(1 for c in esquema.componentes if c.nota is not None)
+            evaluaciones_pendientes = sum(1 for c in esquema.componentes if c.nota is None)
+            if resultado["peso_total"] > 0 and resultado["peso_evaluado"] >= resultado["peso_total"]:
+                nota = resultado["media_ponderada"]
+                evaluada = True
+
+    if evaluada:
+        estado_notas = "aprobada" if nota >= NOTA_MINIMA_APROBADO else "suspendida"
+    elif evaluaciones_realizadas > 0:
+        estado_notas = "en_progreso"
+    else:
+        estado_notas = "sin_evaluar"
+
+    return {
+        "estado_notas": estado_notas,
+        "nota_actual": nota,
+        "evaluaciones_realizadas": evaluaciones_realizadas,
+        "evaluaciones_pendientes": evaluaciones_pendientes,
+        "porcentaje_evaluado": porcentaje_evaluado,
+    }
 
 
 class Apartado(db.Model):
@@ -689,6 +756,149 @@ class TareaEvento(db.Model):
             "descripcion": self.descripcion,
             "recordatorio": self.recordatorio,
             "link_relacionado": self.link_relacionado,
+        }
+
+
+class EspacioEstudio(db.Model):
+    """
+    Espacio de Estudio: agrupa REFERENCIAS a Documento ya existentes (nunca copias
+    ni movimientos) para preparar un examen/entrega/proyecto concreto. Nace siempre
+    de una TareaEvento del calendario (relación 1:1); la fecha/asignatura/profesor
+    se derivan de ella en vez de duplicarse aquí.
+    """
+    __tablename__ = "espacio_estudio"
+
+    id = db.Column(db.Integer, primary_key=True)
+    tarea_evento_id = db.Column(db.Integer, db.ForeignKey("tarea_evento.id"), nullable=False, unique=True)
+    nombre = db.Column(db.String(200), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    tarea_evento = db.relationship("TareaEvento", backref=db.backref("espacio_estudio", uselist=False))
+    documentos_ref = db.relationship(
+        "EspacioEstudioDocumento", back_populates="espacio",
+        cascade="all, delete-orphan", order_by="EspacioEstudioDocumento.orden",
+    )
+    objetivos = db.relationship(
+        "ObjetivoEspacio", back_populates="espacio",
+        cascade="all, delete-orphan", order_by="ObjetivoEspacio.orden",
+    )
+
+    @validates("nombre")
+    def validar_nombre(self, key, value):
+        limpio = re.sub(r"\s+", " ", (value or "")).strip()
+        if not limpio:
+            raise ValueError("nombre de EspacioEstudio no puede estar vacío")
+        return limpio
+
+    def to_dict(self, include_detalle=False):
+        asignatura = self.tarea_evento.asignatura if self.tarea_evento else None
+        total = len(self.documentos_ref)
+        leidos = sum(1 for ref in self.documentos_ref if ref.leido)
+        data = {
+            "id": self.id,
+            "tarea_evento_id": self.tarea_evento_id,
+            "nombre": self.nombre,
+            "fecha": self.tarea_evento.fecha.isoformat() if self.tarea_evento else None,
+            "dias_restantes": (self.tarea_evento.fecha - date.today()).days if self.tarea_evento else None,
+            "asignatura_id": asignatura.id if asignatura else None,
+            "asignatura_nombre": asignatura.nombre if asignatura else None,
+            "asignatura_siglas": asignatura.siglas if asignatura else None,
+            "profesores": [p.nombre for p in asignatura.profesores] if asignatura else [],
+            "total_documentos": total,
+            "documentos_leidos": leidos,
+            "documentos_pendientes": total - leidos,
+            "progreso_pct": round((leidos / total) * 100) if total else 0,
+            "total_objetivos": len(self.objetivos),
+            "objetivos_completados": sum(1 for o in self.objetivos if o.completada),
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+        if include_detalle:
+            data["documentos_ref"] = [d.to_dict() for d in self.documentos_ref]
+            data["objetivos"] = [o.to_dict() for o in self.objetivos]
+        return data
+
+
+class EspacioEstudioDocumento(db.Model):
+    """
+    Referencia (no copia) de un Documento dentro de un Espacio de Estudio, con
+    metadatos propios de esa asociación: sección donde se muestra, si ya se ha
+    leído para ESTE espacio (distinto de Documento.porcentaje_leido, que es la
+    posición de scroll del visor PDF, global al documento) y si está destacado
+    como material importante. Un documento solo puede referenciarse una vez por
+    espacio (cambiar de sección es un PUT sobre esta misma fila).
+    """
+    __tablename__ = "espacio_estudio_documento"
+    __table_args__ = (
+        db.UniqueConstraint("espacio_estudio_id", "documento_id", name="uq_espacio_documento"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    espacio_estudio_id = db.Column(db.Integer, db.ForeignKey("espacio_estudio.id"), nullable=False)
+    documento_id = db.Column(db.Integer, db.ForeignKey("documento.id"), nullable=False)
+    seccion = db.Column(db.String(30), nullable=False)
+    leido = db.Column(db.Boolean, nullable=False, default=False)
+    destacado = db.Column(db.Boolean, nullable=False, default=False)
+    orden = db.Column(db.Integer, nullable=False, default=0)
+    fecha_referencia = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    espacio = db.relationship("EspacioEstudio", back_populates="documentos_ref")
+    documento = db.relationship("Documento")
+
+    @validates("seccion")
+    def validar_seccion(self, key, value):
+        if value not in SECCIONES_ESPACIO_ESTUDIO:
+            raise ValueError(f"seccion debe ser una de {SECCIONES_ESPACIO_ESTUDIO}")
+        return value
+
+    def to_dict(self):
+        asignatura = self.documento.asignatura if self.documento else None
+        return {
+            "id": self.id,
+            "espacio_estudio_id": self.espacio_estudio_id,
+            "documento_id": self.documento_id,
+            "documento": self.documento.to_dict() if self.documento else None,
+            "documento_asignatura_nombre": asignatura.nombre if asignatura else None,
+            "documento_asignatura_siglas": asignatura.siglas if asignatura else None,
+            "seccion": self.seccion,
+            "leido": self.leido,
+            "destacado": self.destacado,
+            "orden": self.orden,
+            "fecha_referencia": self.fecha_referencia.isoformat(),
+        }
+
+
+class ObjetivoEspacio(db.Model):
+    """Ítem de la checklist "✅ Tareas" de un Espacio de Estudio (p. ej. "Leer Tema 4").
+    Nombre deliberadamente distinto de "tarea" para no chocar con TareaEvento, que ya
+    significa "tarea/evento del calendario" en esta base de código."""
+    __tablename__ = "objetivo_espacio"
+
+    id = db.Column(db.Integer, primary_key=True)
+    espacio_estudio_id = db.Column(db.Integer, db.ForeignKey("espacio_estudio.id"), nullable=False)
+    texto = db.Column(db.String(300), nullable=False)
+    completada = db.Column(db.Boolean, nullable=False, default=False)
+    orden = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    espacio = db.relationship("EspacioEstudio", back_populates="objetivos")
+
+    @validates("texto")
+    def validar_texto(self, key, value):
+        limpio = (value or "").strip()
+        if not limpio:
+            raise ValueError("texto de ObjetivoEspacio no puede estar vacío")
+        return limpio
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "espacio_estudio_id": self.espacio_estudio_id,
+            "texto": self.texto,
+            "completada": self.completada,
+            "orden": self.orden,
+            "created_at": self.created_at.isoformat(),
         }
 
 
