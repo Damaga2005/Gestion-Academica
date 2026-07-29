@@ -72,7 +72,7 @@
           ${item.fragmento ? `<div class="bg-item-fragmento">${escapeHtml(item.fragmento)}</div>` : ''}
         </span>
         ${puedeFavorito ? `
-        <button type="button" class="bg-item-favorito ${esFavorito ? 'is-favorito' : ''}" title="Favorito">
+        <button type="button" class="bg-item-favorito ${esFavorito ? 'is-favorito' : ''}" data-tooltip="Favorito" aria-label="Favorito">
           ${iconoSvg('star', 'ds-icon ds-icon--sm')}
         </button>` : ''}
       </a>

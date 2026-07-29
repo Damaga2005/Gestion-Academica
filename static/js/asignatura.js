@@ -1153,19 +1153,19 @@ function renderListaDocumentos(contenedor, documentos) {
         <span class="documento-fila-fecha">${new Date(doc.fecha_subida).toLocaleDateString()}</span>
         <div class="documento-fila-acciones">
           ${(doc.es_pdf && categoriaActual === 'teoria') ? `
-          <button type="button" class="fila-icono-btn btn-extraer-guia" title="Extraer datos de guía docente">
+          <button type="button" class="fila-icono-btn btn-extraer-guia" data-tooltip="Extraer datos de guía docente" aria-label="Extraer datos de guía docente">
             <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-book-check"></use></svg>
           </button>` : ''}
-          <button type="button" class="fila-icono-btn btn-editar-etiquetas" title="Editar etiquetas">
+          <button type="button" class="fila-icono-btn btn-editar-etiquetas" data-tooltip="Editar etiquetas" aria-label="Editar etiquetas">
             <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-tag"></use></svg>
           </button>
-          <button type="button" class="fila-icono-btn btn-mover-doc" title="Mover a...">
+          <button type="button" class="fila-icono-btn btn-mover-doc" data-tooltip="Mover a..." aria-label="Mover a...">
             <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-folder"></use></svg>
           </button>
-          <a class="fila-icono-btn descargar" href="${urlArchivo}" download title="Descargar">
+          <a class="fila-icono-btn descargar" href="${urlArchivo}" download data-tooltip="Descargar" aria-label="Descargar">
             <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-download"></use></svg>
           </a>
-          <button type="button" class="fila-icono-btn btn-borrar-doc" title="Eliminar">
+          <button type="button" class="fila-icono-btn btn-borrar-doc" data-tooltip="Eliminar" aria-label="Eliminar">
             <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
           </button>
         </div>
@@ -1196,6 +1196,18 @@ function renderListaDocumentos(contenedor, documentos) {
     fila.addEventListener('dragstart', (e) => {
       e.dataTransfer.setData('application/x-documento-id', String(doc.id));
       e.dataTransfer.effectAllowed = 'move';
+    });
+
+    fila.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      abrirMenuContextual([
+        { etiqueta: 'Abrir', accion: () => fila.querySelector('.abrir-documento').click() },
+        { etiqueta: 'Descargar', accion: () => window.open(urlArchivo, '_blank') },
+        { etiqueta: 'Mover a…', accion: () => abrirMenuMover(doc, fila.querySelector('.btn-mover-doc')) },
+        { etiqueta: 'Editar etiquetas', accion: () => editarEtiquetas(doc) },
+        { separador: true },
+        { etiqueta: 'Eliminar', peligroso: true, accion: () => confirmarBorrarDocumento(doc) },
+      ], { x: e.clientX, y: e.clientY, anclaEl: fila });
     });
   });
 }

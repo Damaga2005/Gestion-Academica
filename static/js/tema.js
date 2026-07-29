@@ -4,7 +4,9 @@
 
   function actualizarIcono(tema) {
     boton.textContent = tema === 'oscuro' ? '☀️' : '🌙'; // ☀️ / 🌙
-    boton.title = tema === 'oscuro' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
+    const etiqueta = tema === 'oscuro' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
+    boton.setAttribute('data-tooltip', etiqueta);
+    boton.setAttribute('aria-label', etiqueta);
   }
 
   actualizarIcono(document.documentElement.getAttribute('data-theme') || 'oscuro');

@@ -52,11 +52,19 @@ function tarjetaEsqueleto() {
 }
 document.getElementById('asignaturas-grid').innerHTML = tarjetaEsqueleto().repeat(6);
 
-let filtroEstado = 'todas';
-let filtroTipo = 'todos';
+let filtroEstado = layoutState.get('asignaturas-filtro-estado', 'todas');
+let filtroTipo = layoutState.get('asignaturas-filtro-tipo', 'todos');
 let filtroCurso = 'todos';
 let terminoBusqueda = '';
-let ordenActual = 'nombre';
+let ordenActual = layoutState.get('asignaturas-orden', 'nombre');
+
+document.querySelectorAll('#filtros-estado .filtro-chip').forEach((b) => {
+  b.classList.toggle('is-active', b.dataset.estado === filtroEstado);
+});
+document.querySelectorAll('#filtros-tipo .filtro-chip').forEach((b) => {
+  b.classList.toggle('is-active', b.dataset.tipo === filtroTipo);
+});
+document.getElementById('orden-asignaturas').value = ordenActual;
 
 function progresoDe(asignatura) {
   if (asignatura.estado === 'superada' || asignatura.estado === 'no_superada') return 100;
@@ -129,7 +137,7 @@ function renderizar() {
       : 'Sin próxima entrega';
 
     return `
-      <a class="ds-card ds-card--interactive asignatura-card" href="/vista/asignaturas/${a.id}">
+      <a class="ds-card ds-card--interactive asignatura-card" href="/vista/asignaturas/${a.id}" data-id="${a.id}">
         <div class="asignatura-card-header">
           <p class="ds-h3">${a.siglas ? `${escapeHtml(a.siglas)} · ` : ''}${escapeHtml(a.nombre)}</p>
           <div class="asignatura-card-badges">
@@ -150,6 +158,60 @@ function renderizar() {
     reanimar(grid);
     cargaInicial = false;
   }
+
+  grid.querySelectorAll('.asignatura-card').forEach((tarjeta) => {
+    tarjeta.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const id = parseInt(tarjeta.dataset.id, 10);
+      const asignatura = TODAS_ASIGNATURAS.find((a) => a.id === id);
+      if (!asignatura) return;
+      abrirMenuContextual([
+        { etiqueta: 'Abrir', accion: () => { window.location.href = tarjeta.getAttribute('href'); } },
+        { etiqueta: 'Marcar como cursando', accion: () => cambiarEstadoAsignatura(id, 'cursando') },
+        { etiqueta: 'Marcar como superada', accion: () => cambiarEstadoAsignatura(id, 'superada') },
+        { separador: true },
+        { etiqueta: 'Eliminar', peligroso: true, accion: () => eliminarAsignatura(id, asignatura.nombre) },
+      ], { x: e.clientX, y: e.clientY, anclaEl: tarjeta });
+    });
+  });
+}
+
+async function cambiarEstadoAsignatura(id, estado) {
+  try {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    const res = await fetch(`/api/asignaturas/${id}/estado`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': meta ? meta.content : '' },
+      body: JSON.stringify({ estado }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || `Error ${res.status}`);
+    }
+    mostrarToast('Estado actualizado', 'success');
+    await cargarDatos();
+  } catch (err) {
+    mostrarToast(err.message, 'danger');
+  }
+}
+
+async function eliminarAsignatura(id, nombre) {
+  if (!confirm(`¿Eliminar la asignatura "${nombre}"? Esta acción no se puede deshacer.`)) return;
+  try {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    const res = await fetch(`/asignaturas/${id}`, {
+      method: 'DELETE',
+      headers: { 'X-CSRFToken': meta ? meta.content : '' },
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || `Error ${res.status}`);
+    }
+    mostrarToast('Asignatura eliminada', 'success');
+    await cargarDatos();
+  } catch (err) {
+    mostrarToast(err.message, 'danger');
+  }
 }
 
 document.getElementById('buscador-asignaturas').addEventListener('input', (e) => {
@@ -163,6 +225,7 @@ document.getElementById('filtros-estado').addEventListener('click', (e) => {
   document.querySelectorAll('.filtro-chip').forEach((b) => b.classList.remove('is-active'));
   boton.classList.add('is-active');
   filtroEstado = boton.dataset.estado;
+  layoutState.set('asignaturas-filtro-estado', filtroEstado);
   renderizar();
 });
 
@@ -172,6 +235,7 @@ document.getElementById('filtros-tipo').addEventListener('click', (e) => {
   document.querySelectorAll('#filtros-tipo .filtro-chip').forEach((b) => b.classList.remove('is-active'));
   boton.classList.add('is-active');
   filtroTipo = boton.dataset.tipo;
+  layoutState.set('asignaturas-filtro-tipo', filtroTipo);
   renderizar();
 });
 
@@ -182,6 +246,7 @@ document.getElementById('filtro-curso').addEventListener('change', (e) => {
 
 document.getElementById('orden-asignaturas').addEventListener('change', (e) => {
   ordenActual = e.target.value;
+  layoutState.set('asignaturas-orden', ordenActual);
   renderizar();
 });
 

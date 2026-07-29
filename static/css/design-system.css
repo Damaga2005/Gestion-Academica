@@ -276,6 +276,21 @@ html, body {
   transition-timing-function: var(--ds-ease-standard);
 }
 
+/*
+  Foco visible genérico (V2.3): .ds-btn/.ds-input ya tienen el suyo propio
+  (secciones 8 y 10); esto cubre enlaces, chips de filtro y tarjetas
+  interactivas que antes solo tenían el contorno por defecto del navegador
+  (o ninguno, cuando el propio elemento ya quita `outline` para su :hover).
+*/
+.ds-scope a:focus-visible,
+.ds-scope button:focus-visible,
+.ds-scope .filtro-chip:focus-visible,
+.ds-scope .ds-sidebar-link:focus-visible,
+.ds-scope .ds-card--interactive:focus-visible {
+  outline: none;
+  box-shadow: var(--ds-shadow-focus);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ds-scope *, .ds-scope *::before, .ds-scope *::after {
     animation-duration: 0.01ms !important;
@@ -289,6 +304,7 @@ html, body {
   .ds-toast, .ds-toast *,
   .ds-skeleton, .ds-skeleton *,
   .ds-btn.is-loading::after,
+  .ds-tooltip, .ds-context-menu, .ds-context-menu *,
   .ds-fade-in {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
@@ -989,4 +1005,158 @@ dialog.ds-modal:not([open]) {
 }
 .ds-fade-in {
   animation: ds-fade-in-up var(--ds-duration-slow) var(--ds-ease-standard);
+}
+
+/* --------------------------------------------------------------------------
+   25. Componente — Tooltip (V2.3)
+   Un único elemento reutilizado por tooltip.js, montado en document.body
+   (fuera de .ds-scope), por eso se cubre aparte en la excepción de
+   prefers-reduced-motion de la sección 7.
+   -------------------------------------------------------------------------- */
+
+.ds-tooltip {
+  position: fixed;
+  z-index: var(--ds-z-tooltip);
+  max-width: 260px;
+  padding: var(--ds-space-2) var(--ds-space-3);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-color-text-primary);
+  color: var(--ds-color-surface);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-caption);
+  line-height: var(--ds-line-height-caption);
+  box-shadow: var(--ds-shadow-sm);
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity var(--ds-duration-fast) var(--ds-ease-standard),
+              transform var(--ds-duration-fast) var(--ds-ease-standard);
+}
+
+.ds-tooltip.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* --------------------------------------------------------------------------
+   26. Componente — Menú contextual (V2.3)
+   Construido por context-menu.js; role="menu"/"menuitem" con navegación por
+   teclado. Reutiliza los tokens de superficie/sombra ya usados en dropdowns.
+   -------------------------------------------------------------------------- */
+
+.ds-context-menu {
+  position: fixed;
+  z-index: var(--ds-z-dropdown);
+  min-width: 200px;
+  padding: var(--ds-space-2);
+  border-radius: var(--ds-radius-md);
+  border: 1px solid var(--ds-color-border);
+  background: var(--ds-color-surface);
+  box-shadow: var(--ds-shadow-md);
+  opacity: 0;
+  transform: scale(0.97) translateY(-4px);
+  transition: opacity var(--ds-duration-fast) var(--ds-ease-standard),
+              transform var(--ds-duration-fast) var(--ds-ease-standard);
+}
+
+.ds-context-menu.is-visible {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.ds-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  width: 100%;
+  padding: var(--ds-space-2) var(--ds-space-3);
+  border: none;
+  border-radius: var(--ds-radius-sm);
+  background: none;
+  color: var(--ds-color-text-primary);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-body);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease-standard);
+}
+
+.ds-context-menu-item:hover,
+.ds-context-menu-item.is-activo {
+  background: var(--ds-color-surface-secondary);
+}
+
+.ds-context-menu-item:focus-visible {
+  outline: none;
+  box-shadow: var(--ds-shadow-focus);
+}
+
+.ds-context-menu-item--peligroso {
+  color: var(--ds-color-danger);
+}
+
+.ds-context-menu-separador {
+  height: 1px;
+  margin: var(--ds-space-2) var(--ds-space-1);
+  background: var(--ds-color-border);
+}
+
+/* --------------------------------------------------------------------------
+   27. Accesibilidad — Saltar al contenido (V2.3)
+   -------------------------------------------------------------------------- */
+
+.ds-skip-link {
+  position: fixed;
+  top: var(--ds-space-2);
+  left: var(--ds-space-2);
+  z-index: var(--ds-z-modal);
+  padding: var(--ds-space-3) var(--ds-space-5);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-color-accent);
+  color: var(--ds-color-on-accent);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-body);
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-150%);
+  transition: transform var(--ds-duration-fast) var(--ds-ease-standard);
+}
+
+.ds-skip-link:focus {
+  transform: translateY(0);
+}
+
+/* --------------------------------------------------------------------------
+   28. Componente — Panel de atajos de teclado (V2.3)
+   Contenido interno del <dialog class="ds-modal"> que abre atajos.js con "?".
+   -------------------------------------------------------------------------- */
+
+.ds-atajos-lista {
+  display: grid;
+  gap: var(--ds-space-3);
+  margin: var(--ds-space-5) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ds-atajos-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-4);
+}
+
+.ds-atajos-teclas {
+  display: inline-flex;
+  gap: var(--ds-space-1);
+}
+
+.ds-atajos-tecla {
+  padding: 2px var(--ds-space-2);
+  border-radius: var(--ds-radius-sm);
+  border: 1px solid var(--ds-color-border);
+  background: var(--ds-color-surface-secondary);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-caption);
+  font-weight: 600;
 }

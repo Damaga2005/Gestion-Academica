@@ -84,6 +84,15 @@
   border-color: transparent;
 }
 
+/* Arrastrar una tarea a otro día (V2.3) */
+.dia-celda.dragover {
+  border-color: var(--ds-color-accent);
+  box-shadow: var(--ds-shadow-focus);
+}
+.tarea-item[draggable="true"] {
+  cursor: grab;
+}
+
 .dia-numero {
   font-size: var(--ds-font-size-caption);
   color: var(--ds-color-text-secondary);

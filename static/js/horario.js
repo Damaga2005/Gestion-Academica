@@ -120,8 +120,17 @@ function renderGridEscritorio() {
       ${h.aula ? `<span class="horario-bloque-aula">${escapeHtml(h.aula)}</span>` : ''}
     `;
     bloque.addEventListener('click', () => abrirDialogoEdicion(h));
+    bloque.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      abrirMenuContextual([
+        { etiqueta: 'Editar', accion: () => abrirDialogoEdicion(h) },
+        { separador: true },
+        { etiqueta: 'Eliminar', peligroso: true, accion: () => confirmarBorrarHorario(h) },
+      ], { x: e.clientX, y: e.clientY, anclaEl: bloque });
+    });
     grid.appendChild(bloque);
   }
+  reanimar(grid);
 }
 
 // --- Agenda móvil (día a día, spec punto 3: no comprimir la cuadrícula) ---
@@ -162,9 +171,18 @@ function renderAgendaMovil() {
         ${h.aula ? `<span class="horario-bloque-aula">${escapeHtml(h.aula)}</span>` : ''}
       `;
       item.addEventListener('click', () => abrirDialogoEdicion(h));
+      item.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        abrirMenuContextual([
+          { etiqueta: 'Editar', accion: () => abrirDialogoEdicion(h) },
+          { separador: true },
+          { etiqueta: 'Eliminar', peligroso: true, accion: () => confirmarBorrarHorario(h) },
+        ], { x: e.clientX, y: e.clientY, anclaEl: item });
+      });
       lista.appendChild(item);
     }
   }
+  reanimar(contenedor);
 }
 
 // --- Diálogo crear/editar serie ---
@@ -215,8 +233,8 @@ function cerrarDialogoHorario() {
 
 document.getElementById('btn-cancelar-horario').addEventListener('click', cerrarDialogoHorario);
 
-document.getElementById('btn-borrar-horario').addEventListener('click', async () => {
-  const id = document.getElementById('horario-id').value;
+async function confirmarBorrarHorario(horario) {
+  const id = horario.id;
   if (!id) return;
   // Texto de confirmación literal (spec punto 6): no se implementan excepciones por
   // sesión suelta, así que hay que dejar clarísimo que se borra la serie entera.
@@ -225,6 +243,12 @@ document.getElementById('btn-borrar-horario').addEventListener('click', async ()
   cerrarDialogoHorario();
   await cargarHorarios();
   mostrarToast('Serie eliminada', 'success');
+}
+
+document.getElementById('btn-borrar-horario').addEventListener('click', () => {
+  const id = document.getElementById('horario-id').value;
+  if (!id) return;
+  confirmarBorrarHorario({ id });
 });
 
 function mostrarAvisoConflictosHorario(conflictos) {

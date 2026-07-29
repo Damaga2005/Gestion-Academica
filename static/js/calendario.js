@@ -133,6 +133,20 @@ function chipTarea(tarea, { detallado = false } = {}) {
   const item = document.createElement('div');
   item.className = `tarea-item prioridad-${tarea.prioridad}${tarea.completada ? ' completada' : ''}`;
   item.title = `${ETIQUETA_TIPO[tarea.tipo] || tarea.tipo}${tarea.asignatura_nombre ? ' · ' + tarea.asignatura_nombre : ''} (clic para ver/editar)`;
+  item.draggable = true;
+  item.addEventListener('dragstart', (e) => {
+    e.dataTransfer.setData('application/x-tarea-id', String(tarea.id));
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  item.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    abrirMenuContextual([
+      { etiqueta: 'Editar', accion: () => abrirDialogoEdicion(tarea) },
+      { etiqueta: 'Duplicar', accion: () => duplicarTarea(tarea) },
+      { separador: true },
+      { etiqueta: 'Eliminar', peligroso: true, accion: () => confirmarBorrarTarea(tarea) },
+    ], { x: e.clientX, y: e.clientY, anclaEl: item });
+  });
 
   const cuerpo = document.createElement('div');
   cuerpo.className = 'tarea-item-cuerpo';
@@ -202,6 +216,19 @@ function renderMensual() {
     for (const tarea of (porDia[fecha] || [])) {
       celda.appendChild(chipTarea(tarea));
     }
+
+    celda.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      celda.classList.add('dragover');
+    });
+    celda.addEventListener('dragleave', () => celda.classList.remove('dragover'));
+    celda.addEventListener('drop', (e) => {
+      e.preventDefault();
+      celda.classList.remove('dragover');
+      const tareaId = e.dataTransfer.getData('application/x-tarea-id');
+      if (tareaId) moverTareaAFecha(tareaId, fecha);
+    });
+
     grid.appendChild(celda);
   }
   reanimar(grid);
@@ -302,6 +329,49 @@ async function confirmarBorrarTarea(tarea) {
   await api(`/tareas/${tarea.id}`, { method: 'DELETE' });
   await cargarDatos();
   mostrarToast(`"${tarea.titulo}" eliminada`, 'success');
+}
+
+async function duplicarTarea(tarea) {
+  const copia = {
+    titulo: tarea.titulo,
+    fecha: tarea.fecha,
+    tipo: tarea.tipo,
+    prioridad: tarea.prioridad,
+    asignatura_id: tarea.asignatura_id || null,
+    documento_id: tarea.documento_id || null,
+    hora_inicio: tarea.hora_inicio || null,
+    hora_fin: tarea.hora_fin || null,
+    aula: tarea.aula || null,
+    ubicacion: tarea.ubicacion || null,
+    descripcion: tarea.descripcion || null,
+    recordatorio: tarea.recordatorio ?? null,
+    link_relacionado: tarea.link_relacionado || null,
+  };
+  try {
+    await api('/tareas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(copia),
+    });
+    await cargarDatos();
+    mostrarToast(`"${tarea.titulo}" duplicada`, 'success');
+  } catch (err) {
+    mostrarToast('Error al duplicar: ' + err.message, 'danger');
+  }
+}
+
+async function moverTareaAFecha(tareaId, fecha) {
+  try {
+    await api(`/tareas/${tareaId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fecha }),
+    });
+    await cargarDatos();
+    mostrarToast('Fecha actualizada', 'success');
+  } catch (err) {
+    mostrarToast('Error al mover: ' + err.message, 'danger');
+  }
 }
 
 // --- Navegación de periodo + cambio de vista ---

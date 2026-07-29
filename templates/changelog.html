@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/changelog.css') }}">
 </head>
 <body>
+  <a class="ds-skip-link" href="#contenido">Saltar al contenido</a>
   <div class="ds-scope">
     <div class="ds-shell">
       <aside class="ds-sidebar">
@@ -60,7 +61,7 @@
       </aside>
 
       <main class="ds-shell-main">
-        <div class="ds-shell-content">
+        <div class="ds-shell-content" id="contenido">
           <a class="detalle-volver" href="{{ url_for('vistas.vista_ajustes') }}">
             <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-arrow-left"></use></svg>
             Ajustes
@@ -73,11 +74,11 @@
             </div>
             <div class="ds-page-header-actions">
               {% include "_buscador_global.html" %}
-              <button id="toggle-tema" class="ds-btn ds-btn-secondary detalle-btn-icono" type="button" title="Cambiar tema"></button>
+              <button id="toggle-tema" class="ds-btn ds-btn-secondary detalle-btn-icono" type="button" data-tooltip="Cambiar tema" aria-label="Cambiar tema"></button>
               {% if lock_activo %}
               <form method="post" action="{{ url_for('auth.cerrar_sesion') }}" class="form-lock">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <button type="submit" class="ds-btn ds-btn-secondary detalle-btn-icono" title="Bloquear la app">🔒</button>
+                <button type="submit" class="ds-btn ds-btn-secondary detalle-btn-icono" data-tooltip="Bloquear la app" aria-label="Bloquear la app">🔒</button>
               </form>
               {% endif %}
             </div>
@@ -144,6 +145,10 @@
     </nav>
   </div>
 
+  <script src="{{ url_for('static', filename='js/tooltip.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/context-menu.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/layout-state.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/atajos.js') }}"></script>
   <script src="{{ url_for('static', filename='js/tema.js') }}"></script>
   <script src="{{ url_for('static', filename='js/buscador_global.js') }}"></script>
 </body>
