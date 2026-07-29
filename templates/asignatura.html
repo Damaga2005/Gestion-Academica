@@ -352,6 +352,28 @@
       </main>
     </div>
 
+    <div id="modal-guia-docente" class="gd-modal-overlay oculto">
+      <div class="gd-modal-card">
+        <div class="gd-modal-header">
+          <div>
+            <h2 class="ds-h2">Extraer datos de la guía docente</h2>
+            <p class="ds-caption">Revisa y corrige lo que haga falta antes de confirmar. No se guarda nada hasta que pulses "Confirmar e importar".</p>
+          </div>
+          <button type="button" id="btn-cerrar-modal-guia" class="fila-icono-btn" title="Cerrar">
+            <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-x"></use></svg>
+          </button>
+        </div>
+        <div class="gd-modal-body" id="gd-modal-body">
+          <p class="ds-caption">Analizando el PDF…</p>
+        </div>
+        <div class="gd-modal-footer">
+          <span class="ds-form-mensaje" id="gd-estado"></span>
+          <button type="button" id="btn-descartar-guia" class="ds-btn ds-btn-secondary">Descartar</button>
+          <button type="button" id="btn-confirmar-guia" class="ds-btn ds-btn-primary">Confirmar e importar</button>
+        </div>
+      </div>
+    </div>
+
     <nav class="ds-bottom-nav">
       <ul class="ds-bottom-nav-list">
         <li>

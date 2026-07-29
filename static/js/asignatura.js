@@ -1146,6 +1146,10 @@ function renderListaDocumentos(contenedor, documentos) {
         <span class="documento-fila-meta">${formatoTamano(doc.tamano_bytes)}</span>
         <span class="documento-fila-fecha">${new Date(doc.fecha_subida).toLocaleDateString()}</span>
         <div class="documento-fila-acciones">
+          ${(doc.es_pdf && categoriaActual === 'teoria') ? `
+          <button type="button" class="fila-icono-btn btn-extraer-guia" title="Extraer datos de guía docente">
+            <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-book-check"></use></svg>
+          </button>` : ''}
           <button type="button" class="fila-icono-btn btn-editar-etiquetas" title="Editar etiquetas">
             <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-tag"></use></svg>
           </button>
@@ -1180,6 +1184,8 @@ function renderListaDocumentos(contenedor, documentos) {
     fila.querySelector('.btn-editar-etiquetas').addEventListener('click', () => editarEtiquetas(doc));
     fila.querySelector('.btn-mover-doc').addEventListener('click', (e) => abrirMenuMover(doc, e.currentTarget));
     fila.querySelector('.btn-borrar-doc').addEventListener('click', () => confirmarBorrarDocumento(doc));
+    const btnExtraerGuia = fila.querySelector('.btn-extraer-guia');
+    if (btnExtraerGuia) btnExtraerGuia.addEventListener('click', () => abrirModalGuiaDocente(doc.id));
 
     fila.addEventListener('dragstart', (e) => {
       e.dataTransfer.setData('application/x-documento-id', String(doc.id));
@@ -1614,6 +1620,262 @@ async function abrirDesdeUrlSiCorresponde() {
   const pagina = params.get('pagina');
   await abrirVisorPdf(parseInt(docId, 10), pagina ? parseInt(pagina, 10) : null);
 }
+
+// --- Extracción de guía docente (análisis local del PDF, con confirmación obligatoria) ---
+
+let gdEstadoActual = null; // { profesores, esquemas, tieneProfesores, tieneEsquemas, modoProfesores, modoEsquemas }
+
+async function abrirModalGuiaDocente(documentoId) {
+  const overlay = document.getElementById('modal-guia-docente');
+  const body = document.getElementById('gd-modal-body');
+  document.getElementById('gd-estado').textContent = '';
+  overlay.classList.remove('oculto');
+  body.innerHTML = '<p class="ds-caption">Analizando el PDF…</p>';
+
+  try {
+    const resultado = await api(`/documentos/${documentoId}/analizar-guia-docente`, { method: 'POST' });
+    gdEstadoActual = {
+      profesores: resultado.profesores.map((p) => ({ nombre: p.nombre, rol: p.rol || '' })),
+      esquemas: resultado.esquemas.map((e) => ({
+        nombre: e.nombre,
+        componentes: e.componentes.map((c) => ({ ...c })),
+        textoSinAnalizar: e.texto_sin_analizar,
+      })),
+      tieneProfesores: resultado.asignatura_tiene_profesores,
+      tieneEsquemas: resultado.asignatura_tiene_esquemas,
+      modoProfesores: 'añadir',
+      modoEsquemas: 'añadir',
+    };
+    renderModalGuiaDocente();
+  } catch (err) {
+    body.innerHTML = `<p class="ds-field-error">No se ha podido analizar el PDF: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
+function cerrarModalGuiaDocente() {
+  document.getElementById('modal-guia-docente').classList.add('oculto');
+  gdEstadoActual = null;
+}
+
+function filaProfesorGuiaDocente(p, i) {
+  return `
+    <div class="gd-fila" data-idx="${i}">
+      <div class="ds-field">
+        <label class="ds-label">Nombre</label>
+        <input type="text" class="ds-input gd-prof-nombre" value="${escapeHtml(p.nombre)}">
+      </div>
+      <div class="ds-field">
+        <label class="ds-label">Rol / grupos</label>
+        <input type="text" class="ds-input gd-prof-rol" value="${escapeHtml(p.rol)}">
+      </div>
+      <button type="button" class="fila-icono-btn gd-quitar-profesor" title="Quitar">
+        <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-x"></use></svg>
+      </button>
+    </div>
+  `;
+}
+
+function filaComponenteGuiaDocente(c, iEsquema, iComp) {
+  const opciones = Object.keys(ETIQUETA_TIPO_COMPONENTE).map((tipo) =>
+    `<option value="${tipo}" ${c.tipo === tipo ? 'selected' : ''}>${ETIQUETA_TIPO_COMPONENTE[tipo]}</option>`
+  ).join('');
+  return `
+    <div class="gd-fila${c.pendiente_revision ? ' is-pendiente' : ''}" data-i-esquema="${iEsquema}" data-i-comp="${iComp}">
+      <div class="ds-field">
+        <label class="ds-label">Nombre</label>
+        <input type="text" class="ds-input gd-comp-nombre" value="${escapeHtml(c.nombre)}">
+      </div>
+      <div class="ds-field" style="flex-basis:140px">
+        <label class="ds-label">Tipo</label>
+        <select class="ds-select gd-comp-tipo">${opciones}</select>
+      </div>
+      <div class="ds-field" style="flex-basis:90px">
+        <label class="ds-label">% peso</label>
+        <input type="number" class="ds-input gd-comp-porcentaje" min="0" max="100" step="0.01" value="${c.porcentaje != null ? c.porcentaje : ''}">
+      </div>
+      ${c.pendiente_revision ? '<span class="gd-etiqueta-pendiente">A revisar</span>' : ''}
+      <button type="button" class="fila-icono-btn gd-quitar-componente" title="Quitar">
+        <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-x"></use></svg>
+      </button>
+    </div>
+  `;
+}
+
+function bloqueEsquemaGuiaDocente(esquema, i) {
+  const suma = esquema.componentes.reduce((s, c) => s + (Number(c.porcentaje) || 0), 0);
+  return `
+    <div class="gd-esquema-bloque" data-idx="${i}">
+      <div class="gd-esquema-encabezado">
+        <input type="text" class="ds-input gd-esquema-nombre" value="${escapeHtml(esquema.nombre)}">
+        <span class="ds-caption">Suma: ${suma.toFixed(2)}%</span>
+        <button type="button" class="fila-icono-btn gd-quitar-esquema" title="Quitar esquema">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
+        </button>
+      </div>
+      ${esquema.componentes.map((c, iComp) => filaComponenteGuiaDocente(c, i, iComp)).join('')}
+      <button type="button" class="ds-btn ds-btn-secondary gd-anadir-componente" style="margin-top:var(--ds-space-3)">
+        <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-plus"></use></svg>
+        Añadir componente
+      </button>
+      ${esquema.textoSinAnalizar ? `
+        <p class="ds-caption" style="margin-top:var(--ds-space-3)">No se ha podido determinar el desglose con confianza. Texto de la guía para revisar a mano:</p>
+        <div class="gd-texto-crudo">${escapeHtml(esquema.textoSinAnalizar)}</div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function renderModalGuiaDocente() {
+  const body = document.getElementById('gd-modal-body');
+  const gd = gdEstadoActual;
+
+  body.innerHTML = `
+    <div class="gd-seccion">
+      <div class="gd-seccion-titulo">
+        <h3 class="ds-h3">Profesorado detectado</h3>
+        <button type="button" id="gd-anadir-profesor" class="ds-btn ds-btn-secondary">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-plus"></use></svg>
+          Añadir profesor
+        </button>
+      </div>
+      ${gd.profesores.length === 0 ? '<p class="sin-elementos">No se ha detectado ningún profesor en la guía (campo vacío o sin publicar todavía).</p>' : ''}
+      ${gd.profesores.map((p, i) => filaProfesorGuiaDocente(p, i)).join('')}
+      ${gd.tieneProfesores ? `
+        <div class="ds-field" style="margin-top:var(--ds-space-4);max-width:280px">
+          <label for="gd-modo-profesores" class="ds-label">Esta asignatura ya tiene profesorado</label>
+          <select id="gd-modo-profesores" class="ds-select">
+            <option value="añadir">Añadir a los ya existentes</option>
+            <option value="reemplazar">Reemplazar los existentes</option>
+          </select>
+        </div>
+      ` : ''}
+    </div>
+
+    <div class="gd-seccion">
+      <div class="gd-seccion-titulo">
+        <h3 class="ds-h3">Esquema(s) de evaluación detectado(s)</h3>
+        <button type="button" id="gd-anadir-esquema" class="ds-btn ds-btn-secondary">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-plus"></use></svg>
+          Añadir esquema
+        </button>
+      </div>
+      ${gd.esquemas.map((e, i) => bloqueEsquemaGuiaDocente(e, i)).join('')}
+      ${gd.tieneEsquemas ? `
+        <div class="ds-field" style="margin-top:var(--ds-space-4);max-width:280px">
+          <label for="gd-modo-esquemas" class="ds-label">Esta asignatura ya tiene esquema(s) de evaluación</label>
+          <select id="gd-modo-esquemas" class="ds-select">
+            <option value="añadir">Añadir a los ya existentes</option>
+            <option value="reemplazar">Reemplazar los existentes</option>
+          </select>
+        </div>
+      ` : ''}
+    </div>
+  `;
+  reanimar(body);
+  wirModalGuiaDocente();
+}
+
+function wirModalGuiaDocente() {
+  const gd = gdEstadoActual;
+  const body = document.getElementById('gd-modal-body');
+
+  // Profesores
+  document.getElementById('gd-anadir-profesor').addEventListener('click', () => {
+    gd.profesores.push({ nombre: '', rol: '' });
+    renderModalGuiaDocente();
+  });
+  body.querySelectorAll('.gd-seccion:first-child > .gd-fila').forEach((fila) => {
+    const i = Number(fila.dataset.idx);
+    fila.querySelector('.gd-prof-nombre').addEventListener('input', (e) => { gd.profesores[i].nombre = e.target.value; });
+    fila.querySelector('.gd-prof-rol').addEventListener('input', (e) => { gd.profesores[i].rol = e.target.value; });
+    fila.querySelector('.gd-quitar-profesor').addEventListener('click', () => {
+      gd.profesores.splice(i, 1);
+      renderModalGuiaDocente();
+    });
+  });
+  const selectModoProf = document.getElementById('gd-modo-profesores');
+  if (selectModoProf) selectModoProf.addEventListener('change', (e) => { gd.modoProfesores = e.target.value; });
+
+  // Esquemas
+  document.getElementById('gd-anadir-esquema').addEventListener('click', () => {
+    gd.esquemas.push({ nombre: 'Evaluación', componentes: [], textoSinAnalizar: null });
+    renderModalGuiaDocente();
+  });
+  body.querySelectorAll('.gd-esquema-bloque').forEach((bloque) => {
+    const iEsquema = Number(bloque.dataset.idx);
+    bloque.querySelector('.gd-esquema-nombre').addEventListener('input', (e) => { gd.esquemas[iEsquema].nombre = e.target.value; });
+    bloque.querySelector('.gd-quitar-esquema').addEventListener('click', () => {
+      gd.esquemas.splice(iEsquema, 1);
+      renderModalGuiaDocente();
+    });
+    bloque.querySelector('.gd-anadir-componente').addEventListener('click', () => {
+      gd.esquemas[iEsquema].componentes.push({ nombre: '', tipo: 'otro', porcentaje: null, pendiente_revision: true });
+      renderModalGuiaDocente();
+    });
+    bloque.querySelectorAll('.gd-fila[data-i-comp]').forEach((fila) => {
+      const iComp = Number(fila.dataset.iComp);
+      const componente = gd.esquemas[iEsquema].componentes[iComp];
+      fila.querySelector('.gd-comp-nombre').addEventListener('input', (e) => { componente.nombre = e.target.value; });
+      fila.querySelector('.gd-comp-tipo').addEventListener('change', (e) => { componente.tipo = e.target.value; });
+      fila.querySelector('.gd-comp-porcentaje').addEventListener('input', (e) => {
+        componente.porcentaje = e.target.value === '' ? null : Number(e.target.value);
+      });
+      fila.querySelector('.gd-quitar-componente').addEventListener('click', () => {
+        gd.esquemas[iEsquema].componentes.splice(iComp, 1);
+        renderModalGuiaDocente();
+      });
+    });
+  });
+  const selectModoEsq = document.getElementById('gd-modo-esquemas');
+  if (selectModoEsq) selectModoEsq.addEventListener('change', (e) => { gd.modoEsquemas = e.target.value; });
+}
+
+document.getElementById('btn-cerrar-modal-guia').addEventListener('click', cerrarModalGuiaDocente);
+document.getElementById('btn-descartar-guia').addEventListener('click', cerrarModalGuiaDocente);
+
+document.getElementById('btn-confirmar-guia').addEventListener('click', async () => {
+  const gd = gdEstadoActual;
+  if (!gd) return;
+  const estadoEl = document.getElementById('gd-estado');
+  estadoEl.textContent = '';
+
+  const profesores = gd.profesores.filter((p) => p.nombre.trim());
+  const esquemas = gd.esquemas
+    .map((e) => ({
+      nombre: e.nombre.trim() || 'Evaluación',
+      componentes: e.componentes.filter((c) => c.nombre.trim() && c.porcentaje !== null && c.porcentaje !== ''),
+    }))
+    .filter((e) => e.componentes.length > 0);
+
+  if (profesores.length === 0 && esquemas.length === 0) {
+    estadoEl.textContent = 'No hay nada que importar (añade al menos un profesor o un componente con % de peso).';
+    estadoEl.classList.add('es-error');
+    return;
+  }
+
+  const boton = document.getElementById('btn-confirmar-guia');
+  boton.classList.add('is-loading');
+  try {
+    await api(`/asignaturas/${asignaturaId}/importar-guia-docente`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        profesores,
+        esquemas,
+        modo_profesores: gd.modoProfesores,
+        modo_esquemas: gd.modoEsquemas,
+      }),
+    });
+    cerrarModalGuiaDocente();
+    await cargarCabeceraYResumen();
+    mostrarToast('Datos de la guía docente importados', 'success');
+  } catch (err) {
+    estadoEl.textContent = err.message;
+    estadoEl.classList.add('es-error');
+  } finally {
+    boton.classList.remove('is-loading');
+  }
+});
 
 // --- Inicio ---
 

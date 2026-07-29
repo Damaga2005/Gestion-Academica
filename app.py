@@ -27,6 +27,7 @@ from routes.hitos import hitos_bp
 from routes.conceptos import conceptos_bp
 from routes.recursos_externos import recursos_externos_bp
 from routes.profesores import profesores_bp
+from routes.guia_docente import guia_docente_bp
 from routes.auth import auth_bp, registrar_gate_autenticacion, registrar_csrf_global
 from routes.vistas import vistas_bp
 
@@ -96,6 +97,7 @@ def create_app(auto_seed=True, database_uri=None, documentos_dir=None):
     app.register_blueprint(conceptos_bp)
     app.register_blueprint(recursos_externos_bp)
     app.register_blueprint(profesores_bp)
+    app.register_blueprint(guia_docente_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(vistas_bp)
 
