@@ -185,9 +185,13 @@ function renderEntregas(tareas) {
 
   lista.innerHTML = proximas.map((t) => {
     const { nivel, texto } = calcularCountdown(t.fecha);
-    const url = t.asignatura_id
-      ? `/vista/asignaturas/${t.asignatura_id}`
-      : `/vista/calendario?anio=${t.fecha.slice(0, 4)}&mes=${parseInt(t.fecha.slice(5, 7), 10)}`;
+    // Integración con el visor PDF (spec V2.2_VISOR_PDF): si el examen/tarea tiene un
+    // documento vinculado, abrir directamente ese PDF en vez de solo la asignatura.
+    const url = (t.documento_id && t.asignatura_id)
+      ? `/vista/asignaturas/${t.asignatura_id}?doc=${t.documento_id}`
+      : t.asignatura_id
+        ? `/vista/asignaturas/${t.asignatura_id}`
+        : `/vista/calendario?anio=${t.fecha.slice(0, 4)}&mes=${parseInt(t.fecha.slice(5, 7), 10)}`;
     const asignaturaTxt = t.asignatura_nombre
       ? `<span class="ds-caption">${escapeHtml(t.asignatura_nombre)}</span>` : '';
 
@@ -198,6 +202,7 @@ function renderEntregas(tareas) {
           ${asignaturaTxt}
         </a>
         <span class="dashboard-entrega-badges">
+          ${t.documento_id ? '<span class="ds-badge" title="Tiene un PDF vinculado">📄</span>' : ''}
           <span class="ds-badge">${ETIQUETA_TIPO_TAREA[t.tipo] || 'Tarea'}</span>
           <span class="ds-badge ${BADGE_POR_NIVEL[nivel]}">${texto}</span>
         </span>
@@ -212,6 +217,58 @@ async function cargarEntregas() {
   renderEntregas(tareas);
 }
 
+// --- "Continúa donde lo dejaste" (spec Continua_donde_lo_dejaste, punto 3) ---
+
+function tiempoRelativo(fechaIso) {
+  // El backend serializa datetimes naive en UTC (sin sufijo Z): hay que añadirlo
+  // explícitamente o el navegador los interpreta como hora local y el cálculo
+  // queda desfasado por el huso horario del usuario.
+  const iso = /Z$|[+-]\d{2}:\d{2}$/.test(fechaIso) ? fechaIso : `${fechaIso}Z`;
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutos = Math.round(diffMs / 60000);
+  if (minutos < 1) return 'Ahora mismo';
+  if (minutos < 60) return `Hace ${minutos} min`;
+  const horas = Math.round(minutos / 60);
+  if (horas < 24) return `Hace ${horas} h`;
+  const dias = Math.round(horas / 24);
+  return `Hace ${dias} día${dias !== 1 ? 's' : ''}`;
+}
+
+function renderContinuar(documentos) {
+  const seccion = document.getElementById('seccion-continuar');
+  const lista = document.getElementById('continuar-grid');
+  if (!documentos || documentos.length === 0) {
+    seccion.style.display = 'none';
+    return;
+  }
+  seccion.style.display = '';
+  lista.innerHTML = documentos.map((d) => {
+    const url = `/vista/asignaturas/${d.asignatura_id}?doc=${d.id}&pagina=${d.ultima_pagina_vista || 1}`;
+    const paginaTxt = d.total_paginas ? `Página ${d.ultima_pagina_vista || 1} de ${d.total_paginas}` : `Página ${d.ultima_pagina_vista || 1}`;
+    const porcentaje = Math.round((d.porcentaje_leido || 0) * 100);
+    return `
+      <a class="ds-card ds-card--interactive dashboard-continuar-card" href="${url}">
+        <p class="ds-h3" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(d.nombre_archivo)}</p>
+        <p class="ds-caption" style="margin-top:4px">${paginaTxt} · ${tiempoRelativo(d.fecha_ultima_apertura)}</p>
+        <div class="ds-progress dashboard-progreso-mini" style="margin-top:8px">
+          <div class="ds-progress-bar" style="width:${porcentaje}%"></div>
+        </div>
+      </a>
+    `;
+  }).join('');
+  reanimar(lista);
+}
+
+async function cargarContinuar() {
+  try {
+    const documentos = await api('/documentos/recientes?limite=3');
+    renderContinuar(documentos);
+  } catch (err) {
+    document.getElementById('seccion-continuar').style.display = 'none';
+  }
+}
+
 mostrarSaludo();
 cargarAsignaturas();
 cargarEntregas();
+cargarContinuar();

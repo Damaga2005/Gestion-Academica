@@ -3,7 +3,7 @@ from datetime import date, datetime, time
 
 from flask import Blueprint, request, jsonify
 
-from models import db, TareaEvento, Asignatura, resolver_asignatura
+from models import db, TareaEvento, Asignatura, Documento, resolver_asignatura
 from routes.errors import ApiError
 from routes.conflictos import detectar_conflictos
 
@@ -42,6 +42,21 @@ def _resolver_asignatura_opcional(data, campo="asignatura_id"):
     if asignatura is None:
         raise ApiError(f"no existe ninguna asignatura con id/siglas '{valor}'", 404)
     return asignatura
+
+
+def _resolver_documento_opcional(data, asignatura_id):
+    """Integración con el visor PDF (spec V2.2_VISOR_PDF): si se indica un documento,
+    debe pertenecer a la misma asignatura que la tarea/examen (o la tarea no tener
+    asignatura fijada todavía)."""
+    valor = data.get("documento_id")
+    if valor is None:
+        return None
+    documento = Documento.query.get(valor)
+    if documento is None:
+        raise ApiError(f"no existe ningún documento con id '{valor}'", 404)
+    if asignatura_id is not None and documento.asignatura_id != asignatura_id:
+        raise ApiError("el documento debe pertenecer a la misma asignatura que la tarea/examen")
+    return documento
 
 
 @tareas_bp.get("/tareas")
@@ -84,6 +99,7 @@ def crear_tarea():
             raise ApiError(f"'{campo}' es obligatorio")
 
     asignatura = _resolver_asignatura_opcional(data)
+    documento = _resolver_documento_opcional(data, asignatura.id if asignatura else None)
     hora_inicio = _parse_hora(data.get("hora_inicio"), "hora_inicio")
     hora_fin = _parse_hora(data.get("hora_fin"), "hora_fin")
     if hora_inicio and hora_fin and hora_fin <= hora_inicio:
@@ -91,6 +107,7 @@ def crear_tarea():
 
     tarea = TareaEvento(
         asignatura_id=asignatura.id if asignatura else None,
+        documento_id=documento.id if documento else None,
         titulo=data["titulo"],
         fecha=_parse_fecha(data["fecha"]),
         tipo=data.get("tipo", "tarea_general"),
@@ -123,6 +140,9 @@ def actualizar_tarea(tarea_id):
     if "asignatura_id" in data:
         asignatura = _resolver_asignatura_opcional(data)
         tarea.asignatura_id = asignatura.id if asignatura else None
+    if "documento_id" in data:
+        documento = _resolver_documento_opcional(data, tarea.asignatura_id)
+        tarea.documento_id = documento.id if documento else None
     if "titulo" in data:
         tarea.titulo = data["titulo"]
     if "fecha" in data:

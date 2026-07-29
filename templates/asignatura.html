@@ -6,6 +6,7 @@
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title id="titulo-pagina">Asignatura · GREELEC</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/buscador_global.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/asignatura-detalle.css') }}">
 </head>
 <body>
@@ -84,6 +85,7 @@
                 </select>
               </div>
               <button id="btn-quitar-eleccion" class="ds-btn ds-btn-secondary" type="button" style="display:none">Quitar elección</button>
+              {% include "_buscador_global.html" %}
               <button id="toggle-tema" class="ds-btn ds-btn-secondary detalle-btn-icono" type="button" title="Cambiar tema"></button>
               <button id="btn-borrar-asignatura" class="ds-btn ds-btn-secondary detalle-btn-icono" type="button" title="Eliminar asignatura">
                 <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-trash-2"></use></svg>
@@ -290,17 +292,18 @@
               <div id="documentos-explorador" class="documentos-explorador documentos-explorador--lista"></div>
 
               <div id="visor-pdf" class="visor-pdf" style="display:none">
+                <div id="visor-pestanas" class="visor-pestanas"></div>
                 <div class="visor-header">
                   <h3 class="ds-h3" id="visor-titulo"></h3>
                   <div class="visor-header-acciones">
                     <button id="btn-anadir-marcador" class="ds-btn ds-btn-secondary">+ Marcador en esta página</button>
-                    <button id="btn-cerrar-visor" type="button" class="fila-icono-btn" title="Cerrar visor">
+                    <button id="btn-cerrar-visor" type="button" class="fila-icono-btn" title="Cerrar pestaña">
                       <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-x"></use></svg>
                     </button>
                   </div>
                 </div>
                 <div class="visor-body">
-                  <iframe id="pdf-frame" class="pdf-frame"></iframe>
+                  <div id="visor-iframes" class="visor-iframes"></div>
                   <aside class="marcadores-panel">
                     <h3 class="ds-h3">Marcadores</h3>
                     <ul id="lista-marcadores"></ul>
@@ -421,6 +424,7 @@
   </script>
   <script src="{{ url_for('static', filename='js/tema.js') }}"></script>
   <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/buscador_global.js') }}"></script>
   <script src="{{ url_for('static', filename='js/asignatura.js') }}"></script>
 </body>
 </html>

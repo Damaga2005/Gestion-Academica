@@ -6,6 +6,7 @@
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>Inicio · GREELEC</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/buscador_global.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 </head>
 <body>
@@ -66,6 +67,7 @@
               <p class="ds-body ds-text-secondary ds-page-header-subtitle">Resumen académico</p>
             </div>
             <div class="ds-page-header-actions">
+              {% include "_buscador_global.html" %}
               <button id="toggle-tema" class="ds-btn ds-btn-secondary" type="button" title="Cambiar tema"></button>
               {% if lock_activo %}
               <form method="post" action="{{ url_for('auth.cerrar_sesion') }}" class="form-lock">
@@ -118,6 +120,11 @@
                 </div>
               </div>
             </div>
+          </section>
+
+          <section class="dashboard-section" id="seccion-continuar" style="display:none">
+            <h2 class="ds-h2">📖 Continúa donde lo dejaste</h2>
+            <div class="dashboard-grid" id="continuar-grid"></div>
           </section>
 
           <section class="dashboard-section">
@@ -221,6 +228,7 @@
 
   <script src="{{ url_for('static', filename='js/tema.js') }}"></script>
   <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/buscador_global.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>

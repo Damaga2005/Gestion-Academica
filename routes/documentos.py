@@ -4,7 +4,7 @@ from datetime import datetime
 
 from flask import Blueprint, request, jsonify, send_from_directory, current_app
 
-from models import db, Documento, Apartado, PaginaTexto
+from models import db, Documento, Apartado, Asignatura, PaginaTexto
 from routes.errors import ApiError
 from utils import (
     carpeta_apartado, ruta_absoluta, nombre_archivo_disponible,
@@ -128,13 +128,63 @@ def listar_etiquetas():
     return jsonify(sorted(etiquetas, key=str.lower))
 
 
-@documentos_bp.post("/documentos/<int:documento_id>/ultima-pagina")
-def actualizar_ultima_pagina(documento_id):
+@documentos_bp.get("/asignaturas/<int:asignatura_id>/documentos")
+def listar_documentos_asignatura(asignatura_id):
+    """Lista plana (sin agrupar por categoría/subgrupo) de los documentos de una
+    asignatura, para el selector "Documento (opcional)" del formulario de tareas/
+    exámenes (spec V2.2_VISOR_PDF, "integración con asignaturas y exámenes")."""
+    Asignatura.query.get_or_404(asignatura_id)
+    documentos = (
+        Documento.query.filter_by(asignatura_id=asignatura_id)
+        .order_by(Documento.nombre_archivo)
+        .all()
+    )
+    if request.args.get("solo_pdf") == "1":
+        documentos = [d for d in documentos if d.es_pdf()]
+    return jsonify([d.to_dict() for d in documentos])
+
+
+@documentos_bp.get("/documentos/recientes")
+def documentos_recientes():
+    """Documentos con progreso de lectura guardado, para la tarjeta "Continúa donde lo
+    dejaste" del Dashboard (spec Continua_donde_lo_dejaste, punto 3)."""
+    limite = request.args.get("limite", default=5, type=int)
+    documentos = (
+        Documento.query.filter(Documento.fecha_ultima_apertura.isnot(None))
+        .order_by(Documento.fecha_ultima_apertura.desc())
+        .limit(limite)
+        .all()
+    )
+    return jsonify([d.to_dict() for d in documentos])
+
+
+@documentos_bp.post("/documentos/<int:documento_id>/progreso")
+def actualizar_progreso(documento_id):
+    """Guardado automático del estado de lectura (spec Continua_donde_lo_dejaste): página,
+    porcentaje, zoom, modo de visualización, scroll y tiempo de lectura acumulado."""
     documento = Documento.query.get_or_404(documento_id)
     data = request.get_json(silent=True) or {}
     if "pagina" not in data:
         raise ApiError("'pagina' es obligatorio")
+
+    ahora = datetime.utcnow()
     documento.ultima_pagina_vista = data["pagina"]
+    if "porcentaje" in data:
+        documento.porcentaje_leido = data["porcentaje"]
+    if "zoom" in data:
+        documento.zoom_nivel = data["zoom"]
+    if "modo_visualizacion" in data:
+        documento.modo_visualizacion = data["modo_visualizacion"]
+    if "scroll" in data:
+        documento.scroll_vertical = data["scroll"]
+    if data.get("tiempo_sesion_segundos"):
+        documento.tiempo_total_lectura_segundos += max(0, int(data["tiempo_sesion_segundos"]))
+    if data.get("nueva_sesion"):
+        documento.numero_sesiones += 1
+        if documento.fecha_primera_apertura is None:
+            documento.fecha_primera_apertura = ahora
+    documento.fecha_ultima_apertura = ahora
+
     db.session.commit()
     return jsonify(documento.to_dict())
 

@@ -77,6 +77,32 @@ async function cargarAsignaturasSelects() {
   document.getElementById('tarea-asignatura').innerHTML = '<option value="">(ninguna)</option>' + opciones;
 }
 
+// --- Documento vinculado (spec V2.2_VISOR_PDF, "integración con asignaturas y exámenes") ---
+
+async function poblarSelectDocumentos(asignaturaId, documentoIdSeleccionado) {
+  const select = document.getElementById('tarea-documento');
+  if (!asignaturaId) {
+    select.innerHTML = '<option value="">(ninguno)</option>';
+    select.disabled = true;
+    return;
+  }
+  select.disabled = false;
+  try {
+    const documentos = await api(`/asignaturas/${asignaturaId}/documentos?solo_pdf=1`);
+    const opciones = documentos
+      .map((d) => `<option value="${d.id}">${escapeHtml(d.nombre_archivo)}</option>`)
+      .join('');
+    select.innerHTML = '<option value="">(ninguno)</option>' + opciones;
+    select.value = documentoIdSeleccionado || '';
+  } catch (err) {
+    select.innerHTML = '<option value="">(ninguno)</option>';
+  }
+}
+
+document.getElementById('tarea-asignatura').addEventListener('change', (e) => {
+  poblarSelectDocumentos(e.target.value || null, null);
+});
+
 // --- Carga de datos (todas las tareas que cumplen los filtros activos) ---
 
 async function cargarDatos() {
@@ -316,6 +342,8 @@ function limpiarFormularioTarea() {
   document.getElementById('tarea-id').value = '';
   document.getElementById('tarea-conflictos-aviso').style.display = 'none';
   document.getElementById('tarea-form-error').textContent = '';
+  poblarSelectDocumentos(null, null);
+  document.getElementById('tarea-documento-ver').style.display = 'none';
 }
 
 document.getElementById('btn-nueva-tarea').addEventListener('click', () => {
@@ -327,13 +355,21 @@ document.getElementById('btn-nueva-tarea').addEventListener('click', () => {
   document.getElementById('dialog-tarea').showModal();
 });
 
-function abrirDialogoEdicion(tarea) {
+async function abrirDialogoEdicion(tarea) {
   limpiarFormularioTarea();
   document.getElementById('dialog-tarea-titulo').textContent = 'Editar tarea/evento';
   document.getElementById('tarea-id').value = tarea.id;
   document.getElementById('tarea-titulo').value = tarea.titulo;
   document.getElementById('tarea-tipo').value = ['examen_parcial', 'examen_final', 'recuperacion', 'entrega', 'tutoria', 'evento', 'tarea_general'].includes(tarea.tipo) ? tarea.tipo : 'tarea_general';
   document.getElementById('tarea-asignatura').value = tarea.asignatura_id || '';
+  await poblarSelectDocumentos(tarea.asignatura_id || null, tarea.documento_id || null);
+  const verPdf = document.getElementById('tarea-documento-ver');
+  if (tarea.documento_id && tarea.asignatura_id) {
+    verPdf.href = `/vista/asignaturas/${tarea.asignatura_id}?doc=${tarea.documento_id}`;
+    verPdf.style.display = '';
+  } else {
+    verPdf.style.display = 'none';
+  }
   document.getElementById('tarea-fecha').value = tarea.fecha;
   document.getElementById('tarea-hora-inicio').value = tarea.hora_inicio || '';
   document.getElementById('tarea-hora-fin').value = tarea.hora_fin || '';
@@ -422,6 +458,7 @@ document.getElementById('form-tarea').addEventListener('submit', async (e) => {
 
   const id = document.getElementById('tarea-id').value;
   const asignaturaIdRaw = document.getElementById('tarea-asignatura').value;
+  const documentoIdRaw = document.getElementById('tarea-documento').value;
   const recordatorioRaw = document.getElementById('tarea-recordatorio').value;
   const body = {
     titulo: document.getElementById('tarea-titulo').value,
@@ -429,6 +466,7 @@ document.getElementById('form-tarea').addEventListener('submit', async (e) => {
     tipo: document.getElementById('tarea-tipo').value,
     prioridad: document.getElementById('tarea-prioridad').value,
     asignatura_id: asignaturaIdRaw ? parseInt(asignaturaIdRaw, 10) : null,
+    documento_id: documentoIdRaw ? parseInt(documentoIdRaw, 10) : null,
     hora_inicio: document.getElementById('tarea-hora-inicio').value || null,
     hora_fin: document.getElementById('tarea-hora-fin').value || null,
     aula: document.getElementById('tarea-aula').value.trim() || null,

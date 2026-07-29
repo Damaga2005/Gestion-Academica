@@ -1,0 +1,21 @@
+{# Buscador global (spec V2.1_BUSQUEDA_GLOBAL): botón disparador + modal, pensados para
+   incluirse dentro de .ds-page-header-actions en cada página real (no hay un layout base
+   compartido: cada plantilla ds-* duplica su propio <html>, así que este include evita
+   duplicar 8 veces el marcado nuevo). El listener de Ctrl+K vive en buscador_global.js y
+   funciona desde cualquier página independientemente de si el botón está en el DOM. #}
+<button id="btn-buscador-global" class="ds-btn ds-btn-secondary" type="button" title="Buscar (Ctrl+K)">
+  <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-search"></use></svg>
+</button>
+
+<div id="buscador-global-overlay" class="bg-overlay oculto">
+  <div class="bg-modal" role="dialog" aria-modal="true" aria-label="Buscador global">
+    <div class="bg-input-row">
+      <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-search"></use></svg>
+      <input type="search" id="buscador-global-input" class="bg-input" placeholder="Buscar asignaturas, profesores, documentos, tareas...">
+      <button type="button" id="btn-cerrar-buscador-global" class="bg-close-btn" title="Cerrar (Esc)">
+        <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-x"></use></svg>
+      </button>
+    </div>
+    <div id="buscador-global-resultados" class="bg-resultados"></div>
+  </div>
+</div>

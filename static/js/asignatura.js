@@ -1138,10 +1138,16 @@ function renderListaDocumentos(contenedor, documentos) {
       ? `<img src="${urlArchivo}" class="miniatura-documento" alt="${escapeHtml(doc.nombre_archivo)}">`
       : '<div class="documento-fila-icono"><svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-folder"></use></svg></div>';
     const etiquetasHtml = doc.etiquetas.map((e) => `<span class="tag-badge">${escapeHtml(e)}</span>`).join('');
+    const progresoLectura = (doc.es_pdf && doc.porcentaje_leido)
+      ? `<div class="ds-progress documento-fila-progreso"><div class="ds-progress-bar" style="width:${Math.round(doc.porcentaje_leido * 100)}%"></div></div>`
+      : '';
     return `
       <div class="documento-fila" draggable="true" data-id="${doc.id}" data-etiquetas="${doc.etiquetas.join(',').toLowerCase()}">
         ${miniatura}
-        <a href="#" class="documento-fila-nombre abrir-documento">${escapeHtml(doc.nombre_archivo)}</a>
+        <span class="documento-fila-nombre-col">
+          <a href="#" class="documento-fila-nombre abrir-documento">${escapeHtml(doc.nombre_archivo)}</a>
+          ${progresoLectura}
+        </span>
         <span class="tags-documento">${etiquetasHtml}</span>
         <span class="documento-fila-meta">${formatoTamano(doc.tamano_bytes)}</span>
         <span class="documento-fila-fecha">${new Date(doc.fecha_subida).toLocaleDateString()}</span>
@@ -1493,17 +1499,70 @@ async function confirmarBorrarDocumento(doc) {
   mostrarToast('Documento eliminado', 'success');
 }
 
-// --- Visor PDF (PDF.js embebido) ---
+// --- Visor PDF (PDF.js embebido, varias pestañas) ---
+// "Continúa donde lo dejaste": además de la página, se restaura/guarda zoom, modo de
+// scroll/spread y tiempo de lectura acumulado (spec Continua_donde_lo_dejaste).
+// "Varias pestañas" (spec V2.2_VISOR_PDF): cada documento abierto vive en su propio
+// <iframe> (su propia instancia de PDF.js), mostrado/ocultado al cambiar de pestaña, de
+// forma que cada uno conserva su página/zoom/scroll de forma independiente. Se limita
+// el número de pestañas simultáneas porque cada una es una instancia completa de
+// PDF.js (memoria/CPU no despreciables) — al superar el límite se cierra la menos
+// usada recientemente, guardando antes su progreso.
+
+const MAX_PESTANAS_PDF = 5;
+const pestanasPdf = new Map(); // documentoId -> { iframe, tabBtn, nombreArchivo, sesionInicioMs, sesionEsNueva, debounceTimer, ultimoAcceso }
 
 async function abrirVisorPdf(documentoId, paginaForzada) {
-  documentoAbiertoId = documentoId;
+  const visor = document.getElementById('visor-pdf');
+  const estabaOculto = visor.style.display !== 'block';
+  visor.style.display = 'block';
+
+  const existente = pestanasPdf.get(documentoId);
+  if (existente) {
+    if (paginaForzada) {
+      try { existente.iframe.contentWindow.PDFViewerApplication.page = paginaForzada; } catch (err) { /* PDF.js de esa pestaña aún no listo, se ignora */ }
+    }
+    activarPestana(documentoId);
+    if (estabaOculto) visor.scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+
+  if (pestanasPdf.size >= MAX_PESTANAS_PDF) {
+    const [idMasAntiguo] = [...pestanasPdf.entries()].sort((a, b) => a[1].ultimoAcceso - b[1].ultimoAcceso)[0];
+    cerrarPestana(idMasAntiguo);
+  }
+
   const doc = await api(`/documentos/${documentoId}`);
   const paginaInicial = paginaForzada || doc.ultima_pagina_vista || 1;
 
-  const iframe = document.getElementById('pdf-frame');
-  const visor = document.getElementById('visor-pdf');
-  visor.style.display = 'block';
-  document.getElementById('visor-titulo').textContent = doc.nombre_archivo;
+  const iframe = document.createElement('iframe');
+  iframe.className = 'pdf-frame';
+  document.getElementById('visor-iframes').appendChild(iframe);
+
+  const tabBtn = document.createElement('button');
+  tabBtn.type = 'button';
+  tabBtn.className = 'visor-pestana';
+  tabBtn.innerHTML = `
+    <span class="visor-pestana-nombre">${escapeHtml(doc.nombre_archivo)}</span>
+    <span class="visor-pestana-cerrar" title="Cerrar pestaña">
+      <svg class="ds-icon ds-icon--sm"><use href="/static/vendor/lucide/sprite.svg#lucide-x"></use></svg>
+    </span>
+  `;
+  tabBtn.addEventListener('click', (e) => {
+    if (e.target.closest('.visor-pestana-cerrar')) {
+      e.stopPropagation();
+      cerrarPestana(documentoId);
+    } else {
+      activarPestana(documentoId);
+    }
+  });
+  document.getElementById('visor-pestanas').appendChild(tabBtn);
+
+  pestanasPdf.set(documentoId, {
+    iframe, tabBtn, nombreArchivo: doc.nombre_archivo,
+    sesionInicioMs: Date.now(), sesionEsNueva: true,
+    debounceTimer: null, ultimoAcceso: Date.now(),
+  });
 
   const archivoUrl = encodeURIComponent(`/documentos/${documentoId}/archivo`);
   iframe.src = `/static/vendor/pdfjs/web/viewer.html?file=${archivoUrl}`;
@@ -1515,41 +1574,122 @@ async function abrirVisorPdf(documentoId, paginaForzada) {
       app.initializedPromise.then(() => {
         app.eventBus.on('pagesinit', () => {
           if (paginaInicial > 1) app.page = paginaInicial;
+          if (doc.zoom_nivel) {
+            try { app.pdfViewer.currentScaleValue = doc.zoom_nivel; } catch (err) { /* valor de zoom no válido, se ignora */ }
+          }
+          if (doc.modo_visualizacion) {
+            const [scrollMode, spreadMode] = doc.modo_visualizacion.split(':').map(Number);
+            try {
+              if (!Number.isNaN(scrollMode)) app.pdfViewer.scrollMode = scrollMode;
+              if (!Number.isNaN(spreadMode)) app.pdfViewer.spreadMode = spreadMode;
+            } catch (err) { /* modo guardado no válido para este documento, se ignora */ }
+          }
+          if (doc.scroll_vertical) {
+            setTimeout(() => { app.pdfViewer.container.scrollTop = doc.scroll_vertical; }, 100);
+          }
         }, { once: true });
-        app.eventBus.on('pagechanging', (evt) => {
-          guardarUltimaPagina(documentoId, evt.pageNumber);
-        });
+        app.eventBus.on('pagechanging', (evt) => guardarProgreso(documentoId, app, evt.pageNumber));
+        app.eventBus.on('scalechanging', () => guardarProgreso(documentoId, app));
+        app.eventBus.on('scrollmodechanged', () => guardarProgreso(documentoId, app));
+        app.eventBus.on('spreadmodechanged', () => guardarProgreso(documentoId, app));
       });
     } catch (err) {
       console.warn('No se pudo enlazar con PDF.js:', err);
     }
   };
 
-  await cargarMarcadores(documentoId);
-  visor.scrollIntoView({ behavior: 'smooth' });
+  activarPestana(documentoId);
+  if (estabaOculto) visor.scrollIntoView({ behavior: 'smooth' });
+}
+
+function activarPestana(documentoId) {
+  const entry = pestanasPdf.get(documentoId);
+  if (!entry) return;
+  documentoAbiertoId = documentoId;
+  entry.ultimoAcceso = Date.now();
+  document.getElementById('visor-titulo').textContent = entry.nombreArchivo;
+  for (const [id, e] of pestanasPdf) {
+    e.iframe.style.display = id === documentoId ? 'block' : 'none';
+    e.tabBtn.classList.toggle('is-activa', id === documentoId);
+  }
+  cargarMarcadores(documentoId);
 }
 
 function cerrarVisorPdf() {
-  const iframe = document.getElementById('pdf-frame');
-  iframe.onload = null;
-  iframe.src = 'about:blank'; // libera el PDF cargado en vez de dejarlo corriendo oculto
-  document.getElementById('visor-pdf').style.display = 'none';
-  documentoAbiertoId = null;
+  if (documentoAbiertoId) cerrarPestana(documentoAbiertoId);
+}
+
+function cerrarPestana(documentoId) {
+  const entry = pestanasPdf.get(documentoId);
+  if (!entry) return;
+  try {
+    const app = entry.iframe.contentWindow.PDFViewerApplication;
+    if (app) flushProgreso(documentoId, app, entry);
+  } catch (err) { /* iframe ya descargado o sin PDF.js inicializado, no hay nada que guardar */ }
+
+  entry.iframe.onload = null;
+  entry.iframe.remove();
+  entry.tabBtn.remove();
+  clearTimeout(entry.debounceTimer);
+  pestanasPdf.delete(documentoId);
+
+  if (documentoAbiertoId === documentoId) {
+    documentoAbiertoId = null;
+    const restante = [...pestanasPdf.entries()].sort((a, b) => b[1].ultimoAcceso - a[1].ultimoAcceso)[0];
+    if (restante) {
+      activarPestana(restante[0]);
+    } else {
+      document.getElementById('visor-pdf').style.display = 'none';
+    }
+  }
 }
 
 document.getElementById('btn-cerrar-visor').addEventListener('click', cerrarVisorPdf);
 
-let debounceTimerPagina = null;
-function guardarUltimaPagina(documentoId, pagina) {
-  clearTimeout(debounceTimerPagina);
-  debounceTimerPagina = setTimeout(() => {
-    const meta = document.querySelector('meta[name="csrf-token"]');
-    fetch(`/documentos/${documentoId}/ultima-pagina`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': meta ? meta.content : '' },
-      body: JSON.stringify({ pagina }),
-    });
-  }, 800);
+function _payloadProgreso(app, paginaForzada) {
+  const pagina = paginaForzada || app.pdfViewer.currentPageNumber;
+  const total = app.pdfViewer.pagesCount;
+  return {
+    pagina,
+    porcentaje: total ? Math.round((pagina / total) * 100) / 100 : null,
+    zoom: app.pdfViewer.currentScaleValue ? String(app.pdfViewer.currentScaleValue) : null,
+    modo_visualizacion: `${app.pdfViewer.scrollMode}:${app.pdfViewer.spreadMode}`,
+    scroll: app.pdfViewer.container ? app.pdfViewer.container.scrollTop : null,
+  };
+}
+
+function guardarProgreso(documentoId, app, paginaForzada) {
+  const entry = pestanasPdf.get(documentoId);
+  if (!entry) return;
+  clearTimeout(entry.debounceTimer);
+  entry.debounceTimer = setTimeout(() => enviarProgreso(documentoId, _payloadProgreso(app, paginaForzada), entry), 800);
+}
+
+function flushProgreso(documentoId, app, entry) {
+  entry = entry || pestanasPdf.get(documentoId);
+  if (entry) clearTimeout(entry.debounceTimer);
+  enviarProgreso(documentoId, _payloadProgreso(app), entry);
+}
+
+function enviarProgreso(documentoId, datos, entry) {
+  entry = entry || pestanasPdf.get(documentoId);
+  if (entry) {
+    if (entry.sesionInicioMs) {
+      datos.tiempo_sesion_segundos = Math.round((Date.now() - entry.sesionInicioMs) / 1000);
+      entry.sesionInicioMs = Date.now();
+    }
+    if (entry.sesionEsNueva) {
+      datos.nueva_sesion = true;
+      entry.sesionEsNueva = false;
+    }
+  }
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  fetch(`/documentos/${documentoId}/progreso`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': meta ? meta.content : '' },
+    body: JSON.stringify(datos),
+    keepalive: true,
+  });
 }
 
 async function cargarMarcadores(documentoId) {

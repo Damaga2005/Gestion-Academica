@@ -512,13 +512,25 @@ button.documentos-breadcrumb-item:hover { color: var(--ds-color-accent); }
   flex-shrink: 0;
 }
 
-.documento-fila-nombre {
+.documento-fila-nombre-col {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.documento-fila-nombre {
   color: var(--ds-color-text-primary);
   text-decoration: none;
 }
 .documento-fila-nombre:hover { color: var(--ds-color-accent); }
+
+.documento-fila-progreso {
+  height: 3px;
+  width: 100%;
+  max-width: 160px;
+}
 
 .tags-documento {
   display: inline-flex;
@@ -601,16 +613,60 @@ button.documentos-breadcrumb-item:hover { color: var(--ds-color-accent); }
   gap: var(--ds-space-2);
   flex-shrink: 0;
 }
+.visor-pestanas {
+  display: flex;
+  gap: var(--ds-space-2);
+  margin-bottom: var(--ds-space-3);
+  overflow-x: auto;
+}
+.visor-pestana {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  padding: var(--ds-space-2) var(--ds-space-3);
+  border-radius: var(--ds-radius-full);
+  border: 1px solid var(--ds-color-border);
+  background: var(--ds-color-surface-secondary);
+  color: var(--ds-color-text-secondary);
+  font-size: var(--ds-font-size-caption);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.visor-pestana.is-activa {
+  background: var(--ds-color-surface);
+  color: var(--ds-color-text-primary);
+  border-color: var(--ds-color-accent);
+}
+.visor-pestana-nombre {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 160px;
+}
+.visor-pestana-cerrar {
+  display: flex;
+  align-items: center;
+  border-radius: var(--ds-radius-sm);
+  color: inherit;
+}
+.visor-pestana-cerrar:hover { color: var(--ds-color-danger); }
+
 .visor-body {
   display: flex;
   gap: var(--ds-space-5);
 }
-.pdf-frame {
+.visor-iframes {
   flex: 1;
   height: 75vh;
+  position: relative;
+}
+.visor-iframes .pdf-frame {
+  width: 100%;
+  height: 100%;
   border: 1px solid var(--ds-color-border);
   border-radius: var(--ds-radius-md);
   background: white;
+  display: none;
 }
 .marcadores-panel {
   width: 220px;
@@ -636,7 +692,7 @@ button.documentos-breadcrumb-item:hover { color: var(--ds-color-accent); }
 @media (max-width: 900px) {
   .visor-body { flex-direction: column; }
   .marcadores-panel { width: 100%; }
-  .pdf-frame { height: 60vh; }
+  .visor-iframes { height: 60vh; }
 }
 
 /* --- Lightbox de imágenes --- */

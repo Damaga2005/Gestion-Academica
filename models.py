@@ -49,6 +49,12 @@ WIDGETS_POR_DEFECTO = ("recordatorios", "calendario", "certificaciones", "sateli
 ORDEN_ESTADOS_CONCEPTO = ("no_visto", "flojo", "dominado")
 # Días hasta la próxima revisión según nivel (repetición espaciada simplificada, spec punto 7)
 INTERVALO_DIAS_CONCEPTO = {"no_visto": 0, "flojo": 3, "dominado": 18}
+# Tipos de entidad indexables por la búsqueda global (V2.1): identifican qué modelo/tabla
+# referencia entidad_id en BusquedaFavorito/BusquedaReciente, ya que ambas tablas son
+# genéricas y no tienen una FK real a cada tabla posible.
+TIPOS_ENTIDAD_BUSQUEDA = (
+    "asignatura", "profesor", "documento", "pagina_pdf", "tarea", "examen", "evento", "etiqueta",
+)
 
 
 # Tabla de asociación many-to-many para prerrequisitos (auto-referencial sobre Asignatura)
@@ -518,6 +524,17 @@ class Documento(db.Model):
     ultima_pagina_vista = db.Column(db.Integer, nullable=True)
     etiquetas = db.Column(db.String(500), nullable=True)  # lista libre separada por comas
 
+    # "Continúa donde lo dejaste": estado de lectura del visor PDF, ampliando
+    # ultima_pagina_vista (que ya se usaba para el deep-link del buscador y no se toca).
+    porcentaje_leido = db.Column(db.Float, nullable=True)
+    zoom_nivel = db.Column(db.String(20), nullable=True)  # p.ej. "page-width", "1.25"
+    modo_visualizacion = db.Column(db.String(20), nullable=True)  # scrollMode/spreadMode de pdf.js
+    scroll_vertical = db.Column(db.Float, nullable=True)
+    fecha_primera_apertura = db.Column(db.DateTime, nullable=True)
+    fecha_ultima_apertura = db.Column(db.DateTime, nullable=True)
+    tiempo_total_lectura_segundos = db.Column(db.Integer, nullable=False, default=0)
+    numero_sesiones = db.Column(db.Integer, nullable=False, default=0)
+
     asignatura = db.relationship("Asignatura", back_populates="documentos")
     apartado = db.relationship("Apartado", back_populates="documentos")
     grupo = db.relationship("GrupoDocumento", back_populates="documentos")
@@ -562,6 +579,15 @@ class Documento(db.Model):
             "es_imagen": self.es_imagen(),
             "ultima_pagina_vista": self.ultima_pagina_vista,
             "etiquetas": self.lista_etiquetas(),
+            "porcentaje_leido": self.porcentaje_leido,
+            "zoom_nivel": self.zoom_nivel,
+            "modo_visualizacion": self.modo_visualizacion,
+            "scroll_vertical": self.scroll_vertical,
+            "fecha_primera_apertura": self.fecha_primera_apertura.isoformat() if self.fecha_primera_apertura else None,
+            "fecha_ultima_apertura": self.fecha_ultima_apertura.isoformat() if self.fecha_ultima_apertura else None,
+            "tiempo_total_lectura_segundos": self.tiempo_total_lectura_segundos,
+            "numero_sesiones": self.numero_sesiones,
+            "total_paginas": len(self.paginas_texto) if self.paginas_texto else None,
         }
         if include_marcadores:
             data["marcadores"] = [m.to_dict() for m in self.marcadores]
@@ -603,6 +629,9 @@ class TareaEvento(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=True)
+    # Integración con el visor PDF (spec V2.2_VISOR_PDF, "integración con asignaturas y
+    # exámenes"): enlaza el examen/tarea a un documento concreto de la asignatura.
+    documento_id = db.Column(db.Integer, db.ForeignKey("documento.id"), nullable=True)
     titulo = db.Column(db.String(200), nullable=False)
     fecha = db.Column(db.Date, nullable=False)
     tipo = db.Column(db.String(20), nullable=False, default="tarea_general")
@@ -620,6 +649,7 @@ class TareaEvento(db.Model):
     link_relacionado = db.Column(db.String(500), nullable=True)
 
     asignatura = db.relationship("Asignatura")
+    documento = db.relationship("Documento")
 
     @validates("tipo")
     def validar_tipo(self, key, value):
@@ -645,6 +675,8 @@ class TareaEvento(db.Model):
             "asignatura_id": self.asignatura_id,
             "asignatura_nombre": self.asignatura.nombre if self.asignatura else None,
             "asignatura_siglas": self.asignatura.siglas if self.asignatura else None,
+            "documento_id": self.documento_id,
+            "documento_nombre": self.documento.nombre_archivo if self.documento else None,
             "titulo": self.titulo,
             "fecha": self.fecha.isoformat(),
             "tipo": self.tipo,
@@ -981,4 +1013,60 @@ class Profesor(db.Model):
             "despacho": self.despacho,
             "aula_virtual": self.aula_virtual,
             "orden": self.orden,
+        }
+
+
+class BusquedaFavorito(db.Model):
+    """Favorito del buscador global (V2.1): referencia genérica a cualquier entidad
+    indexada (asignatura, documento, tarea...), identificada por tipo_entidad+entidad_id
+    en vez de una FK real, ya que puede apuntar a distintas tablas."""
+    __tablename__ = "busqueda_favorito"
+    __table_args__ = (db.UniqueConstraint("tipo_entidad", "entidad_id", name="uq_favorito_entidad"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    tipo_entidad = db.Column(db.String(20), nullable=False)
+    entidad_id = db.Column(db.Integer, nullable=False)
+    fecha_creacion = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    @validates("tipo_entidad")
+    def validar_tipo_entidad(self, key, value):
+        if value not in TIPOS_ENTIDAD_BUSQUEDA:
+            raise ValueError(f"tipo_entidad debe ser uno de {TIPOS_ENTIDAD_BUSQUEDA}")
+        return value
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "tipo_entidad": self.tipo_entidad,
+            "entidad_id": self.entidad_id,
+            "fecha_creacion": self.fecha_creacion.isoformat(),
+        }
+
+
+class BusquedaReciente(db.Model):
+    """Historial de resultados del buscador global abiertos recientemente. Se recorta
+    a un máximo por escritura (ver routes/busqueda.py) en vez de acumular sin límite."""
+    __tablename__ = "busqueda_reciente"
+
+    id = db.Column(db.Integer, primary_key=True)
+    tipo_entidad = db.Column(db.String(20), nullable=False)
+    entidad_id = db.Column(db.Integer, nullable=False)
+    etiqueta_mostrada = db.Column(db.String(300), nullable=False)
+    url = db.Column(db.String(500), nullable=False)
+    fecha_acceso = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    @validates("tipo_entidad")
+    def validar_tipo_entidad(self, key, value):
+        if value not in TIPOS_ENTIDAD_BUSQUEDA:
+            raise ValueError(f"tipo_entidad debe ser uno de {TIPOS_ENTIDAD_BUSQUEDA}")
+        return value
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "tipo_entidad": self.tipo_entidad,
+            "entidad_id": self.entidad_id,
+            "etiqueta_mostrada": self.etiqueta_mostrada,
+            "url": self.url,
+            "fecha_acceso": self.fecha_acceso.isoformat(),
         }

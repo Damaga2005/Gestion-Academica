@@ -6,6 +6,7 @@
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>Calendario · GREELEC</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/buscador_global.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/calendario.css') }}">
 </head>
 <body>
@@ -66,6 +67,7 @@
               <p class="ds-body ds-text-secondary ds-page-header-subtitle">Tareas, exámenes y entregas por mes</p>
             </div>
             <div class="ds-page-header-actions">
+              {% include "_buscador_global.html" %}
               <button id="toggle-tema" class="ds-btn ds-btn-secondary detalle-btn-icono" type="button" title="Cambiar tema"></button>
               {% if lock_activo %}
               <form method="post" action="{{ url_for('auth.cerrar_sesion') }}" class="form-lock">
@@ -216,6 +218,16 @@
 
         <div class="ds-field-row">
           <div class="ds-field">
+            <label for="tarea-documento" class="ds-label">Documento (opcional)</label>
+            <select id="tarea-documento" class="ds-select" disabled>
+              <option value="">(ninguno)</option>
+            </select>
+            <a id="tarea-documento-ver" class="ds-caption" href="#" style="display:none">📄 Ver PDF</a>
+          </div>
+        </div>
+
+        <div class="ds-field-row">
+          <div class="ds-field">
             <label for="tarea-fecha" class="ds-label">Fecha</label>
             <input type="date" id="tarea-fecha" class="ds-input" required>
           </div>
@@ -281,6 +293,7 @@
 
   <script src="{{ url_for('static', filename='js/tema.js') }}"></script>
   <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/buscador_global.js') }}"></script>
   <script src="{{ url_for('static', filename='js/calendario.js') }}"></script>
 </body>
 </html>
