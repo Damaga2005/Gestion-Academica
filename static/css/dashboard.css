@@ -8,6 +8,37 @@
   margin-bottom: var(--ds-space-8);
 }
 
+.dashboard-continuar-card {
+  position: relative;
+  text-decoration: none;
+  color: var(--ds-color-text-primary);
+}
+
+.dashboard-continuar-btn-quitar {
+  position: absolute;
+  top: var(--ds-space-3);
+  right: var(--ds-space-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--ds-radius-sm);
+  background: none;
+  color: var(--ds-color-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--ds-duration-fast) var(--ds-ease-standard), color var(--ds-duration-fast) var(--ds-ease-standard);
+}
+.dashboard-continuar-btn-quitar:hover {
+  background: var(--ds-color-surface-secondary);
+  color: var(--ds-color-danger);
+}
+.dashboard-continuar-btn-quitar .ds-icon {
+  width: 16px;
+  height: 16px;
+}
+
 .dashboard-media-curso {
   margin-bottom: var(--ds-space-8);
 }

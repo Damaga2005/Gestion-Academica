@@ -41,6 +41,11 @@
   width: auto;
 }
 
+.resumen-select-tipo {
+  width: auto;
+  margin-left: auto;
+}
+
 .detalle-btn-icono {
   padding: var(--ds-space-2);
   line-height: 0;

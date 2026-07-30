@@ -139,7 +139,10 @@ async function cargarCabeceraYResumen() {
     (asignatura.tipo === 'optativa' && asignatura.estado !== 'no_elegida') ? '' : 'none';
 
   // Resumen
-  document.getElementById('resumen-tipo').textContent = asignatura.tipo === 'optativa' ? 'Optativa' : 'Obligatoria';
+  const selectTipo = document.getElementById('resumen-select-tipo');
+  if (document.activeElement !== selectTipo) {
+    selectTipo.value = asignatura.tipo === 'optativa' ? 'optativa' : 'obligatoria';
+  }
 
   const inputNota = document.getElementById('resumen-nota-input');
   if (document.activeElement !== inputNota) {
@@ -255,6 +258,20 @@ document.getElementById('detalle-select-estado').addEventListener('change', asyn
     body: JSON.stringify({ estado: e.target.value }),
   });
   await cargarCabeceraYResumen();
+});
+
+document.getElementById('resumen-select-tipo').addEventListener('change', async (e) => {
+  try {
+    await api(`/asignaturas/${asignaturaId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tipo: e.target.value }),
+    });
+    mostrarToast('Tipo actualizado', 'success');
+    await cargarCabeceraYResumen();
+  } catch (err) {
+    mostrarToast('Error al actualizar el tipo: ' + err.message, 'danger');
+  }
 });
 
 document.getElementById('btn-quitar-eleccion').addEventListener('click', async () => {

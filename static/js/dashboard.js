@@ -247,8 +247,11 @@ function renderContinuar(documentos) {
     const paginaTxt = d.total_paginas ? `Página ${d.ultima_pagina_vista || 1} de ${d.total_paginas}` : `Página ${d.ultima_pagina_vista || 1}`;
     const porcentaje = Math.round((d.porcentaje_leido || 0) * 100);
     return `
-      <a class="ds-card ds-card--interactive dashboard-continuar-card" href="${url}">
-        <p class="ds-h3" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(d.nombre_archivo)}</p>
+      <a class="ds-card ds-card--interactive dashboard-continuar-card" href="${url}" data-id="${d.id}">
+        <button type="button" class="dashboard-continuar-btn-quitar" data-tooltip="Quitar de la lista" aria-label="Quitar de la lista">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-x"></use></svg>
+        </button>
+        <p class="ds-h3" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:24px">${escapeHtml(d.nombre_archivo)}</p>
         <p class="ds-caption" style="margin-top:4px">${paginaTxt} · ${tiempoRelativo(d.fecha_ultima_apertura)}</p>
         <div class="ds-progress dashboard-progreso-mini" style="margin-top:8px">
           <div class="ds-progress-bar" style="width:${porcentaje}%"></div>
@@ -257,6 +260,22 @@ function renderContinuar(documentos) {
     `;
   }).join('');
   reanimar(lista);
+
+  lista.querySelectorAll('.dashboard-continuar-btn-quitar').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const tarjeta = btn.closest('.dashboard-continuar-card');
+      const id = tarjeta.dataset.id;
+      try {
+        await api(`/documentos/${id}/quitar-continuar`, { method: 'POST' });
+        await cargarContinuar();
+        mostrarToast('Quitado de "Continúa donde lo dejaste"', 'success');
+      } catch (err) {
+        mostrarToast('Error al quitar: ' + err.message, 'danger');
+      }
+    });
+  });
 }
 
 async function cargarContinuar() {

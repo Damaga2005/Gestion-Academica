@@ -189,6 +189,18 @@ def actualizar_progreso(documento_id):
     return jsonify(documento.to_dict())
 
 
+@documentos_bp.post("/documentos/<int:documento_id>/quitar-continuar")
+def quitar_de_continuar(documento_id):
+    """Desfija un documento de "Continúa donde lo dejaste" (Dashboard) sin perder su
+    progreso de lectura: solo borra fecha_ultima_apertura (lo que usa /documentos/
+    recientes para decidir qué mostrar), así que si se reabre el PDF sigue
+    retomando por la misma página/zoom/scroll de antes."""
+    documento = Documento.query.get_or_404(documento_id)
+    documento.fecha_ultima_apertura = None
+    db.session.commit()
+    return "", 204
+
+
 @documentos_bp.delete("/documentos/<int:documento_id>")
 def borrar_documento(documento_id):
     documento = Documento.query.get_or_404(documento_id)
