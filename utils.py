@@ -20,6 +20,18 @@ _FIRMAS_EJECUTABLES = (
 )
 
 
+def normalizar_busqueda(texto):
+    """Pliega a minúsculas e ignora acentos/diacríticos (NFKD + descarte de
+    combinantes), para que "exámen" encuentre "examen" y viceversa. Compartido por
+    el indexado de PDFs (que precalcula y guarda el resultado, ver
+    PaginaTexto.contenido_normalizado) y el buscador global (que lo aplica al
+    término de búsqueda, mucho más corto)."""
+    if not texto:
+        return ""
+    descompuesto = unicodedata.normalize("NFKD", texto)
+    return "".join(c for c in descompuesto if not unicodedata.combining(c)).lower()
+
+
 def slugify(texto, max_len=60):
     texto = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("ascii")
     texto = texto.lower()

@@ -23,7 +23,7 @@ def crear_espacio():
     if "tarea_evento_id" not in data:
         raise ApiError("'tarea_evento_id' es obligatorio")
 
-    tarea = TareaEvento.query.get(data["tarea_evento_id"])
+    tarea = db.session.get(TareaEvento, data["tarea_evento_id"])
     if tarea is None:
         raise ApiError(f"no existe ninguna tarea/evento con id '{data['tarea_evento_id']}'", 404)
 
@@ -126,7 +126,7 @@ def anadir_documento_a_espacio(espacio_id):
         if campo not in data:
             raise ApiError(f"'{campo}' es obligatorio")
 
-    documento = Documento.query.get(data["documento_id"])
+    documento = db.session.get(Documento, data["documento_id"])
     if documento is None:
         raise ApiError(f"no existe ningún documento con id '{data['documento_id']}'", 404)
 

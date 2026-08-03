@@ -51,7 +51,7 @@ def _resolver_documento_opcional(data, asignatura_id):
     valor = data.get("documento_id")
     if valor is None:
         return None
-    documento = Documento.query.get(valor)
+    documento = db.session.get(Documento, valor)
     if documento is None:
         raise ApiError(f"no existe ningún documento con id '{valor}'", 404)
     if asignatura_id is not None and documento.asignatura_id != asignatura_id:

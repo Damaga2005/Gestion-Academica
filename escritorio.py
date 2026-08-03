@@ -21,6 +21,69 @@ HOST = os.environ.get("GREELEC_HOST", "127.0.0.1")
 PUERTO = int(os.environ.get("GREELEC_PORT", "5000"))
 ICONO = os.path.join(RESOURCE_DIR, "icono.ico")
 
+# Entradas del menú contextual de WebView2 que se conservan al hacer clic derecho.
+# El resto (recargar, atrás/adelante, ver código fuente, inspeccionar, compartir…)
+# se quita porque son opciones de navegador, no de una app de escritorio.
+MENU_CONTEXTUAL_PERMITIDO = {
+    "copy",
+    "cut",
+    "paste",
+    "selectAll",
+    "undo",
+    "redo",
+    "print",
+    "copyImage",
+    "saveImageAs",
+    "copyLinkLocation",
+}
+
+
+def _filtrar_menu_contextual(sender, args):
+    try:
+        items = args.MenuItems
+        for i in range(items.Count - 1, -1, -1):
+            if items[i].Name not in MENU_CONTEXTUAL_PERMITIDO:
+                items.RemoveAt(i)
+    except Exception:  # pragma: no cover - depende del runtime de WebView2
+        # Si el filtrado falla se deja el menú completo: es preferible un menú
+        # con opciones de más que quedarse sin "Copiar".
+        pass
+
+
+def _habilitar_copiar_y_atajos():
+    """Reactiva el menú contextual y los atajos de teclado del navegador.
+
+    pywebview solo los habilita cuando se arranca en modo debug
+    (`AreDefaultContextMenusEnabled`/`AreBrowserAcceleratorKeysEnabled` se
+    asignan desde `_state['debug']`), así que en la app empaquetada el clic
+    derecho no ofrece "Copiar" y Ctrl+F / Ctrl+P / Ctrl+±  no hacen nada. Eso
+    deja el visor de PDF sin la forma habitual de copiar texto, buscar o
+    imprimir, que es justo lo que se espera de un lector de PDF.
+
+    Se parchea `on_webview_ready` en vez de tocar los ajustes desde fuera
+    porque ese método se ejecuta en el hilo de la interfaz y justo después de
+    que pywebview aplique su propia configuración.
+    """
+    try:
+        from webview.platforms import edgechromium
+    except Exception as exc:  # pragma: no cover - backend no disponible
+        print(f"No se pudo ajustar WebView2 (se sigue sin el cambio): {exc}")
+        return
+
+    original = edgechromium.EdgeChrome.on_webview_ready
+
+    def on_webview_ready(self, sender, args):
+        original(self, sender, args)
+        try:
+            core = sender.CoreWebView2
+            core.Settings.AreDefaultContextMenusEnabled = True
+            core.Settings.AreBrowserAcceleratorKeysEnabled = True
+            core.ContextMenuRequested += _filtrar_menu_contextual
+        except Exception as exc:  # pragma: no cover - depende del runtime
+            print(f"No se pudo ajustar WebView2 (se sigue sin el cambio): {exc}")
+
+    edgechromium.EdgeChrome.on_webview_ready = on_webview_ready
+
 
 def _iniciar_servidor(app):
     # debug=False y use_reloader=False: el reloader de Flask (que relanza el
@@ -54,12 +117,21 @@ def main():
     if not _esperar_servidor():
         raise RuntimeError("El servidor Flask no arrancó a tiempo")
 
+    _habilitar_copiar_y_atajos()
+
+    # ALLOW_DOWNLOADS: sin esto el botón de guardar/descargar del visor de PDF
+    # no hace nada.
+    webview.settings["ALLOW_DOWNLOADS"] = True
+
     webview.create_window(
         "Gestión Académica GREELEC",
         f"http://127.0.0.1:{PUERTO}/vista/dashboard",
         width=1280,
         height=850,
         min_size=(900, 600),
+        # Por defecto pywebview inyecta `body { user-select: none }`, que impide
+        # seleccionar (y por tanto copiar) cualquier texto de la aplicación.
+        text_select=True,
     )
     webview.start(icon=ICONO if os.path.isfile(ICONO) else None)
 

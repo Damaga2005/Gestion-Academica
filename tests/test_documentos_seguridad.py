@@ -128,6 +128,49 @@ def test_nombre_original_se_guarda_para_auditoria(client_abierto, asignatura_id)
     assert datos["nombre_original"] == "Mi Apunte Con Espacios.pdf"
 
 
+# --- Renombrar documento (PUT /documentos/<id>): sin path traversal ni cambio de tipo ---
+
+def test_renombrar_documento_sanea_intento_de_path_traversal(client_abierto, asignatura_id):
+    subida = _subir(client_abierto, asignatura_id, [_archivo("apuntes.pdf", b"%PDF-1.4 contenido real")])
+    doc_id = subida.get_json()[0]["id"]
+
+    r = client_abierto.put(f"/documentos/{doc_id}", json={"nombre_archivo": "../../../../fuera.pdf"})
+    assert r.status_code == 200
+    nombre = r.get_json()["nombre_archivo"]
+    assert ".." not in nombre and "/" not in nombre and "\\" not in nombre
+
+    with client_abierto.application.app_context():
+        from utils import ruta_absoluta
+        from models import Documento
+        documento = Documento.query.get(doc_id)
+        # El archivo sigue dentro de DOCUMENTOS_DIR: ruta_absoluta no lanza excepción.
+        ruta_absoluta(documento.ruta_local)
+
+
+def test_renombrar_documento_rechaza_cambio_de_extension(client_abierto, asignatura_id):
+    subida = _subir(client_abierto, asignatura_id, [_archivo("apuntes.pdf", b"%PDF-1.4 contenido real")])
+    doc_id = subida.get_json()[0]["id"]
+
+    r = client_abierto.put(f"/documentos/{doc_id}", json={"nombre_archivo": "apuntes.txt"})
+    assert r.status_code == 400
+
+
+def test_renombrar_documento_valido_actualiza_metadato_y_archivo_fisico(client_abierto, asignatura_id):
+    subida = _subir(client_abierto, asignatura_id, [_archivo("apuntes.pdf", b"%PDF-1.4 contenido real")])
+    doc_id = subida.get_json()[0]["id"]
+
+    r = client_abierto.put(f"/documentos/{doc_id}", json={"nombre_archivo": "apuntes_renombrado.pdf"})
+    assert r.status_code == 200
+    assert r.get_json()["nombre_archivo"] == "apuntes_renombrado.pdf"
+
+    with client_abierto.application.app_context():
+        from utils import ruta_absoluta
+        from models import Documento
+        documento = Documento.query.get(doc_id)
+        assert os.path.basename(documento.ruta_local) == "apuntes_renombrado.pdf"
+        assert os.path.exists(ruta_absoluta(documento.ruta_local))
+
+
 def test_nombre_original_con_ruta_se_reduce_al_basename(client_abierto, asignatura_id):
     archivo = (io.BytesIO(b"%PDF-1.4 x"), "../../etc/passwd.pdf")
     r = _subir(client_abierto, asignatura_id, [archivo])

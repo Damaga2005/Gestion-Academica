@@ -39,6 +39,12 @@ See https://github.com/adobe-type-tools/cmap-resources
     <link rel="stylesheet" href="viewer.css" />
 
   <script src="viewer.mjs" type="module"></script>
+
+  <!-- GREELEC: capa propia de anotaciones (resaltar/subrayar/tachar/nota) y barra
+       de selección con "Copiar". Es lo único añadido a pdf.js; si algún día se
+       actualiza el vendor, hay que volver a poner estas dos líneas. -->
+  <link rel="stylesheet" href="/static/css/pdf-anotaciones.css" />
+  <script src="/static/js/pdf-anotaciones.js" defer></script>
   </head>
 
   <body tabindex="0">

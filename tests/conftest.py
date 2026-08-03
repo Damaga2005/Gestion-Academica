@@ -78,3 +78,18 @@ def app_csrf(tmp_path, monkeypatch):
 @pytest.fixture
 def client_csrf(app_csrf):
     return app_csrf.test_client()
+
+
+@pytest.fixture
+def app_csrf_bloqueada(tmp_path, monkeypatch):
+    """App con GREELEC_LOCK_KEY definida y la protección CSRF global realmente
+    activa: para probar que un cliente de API de verdad (clave correcta) queda
+    exento de CSRF aunque el navegador no lo esté."""
+    app = _crear_app(tmp_path, monkeypatch, lock_key="clave-test-1234", seed=True)
+    app.config["WTF_CSRF_ENABLED"] = True
+    return app
+
+
+@pytest.fixture
+def client_csrf_bloqueada(app_csrf_bloqueada):
+    return app_csrf_bloqueada.test_client()

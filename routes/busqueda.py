@@ -1,12 +1,12 @@
-import unicodedata
-
 from flask import Blueprint, request, jsonify
+from sqlalchemy.orm import joinedload
 
 from models import (
     Asignatura, Documento, PaginaTexto, Profesor, TareaEvento,
     BusquedaFavorito, BusquedaReciente, db,
 )
 from routes.errors import ApiError
+from utils import normalizar_busqueda
 
 busqueda_bp = Blueprint("busqueda", __name__)
 
@@ -14,19 +14,23 @@ LIMITE_POR_GRUPO = 25
 LIMITE_RECIENTES = 15
 TIPOS_TAREA_EXAMEN = ("examen", "examen_parcial", "examen_final", "recuperacion")
 
-
-def _normalizar(texto):
-    """Pliega a minúsculas e ignora acentos/diacríticos, para que "exámen" encuentre
-    "examen" y viceversa (Python, no LIKE de SQLite, que solo pliega ASCII de forma fiable)."""
-    if not texto:
-        return ""
-    descompuesto = unicodedata.normalize("NFKD", texto)
-    sin_acentos = "".join(c for c in descompuesto if not unicodedata.combining(c))
-    return sin_acentos.lower()
+_normalizar = normalizar_busqueda
 
 
 def _contiene(texto, termino):
     return bool(texto) and _normalizar(termino) in _normalizar(texto)
+
+
+def _pagina_coincide(pagina, termino):
+    """Como _contiene(), pero reutiliza PaginaTexto.contenido_normalizado en vez de
+    volver a normalizar el contenido completo del PDF en cada búsqueda (con miles de
+    páginas indexadas, eso era el cuello de botella real de /buscar). Si una fila
+    todavía no tiene el campo precalculado (datos de antes de esta migración), cae
+    en normalizar al vuelo para no perder resultados."""
+    normalizado = pagina.contenido_normalizado
+    if normalizado is None:
+        normalizado = _normalizar(pagina.contenido)
+    return _normalizar(termino) in normalizado
 
 
 def _fragmento(texto, termino, radio=60):
@@ -63,7 +67,7 @@ def buscar():
                     "url": f"/vista/asignaturas/{a.id}",
                 })
 
-        for p in Profesor.query.all():
+        for p in Profesor.query.options(joinedload(Profesor.asignatura)).all():
             if _contiene(p.nombre, termino):
                 resultados["profesores"].append({
                     "id": p.id,
@@ -91,8 +95,8 @@ def buscar():
             else:
                 resultados["tareas"].append(item)
 
-        for p in PaginaTexto.query.all():
-            if _contiene(p.contenido, termino):
+        for p in PaginaTexto.query.options(joinedload(PaginaTexto.documento)).all():
+            if _pagina_coincide(p, termino):
                 doc = p.documento
                 resultados["paginas_pdf"].append({
                     "documento_id": doc.id,
@@ -103,8 +107,16 @@ def buscar():
                     "url": f"/vista/asignaturas/{doc.asignatura_id}?doc={doc.id}&pagina={p.numero_pagina}",
                 })
 
+    # Una sola pasada por todos los documentos: sirve tanto para las coincidencias
+    # por nombre/etiqueta (bloque de abajo) como para las etiquetas sugeridas (si
+    # hay término), evitando cargar la tabla completa dos veces.
+    todos_documentos = Documento.query.all()
+
+    if termino:
         etiquetas_vistas = set()
-        for d in Documento.query.filter(Documento.etiquetas.isnot(None)).all():
+        for d in todos_documentos:
+            if not d.etiquetas:
+                continue
             for et in d.lista_etiquetas():
                 if et.lower() in etiquetas_vistas:
                     continue
@@ -112,7 +124,7 @@ def buscar():
                     etiquetas_vistas.add(et.lower())
                     resultados["etiquetas"].append({"etiqueta": et, "url": f"/buscar?etiqueta={et}"})
 
-    for d in Documento.query.all():
+    for d in todos_documentos:
         etiquetas_doc = [e.lower() for e in d.lista_etiquetas()]
         if etiqueta and etiqueta.lower() not in etiquetas_doc:
             continue

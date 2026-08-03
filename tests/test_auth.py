@@ -175,21 +175,39 @@ def test_csrf_cabecera_bearer_vacia_no_exime(client_csrf):
     assert r.status_code == 403
 
 
-def test_csrf_cabecera_bearer_bien_formada_exime(client_csrf):
-    """Sin GREELEC_LOCK_KEY configurada la clave nunca será 'correcta', pero eso lo
-    decide la autenticación normal DESPUÉS: a efectos de CSRF, una cabecera Bearer
-    bien formada basta para tratar la petición como no-navegador y eximirla."""
+def test_csrf_cabecera_bearer_sin_lock_configurada_no_exime(client_csrf):
+    """Sin GREELEC_LOCK_KEY configurada no existe ningún "cliente de API" real que
+    distinguir: una cabecera Bearer/X-GREELEC-KEY con cualquier valor no debe
+    eximir de CSRF, o cualquiera podría saltarse la protección global mandando
+    una cabecera cualquiera contra la app abierta."""
     r = client_csrf.post(
         "/tareas", json={"titulo": "x", "tipo": "tarea_general"},
         headers={"Authorization": "Bearer algo-no-vacio"},
     )
-    assert r.status_code != 403
+    assert r.status_code == 403
 
     r = client_csrf.post(
         "/tareas", json={"titulo": "x", "tipo": "tarea_general"},
         headers={"X-GREELEC-KEY": "algo-no-vacio"},
     )
+    assert r.status_code == 403
+
+
+def test_csrf_cliente_api_con_clave_correcta_exime(client_csrf_bloqueada):
+    """Con GREELEC_LOCK_KEY configurada, un cliente de API que manda la clave
+    correcta sí debe quedar exento de CSRF (esa cabecera ya es autenticación real).
+    Una clave incorrecta no exime: cae en la autenticación normal y devuelve 401."""
+    r = client_csrf_bloqueada.post(
+        "/tareas", json={"titulo": "x", "tipo": "tarea_general"},
+        headers={"Authorization": f"Bearer {CLAVE}"},
+    )
     assert r.status_code != 403
+
+    r = client_csrf_bloqueada.post(
+        "/tareas", json={"titulo": "x", "tipo": "tarea_general"},
+        headers={"X-GREELEC-KEY": "incorrecta"},
+    )
+    assert r.status_code == 401
 
 
 def test_csrf_no_se_aplica_a_unlock_ni_lock(client_bloqueado):

@@ -102,18 +102,16 @@ def _validar_csrf(token_recibido):
 
 
 def _tiene_cabecera_api_valida(peticion):
-    """Cierto solo si la petición trae una cabecera de autenticación de API bien
-    formada y no vacía (Bearer <token> o X-GREELEC-KEY: <clave>). Una cabecera
-    ausente, vacía o mal formada NO exime de CSRF: si la clave es correcta o no lo
-    decide después la lógica de autenticación normal, esto solo distingue "esto
-    parece un cliente de API" de "esto es un navegador"."""
-    auth_header = peticion.headers.get("Authorization", "")
-    if auth_header:
-        return auth_header.startswith("Bearer ") and bool(auth_header[len("Bearer "):].strip())
-    x_key = peticion.headers.get("X-GREELEC-KEY")
-    if x_key is not None:
-        return bool(x_key.strip())
-    return False
+    """Cierto solo si la petición se autentica de verdad como cliente de API: hace
+    falta que GREELEC_LOCK_KEY esté configurada Y que la clave recibida (Bearer o
+    X-GREELEC-KEY) sea la correcta. No basta con que la cabecera tenga la forma
+    esperada: con el bloqueo desactivado (estado por defecto de la app) esa
+    cabecera no significa nada, y aceptarla como señal de "cliente de API" eximía
+    de CSRF a cualquiera que mandara un Authorization cualquiera."""
+    if not lock_key_configurada():
+        return False
+    clave = _extraer_clave_api(peticion)
+    return clave is not None and _clave_correcta(clave)
 
 
 def _token_csrf_de_la_peticion():

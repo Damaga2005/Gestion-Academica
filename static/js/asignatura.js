@@ -1661,7 +1661,81 @@ function activarPestana(documentoId) {
     e.tabBtn.classList.toggle('is-activa', id === documentoId);
   }
   cargarMarcadores(documentoId);
+  cargarAnotaciones(documentoId);
 }
+
+const ETIQUETA_ANOTACION = {
+  resaltado: 'Resaltado',
+  subrayado: 'Subrayado',
+  tachado: 'Tachado',
+  nota: 'Nota',
+};
+
+async function cargarAnotaciones(documentoId) {
+  const lista = document.getElementById('lista-anotaciones');
+  if (!lista) return;
+  const anotaciones = await api(`/documentos/${documentoId}/anotaciones`);
+  lista.innerHTML = '';
+  if (anotaciones.length === 0) {
+    lista.innerHTML = '<li class="sin-elementos">Sin anotaciones todavía</li>';
+    return;
+  }
+  for (const a of anotaciones) {
+    const resumen = (a.texto || ETIQUETA_ANOTACION[a.tipo] || '').trim();
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <a href="#" class="ir-anotacion">
+        <span class="anotacion-color"></span>
+        <span class="anotacion-texto">Pág. ${a.numero_pagina} — ${escapeHtml(resumen)}</span>
+      </a>
+      <button type="button" class="fila-icono-btn btn-copiar-anotacion" title="Copiar el texto">
+        <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-copy"></use></svg>
+      </button>
+      <button type="button" class="fila-icono-btn btn-borrar-anotacion" title="Eliminar la anotación">
+        <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
+      </button>
+    `;
+    li.querySelector('.anotacion-color').style.backgroundColor = a.color;
+    li.querySelector('.ir-anotacion').addEventListener('click', (e) => {
+      e.preventDefault();
+      irAPagina(a.numero_pagina);
+    });
+    li.querySelector('.btn-copiar-anotacion').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(a.texto || '');
+        mostrarToast('Texto copiado', 'success');
+      } catch (err) {
+        mostrarToast('No se pudo copiar el texto', 'error');
+      }
+    });
+    li.querySelector('.btn-borrar-anotacion').addEventListener('click', async () => {
+      if (!confirm('¿Eliminar esta anotación? Esta acción no se puede deshacer.')) return;
+      await api(`/anotaciones/${a.id}`, { method: 'DELETE' });
+      await cargarAnotaciones(documentoId);
+      recargarAnotacionesEnVisor(documentoId);
+      mostrarToast('Anotación eliminada', 'success');
+    });
+    lista.appendChild(li);
+  }
+}
+
+/** Tras borrar desde el panel hay que refrescar también el iframe, que mantiene
+ *  su propia copia de las anotaciones ya pintadas. */
+function recargarAnotacionesEnVisor(documentoId) {
+  const entrada = pestanasPdf.get(documentoId);
+  if (!entrada) return;
+  try {
+    entrada.iframe.contentWindow.greelecAnotaciones.recargar();
+  } catch (err) { /* el iframe aún no está listo: se repintará al abrirlo */ }
+}
+
+// El visor (dentro del iframe) avisa cuando se crea, edita o borra una anotación.
+window.addEventListener('message', (evento) => {
+  if (evento.origin !== window.location.origin) return;
+  const datos = evento.data || {};
+  if (datos.tipo !== 'greelec:anotaciones-cambiadas') return;
+  if (datos.documentoId === documentoAbiertoId) cargarAnotaciones(documentoAbiertoId);
+});
 
 function cerrarVisorPdf() {
   if (documentoAbiertoId) cerrarPestana(documentoAbiertoId);
@@ -1771,8 +1845,16 @@ async function cargarMarcadores(documentoId) {
   }
 }
 
+/** iframe de la pestaña activa del visor. Antes se buscaba por id 'pdf-frame',
+ *  que dejó de existir al pasar el visor a varias pestañas. */
+function iframeActivo() {
+  const entrada = pestanasPdf.get(documentoAbiertoId);
+  return entrada ? entrada.iframe : null;
+}
+
 function irAPagina(pagina) {
-  const iframe = document.getElementById('pdf-frame');
+  const iframe = iframeActivo();
+  if (!iframe) return;
   try {
     iframe.contentWindow.PDFViewerApplication.page = pagina;
   } catch (err) {
@@ -1788,7 +1870,7 @@ document.getElementById('btn-anadir-marcador').addEventListener('click', async (
   }
   let paginaActual = 1;
   try {
-    paginaActual = document.getElementById('pdf-frame').contentWindow.PDFViewerApplication.page;
+    paginaActual = iframeActivo().contentWindow.PDFViewerApplication.page;
   } catch (err) { /* si no se puede leer, se usa la página 1 por defecto */ }
 
   const titulo = prompt('Nota para este marcador (opcional):', '') || null;

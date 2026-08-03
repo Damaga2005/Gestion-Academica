@@ -1,0 +1,238 @@
+/* Capa de anotaciones del visor de PDF (resaltar / subrayar / tachar / nota).
+   Se carga DENTRO del iframe de pdf.js, no en la app: aquí no existen las
+   variables del design system, por eso los colores van literales.
+
+   Nota sobre CSP: viewer.html declara `style-src 'self'`, así que no se pueden
+   usar atributos style="" en el HTML. El JS solo toca `elemento.style.*`
+   (CSSOM), que sí está permitido. */
+
+/* --- Refuerzo de la selección de texto -------------------------------------
+   El contenedor de escritorio (pywebview) inyecta `user-select: none` en la
+   página que lo aloja. No debería llegar hasta este iframe, pero forzarlo aquí
+   es barato y garantiza que seleccionar texto funcione siempre. */
+.textLayer,
+.textLayer span,
+.textLayer br {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+.textLayer span {
+  cursor: text;
+}
+
+/* --- Capa de anotaciones ---------------------------------------------------
+   pointer-events: none en toda la capa a propósito: si los resaltados
+   capturasen el ratón no se podría seleccionar el texto que hay debajo. Los
+   clics sobre una anotación se resuelven por geometría en JS. */
+.ga-anot-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.ga-anot {
+  position: absolute;
+  border-radius: 2px;
+}
+
+.ga-anot--resaltado {
+  background-color: var(--ga-color);
+  mix-blend-mode: multiply;
+  opacity: 0.45;
+}
+
+/* Subrayado y tachado se dibujan con un hijo cuya altura va en % de la línea,
+   así el grosor acompaña al zoom en lugar de quedarse fijo en 1px. */
+.ga-anot--subrayado .ga-anot-barra,
+.ga-anot--tachado .ga-anot-barra {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 7%;
+  min-height: 1px;
+  background-color: var(--ga-color);
+  border-radius: 1px;
+}
+.ga-anot--subrayado .ga-anot-barra {
+  bottom: 4%;
+}
+.ga-anot--tachado .ga-anot-barra {
+  top: 46%;
+}
+
+.ga-anot--nota {
+  background-color: var(--ga-color);
+  mix-blend-mode: multiply;
+  opacity: 0.45;
+}
+
+.ga-anot.is-activa {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 1px;
+}
+
+/* Marca de "tiene comentario", como el globito de Acrobat. */
+.ga-anot-globo {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin-left: 2px;
+  border-radius: 50%;
+  background: #1d4ed8;
+  color: #fff;
+  font: 700 10px/14px system-ui, sans-serif;
+  text-align: center;
+}
+
+/* --- Barra flotante al seleccionar texto ---------------------------------- */
+.ga-barra {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 8px;
+  background: #2b2b2b;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 35%);
+  font: 13px/1 system-ui, "Segoe UI", sans-serif;
+  color: #fff;
+  white-space: nowrap;
+}
+.ga-barra[hidden] {
+  display: none;
+}
+
+.ga-barra button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.ga-barra button:hover {
+  background: rgb(255 255 255 / 14%);
+}
+
+.ga-barra-sep {
+  width: 1px;
+  height: 20px;
+  margin: 0 3px;
+  background: rgb(255 255 255 / 22%);
+}
+
+.ga-muestra {
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  border: 1px solid rgb(0 0 0 / 25%);
+}
+
+.ga-colores {
+  display: flex;
+  gap: 4px;
+  padding: 0 4px;
+}
+.ga-color {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+.ga-color.is-activo {
+  border-color: #fff;
+}
+
+/* --- Ficha de una anotación ya creada ------------------------------------- */
+.ga-ficha {
+  position: fixed;
+  z-index: 1001;
+  width: 250px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #d4d4d4;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 22%);
+  font: 13px/1.4 system-ui, "Segoe UI", sans-serif;
+  color: #1a1a1a;
+}
+.ga-ficha[hidden] {
+  display: none;
+}
+.ga-ficha-texto {
+  max-height: 78px;
+  overflow: auto;
+  margin-bottom: 8px;
+  color: #444;
+  font-style: italic;
+}
+.ga-ficha textarea {
+  width: 100%;
+  min-height: 54px;
+  resize: vertical;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font: inherit;
+}
+.ga-ficha-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+.ga-ficha-fila .ga-colores {
+  padding: 0;
+}
+.ga-ficha .ga-color {
+  border-color: transparent;
+}
+.ga-ficha .ga-color.is-activo {
+  border-color: #1a1a1a;
+}
+.ga-ficha-acciones {
+  display: flex;
+  gap: 6px;
+}
+.ga-ficha-acciones button {
+  padding: 5px 9px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background: #f5f5f5;
+  font: inherit;
+  cursor: pointer;
+}
+.ga-ficha-acciones button:hover {
+  background: #ececec;
+}
+.ga-ficha-borrar {
+  color: #b91c1c;
+}
+
+/* Aviso breve ("Texto copiado"), en la esquina del visor. */
+.ga-aviso {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  z-index: 1002;
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 82%);
+  color: #fff;
+  font: 13px/1 system-ui, sans-serif;
+  pointer-events: none;
+}
+.ga-aviso[hidden] {
+  display: none;
+}

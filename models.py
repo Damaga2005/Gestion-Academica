@@ -1,3 +1,4 @@
+import json
 import re
 from datetime import date, datetime, timedelta
 
@@ -571,15 +572,15 @@ class Documento(db.Model):
     __tablename__ = "documento"
 
     id = db.Column(db.Integer, primary_key=True)
-    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=False)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=False, index=True)
     # Legado (previo a la Fase de Organización jerárquica): nullable a partir de esa
     # fase porque los documentos nuevos ya no se clasifican por Apartado, sino por
     # categoria + grupo_documento_id. Se conserva sin más en los documentos migrados.
-    apartado_id = db.Column(db.Integer, db.ForeignKey("apartado.id"), nullable=True)
+    apartado_id = db.Column(db.Integer, db.ForeignKey("apartado.id"), nullable=True, index=True)
     # Categoría fija (obligatoria en la práctica; nullable a nivel de columna solo
     # para permitir el backfill de la migración sin bloquear filas ya existentes).
     categoria = db.Column(db.String(20), nullable=True)
-    grupo_documento_id = db.Column(db.Integer, db.ForeignKey("grupo_documento.id"), nullable=True)
+    grupo_documento_id = db.Column(db.Integer, db.ForeignKey("grupo_documento.id"), nullable=True, index=True)
     nombre_archivo = db.Column(db.String(255), nullable=False)
     # Nombre tal cual lo envió el navegador al subir el archivo, solo para auditoría/
     # trazabilidad: nunca se usa para construir una ruta en disco (eso es nombre_archivo
@@ -598,7 +599,7 @@ class Documento(db.Model):
     modo_visualizacion = db.Column(db.String(20), nullable=True)  # scrollMode/spreadMode de pdf.js
     scroll_vertical = db.Column(db.Float, nullable=True)
     fecha_primera_apertura = db.Column(db.DateTime, nullable=True)
-    fecha_ultima_apertura = db.Column(db.DateTime, nullable=True)
+    fecha_ultima_apertura = db.Column(db.DateTime, nullable=True, index=True)
     tiempo_total_lectura_segundos = db.Column(db.Integer, nullable=False, default=0)
     numero_sesiones = db.Column(db.Integer, nullable=False, default=0)
 
@@ -610,6 +611,10 @@ class Documento(db.Model):
     )
     paginas_texto = db.relationship(
         "PaginaTexto", back_populates="documento", cascade="all, delete-orphan"
+    )
+    anotaciones = db.relationship(
+        "AnotacionPdf", back_populates="documento", cascade="all, delete-orphan",
+        order_by="AnotacionPdf.numero_pagina",
     )
 
     EXTENSIONES_IMAGEN = (".jpg", ".jpeg", ".png", ".gif", ".webp")
@@ -688,6 +693,68 @@ class Marcador(db.Model):
         }
 
 
+TIPOS_ANOTACION_PDF = ("resaltado", "subrayado", "tachado", "nota")
+
+
+class AnotacionPdf(db.Model):
+    """Resaltados/subrayados/tachados sobre el texto de un PDF, al estilo de los
+    lectores habituales (Acrobat, Preview, el visor de Chrome…).
+
+    La geometría se guarda en `rects` como JSON: una lista de rectángulos
+    [x, y, ancho, alto] con valores 0..1 relativos al tamaño de la página. Al ser
+    relativos, la anotación se coloca igual con cualquier zoom o tamaño de ventana
+    sin recalcular nada, que es justo lo que hace falta para que no "baile" al
+    hacer zoom. Se guardan varios rectángulos porque una selección que abarca
+    varias líneas necesita una barra por línea."""
+
+    __tablename__ = "anotacion_pdf"
+
+    id = db.Column(db.Integer, primary_key=True)
+    documento_id = db.Column(
+        db.Integer, db.ForeignKey("documento.id"), nullable=False, index=True
+    )
+    numero_pagina = db.Column(db.Integer, nullable=False)
+    tipo = db.Column(db.String(20), nullable=False, default="resaltado")
+    color = db.Column(db.String(20), nullable=False, default="#ffd400")
+    # Texto seleccionado, para poder listar las anotaciones y copiarlas sin
+    # tener que volver a abrir la página del PDF.
+    texto = db.Column(db.Text, nullable=True)
+    comentario = db.Column(db.Text, nullable=True)
+    rects = db.Column(db.Text, nullable=False)
+    fecha_creacion = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    documento = db.relationship("Documento", back_populates="anotaciones")
+
+    @validates("tipo")
+    def validar_tipo(self, key, value):
+        if value not in TIPOS_ANOTACION_PDF:
+            raise ValueError(f"tipo debe ser uno de {TIPOS_ANOTACION_PDF}")
+        return value
+
+    @validates("numero_pagina")
+    def validar_pagina(self, key, value):
+        if value is None or int(value) < 1:
+            raise ValueError("numero_pagina debe ser mayor o igual que 1")
+        return value
+
+    def to_dict(self):
+        try:
+            rects = json.loads(self.rects)
+        except (TypeError, ValueError):
+            rects = []
+        return {
+            "id": self.id,
+            "documento_id": self.documento_id,
+            "numero_pagina": self.numero_pagina,
+            "tipo": self.tipo,
+            "color": self.color,
+            "texto": self.texto,
+            "comentario": self.comentario,
+            "rects": rects,
+            "fecha_creacion": self.fecha_creacion.isoformat(),
+        }
+
+
 class TareaEvento(db.Model):
     """Entidad del calendario académico: exámenes, entregas, tutorías y eventos
     puntuales. Los campos de horario/aula/etc. son opcionales porque las tareas
@@ -695,12 +762,12 @@ class TareaEvento(db.Model):
     __tablename__ = "tarea_evento"
 
     id = db.Column(db.Integer, primary_key=True)
-    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=True)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=True, index=True)
     # Integración con el visor PDF (spec V2.2_VISOR_PDF, "integración con asignaturas y
     # exámenes"): enlaza el examen/tarea a un documento concreto de la asignatura.
     documento_id = db.Column(db.Integer, db.ForeignKey("documento.id"), nullable=True)
     titulo = db.Column(db.String(200), nullable=False)
-    fecha = db.Column(db.Date, nullable=False)
+    fecha = db.Column(db.Date, nullable=False, index=True)
     tipo = db.Column(db.String(20), nullable=False, default="tarea_general")
     completada = db.Column(db.Boolean, nullable=False, default=False)
     prioridad = db.Column(db.String(10), nullable=False, default="media")
@@ -917,7 +984,7 @@ class HorarioClase(db.Model):
     __tablename__ = "horario_clase"
 
     id = db.Column(db.Integer, primary_key=True)
-    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=False)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=False, index=True)
     tipo = db.Column(db.String(20), nullable=False)
     dia_semana = db.Column(db.Integer, nullable=False)  # 1=lunes ... 5=viernes
     hora_inicio = db.Column(db.Time, nullable=False)
@@ -1090,11 +1157,11 @@ class Concepto(db.Model):
     __tablename__ = "concepto"
 
     id = db.Column(db.Integer, primary_key=True)
-    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=False)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=False, index=True)
     nombre = db.Column(db.String(200), nullable=False)
     estado = db.Column(db.String(20), nullable=False, default="no_visto")
     ultima_revision = db.Column(db.Date, nullable=True)
-    proxima_revision = db.Column(db.Date, nullable=False, default=date.today)
+    proxima_revision = db.Column(db.Date, nullable=False, default=date.today, index=True)
 
     asignatura = db.relationship("Asignatura", back_populates="conceptos")
 
@@ -1129,9 +1196,17 @@ class PaginaTexto(db.Model):
     __tablename__ = "pagina_texto"
 
     id = db.Column(db.Integer, primary_key=True)
-    documento_id = db.Column(db.Integer, db.ForeignKey("documento.id"), nullable=False)
+    documento_id = db.Column(db.Integer, db.ForeignKey("documento.id"), nullable=False, index=True)
     numero_pagina = db.Column(db.Integer, nullable=False)
     contenido = db.Column(db.Text, nullable=False)
+    # Versión de `contenido` ya normalizada (sin acentos, en minúsculas), calculada una
+    # sola vez al indexar en vez de en cada búsqueda: con miles de páginas indexadas,
+    # renormalizar todo el texto en cada petición de /buscar era el cuello de botella
+    # real (~1s en un catálogo de tamaño medio). Mismo índice de caracteres que
+    # `contenido` (la normalización NFKD + descarte de combinantes conserva la
+    # posición de cada carácter base), así _fragmento() sigue pudiendo recortar el
+    # contenido original con el índice hallado en la versión normalizada.
+    contenido_normalizado = db.Column(db.Text, nullable=True)
 
     documento = db.relationship("Documento", back_populates="paginas_texto")
 
@@ -1191,7 +1266,7 @@ class Profesor(db.Model):
     __tablename__ = "profesor"
 
     id = db.Column(db.Integer, primary_key=True)
-    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=False)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id"), nullable=False, index=True)
     nombre = db.Column(db.String(200), nullable=False)
     rol = db.Column(db.String(100), nullable=True)  # texto libre: "Responsable", "Grupos 11, 12", "Laboratorio"...
     correo = db.Column(db.String(200), nullable=True)

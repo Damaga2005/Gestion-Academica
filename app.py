@@ -15,6 +15,7 @@ from routes.apartados import apartados_bp
 from routes.grupos_documento import grupos_documento_bp
 from routes.documentos import documentos_bp
 from routes.marcadores import marcadores_bp
+from routes.anotaciones import anotaciones_bp
 from routes.tareas import tareas_bp
 from routes.espacios_estudio import espacios_estudio_bp
 from routes.conflictos import conflictos_bp
@@ -86,6 +87,7 @@ def create_app(auto_seed=True, database_uri=None, documentos_dir=None):
     app.register_blueprint(grupos_documento_bp)
     app.register_blueprint(documentos_bp)
     app.register_blueprint(marcadores_bp)
+    app.register_blueprint(anotaciones_bp)
     app.register_blueprint(tareas_bp)
     app.register_blueprint(espacios_estudio_bp)
     app.register_blueprint(conflictos_bp)

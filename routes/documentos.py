@@ -3,12 +3,13 @@ import shutil
 from datetime import datetime
 
 from flask import Blueprint, request, jsonify, send_from_directory, current_app
+from werkzeug.utils import secure_filename
 
 from models import db, Documento, Apartado, Asignatura, PaginaTexto
 from routes.errors import ApiError
 from utils import (
     carpeta_apartado, ruta_absoluta, nombre_archivo_disponible,
-    validar_archivo_subido, validar_cantidad_archivos,
+    validar_archivo_subido, validar_cantidad_archivos, normalizar_busqueda,
 )
 
 documentos_bp = Blueprint("documentos", __name__)
@@ -24,7 +25,10 @@ def _indexar_texto_pdf(documento):
         for numero, pagina in enumerate(lector.pages, start=1):
             texto = (pagina.extract_text() or "").strip()
             if texto:
-                db.session.add(PaginaTexto(documento_id=documento.id, numero_pagina=numero, contenido=texto))
+                db.session.add(PaginaTexto(
+                    documento_id=documento.id, numero_pagina=numero, contenido=texto,
+                    contenido_normalizado=normalizar_busqueda(texto),
+                ))
     except Exception as err:
         current_app.logger.warning(f"No se pudo indexar el texto de '{documento.nombre_archivo}': {err}")
 
@@ -103,7 +107,9 @@ def obtener_documento(documento_id):
 def servir_archivo(documento_id):
     documento = Documento.query.get_or_404(documento_id)
     carpeta, nombre = os.path.split(ruta_absoluta(documento.ruta_local))
-    return send_from_directory(carpeta, nombre, as_attachment=False)
+    respuesta = send_from_directory(carpeta, nombre, as_attachment=False)
+    respuesta.headers["X-Content-Type-Options"] = "nosniff"
+    return respuesta
 
 
 @documentos_bp.put("/documentos/<int:documento_id>")
@@ -111,12 +117,39 @@ def actualizar_documento(documento_id):
     documento = Documento.query.get_or_404(documento_id)
     data = request.get_json(silent=True) or {}
     if "nombre_archivo" in data:
-        documento.nombre_archivo = data["nombre_archivo"]
+        _renombrar_documento(documento, data["nombre_archivo"])
     if "etiquetas" in data:
         valores = data["etiquetas"] or []
         documento.etiquetas = ", ".join(str(v).strip() for v in valores if str(v).strip()) or None
     db.session.commit()
     return jsonify(documento.to_dict())
+
+
+def _renombrar_documento(documento, nombre_propuesto):
+    """Sanea el nombre nuevo con secure_filename (nunca se usa en crudo como
+    componente de ruta), exige que conserve la extensión del archivo real (para no
+    desincronizar es_pdf()/es_imagen() del contenido real ni colar una extensión no
+    permitida) y renombra también el archivo físico en disco, no solo el metadato."""
+    nombre_saneado = secure_filename(os.path.basename(nombre_propuesto or ""))
+    if not nombre_saneado:
+        raise ApiError("nombre de archivo no válido")
+
+    extension_actual = documento.nombre_archivo.rsplit(".", 1)[-1].lower() if "." in documento.nombre_archivo else ""
+    extension_nueva = nombre_saneado.rsplit(".", 1)[-1].lower() if "." in nombre_saneado else ""
+    if extension_nueva != extension_actual:
+        raise ApiError("no se puede cambiar la extensión del archivo al renombrarlo")
+
+    if nombre_saneado == documento.nombre_archivo:
+        return
+
+    origen = ruta_absoluta(documento.ruta_local)
+    carpeta = os.path.dirname(origen)
+    nombre_final = nombre_archivo_disponible(carpeta, nombre_saneado)
+    destino = os.path.join(carpeta, nombre_final)
+    if os.path.exists(origen):
+        shutil.move(origen, destino)
+    documento.nombre_archivo = nombre_final
+    documento.ruta_local = os.path.relpath(destino, current_app.config["DOCUMENTOS_DIR"]).replace(os.sep, "/")
 
 
 @documentos_bp.get("/documentos/etiquetas")
@@ -149,6 +182,7 @@ def documentos_recientes():
     """Documentos con progreso de lectura guardado, para la tarjeta "Continúa donde lo
     dejaste" del Dashboard (spec Continua_donde_lo_dejaste, punto 3)."""
     limite = request.args.get("limite", default=5, type=int)
+    limite = max(1, min(limite, 100))
     documentos = (
         Documento.query.filter(Documento.fecha_ultima_apertura.isnot(None))
         .order_by(Documento.fecha_ultima_apertura.desc())

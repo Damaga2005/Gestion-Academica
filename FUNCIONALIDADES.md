@@ -74,6 +74,14 @@ teoría y laboratorio los imparte gente distinta:
 - **Visor integrado de PDF** (pdf.js) con recuerdo de la última página vista.
 - **Marcadores** dentro de un PDF (número de página + título), para volver
   rápido a un punto concreto.
+- **Selección y copia de texto** en el PDF como en cualquier lector: al
+  seleccionar (o al hacer clic derecho sobre la selección) aparece una barra
+  flotante con **Copiar**, **Resaltar**, **Subrayar**, **Tachar** y **Nota**.
+- **Anotaciones persistentes** por documento, en seis colores. Se guardan con
+  coordenadas relativas a la página, así que se mantienen en su sitio con
+  cualquier zoom. Al pulsar sobre una se puede cambiarle el color, escribirle un
+  comentario, copiar su texto o eliminarla. El panel lateral del visor lista
+  todas las anotaciones del documento con acceso directo a su página.
 - **Etiquetas libres** por documento, con selector que sugiere las ya usadas.
 - **Indexado de texto de PDFs**: al subir un PDF se extrae el texto de cada
   página (si es texto real, no un escaneado) para que el buscador global
