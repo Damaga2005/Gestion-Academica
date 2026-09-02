@@ -68,13 +68,20 @@ async function cargarAsignaturasSelects() {
   ASIGNATURAS = await api('/asignaturas');
   ASIGNATURAS.sort((a, b) => nombreConSiglas(a).localeCompare(nombreConSiglas(b)));
 
-  const opciones = ASIGNATURAS
-    .filter((a) => a.estado !== 'no_elegida')
+  const elegibles = ASIGNATURAS.filter((a) => a.estado !== 'no_elegida');
+  const opciones = elegibles
     .map((a) => `<option value="${a.id}">${escapeHtml(nombreConSiglas(a))}</option>`)
     .join('');
-
   document.getElementById('filtro-asignatura').innerHTML = '<option value="">Todas</option>' + opciones;
-  document.getElementById('tarea-asignatura').innerHTML = '<option value="">(ninguna)</option>' + opciones;
+
+  // En el formulario de nueva tarea, las asignaturas que se están cursando van primero:
+  // es lo más probable que se quiera elegir al crear una tarea/examen.
+  const cursando = elegibles.filter((a) => a.estado === 'cursando');
+  const resto = elegibles.filter((a) => a.estado !== 'cursando');
+  const opcionesForm = [...cursando, ...resto]
+    .map((a) => `<option value="${a.id}">${escapeHtml(nombreConSiglas(a))}</option>`)
+    .join('');
+  document.getElementById('tarea-asignatura').innerHTML = '<option value="">(ninguna)</option>' + opcionesForm;
 }
 
 // --- Documento vinculado (spec V2.2_VISOR_PDF, "integración con asignaturas y exámenes") ---
@@ -154,6 +161,16 @@ function chipTarea(tarea, { detallado = false } = {}) {
     opciones.push({ etiqueta: 'Eliminar', peligroso: true, accion: () => confirmarBorrarTarea(tarea) });
     abrirMenuContextual(opciones, { x: e.clientX, y: e.clientY, anclaEl: item });
   });
+
+  const checkCompletada = document.createElement('input');
+  checkCompletada.type = 'checkbox';
+  checkCompletada.className = 'tarea-item-check';
+  checkCompletada.checked = tarea.completada;
+  checkCompletada.title = tarea.completada ? 'Marcar como pendiente' : 'Marcar como completada';
+  checkCompletada.setAttribute('aria-label', checkCompletada.title);
+  checkCompletada.addEventListener('click', (e) => e.stopPropagation());
+  checkCompletada.addEventListener('change', () => alternarCompletada(tarea));
+  item.appendChild(checkCompletada);
 
   const cuerpo = document.createElement('div');
   cuerpo.className = 'tarea-item-cuerpo';

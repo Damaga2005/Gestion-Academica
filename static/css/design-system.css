@@ -292,6 +292,37 @@ html, body {
   box-shadow: var(--ds-shadow-focus);
 }
 
+/* Chip de filtro/selector (V2.3): componente compartido, usado en varias páginas
+   (calendario, asignaturas, detalle de asignatura), vive aquí en vez de en el CSS
+   de una sola página para no requerir esa hoja de estilos en las demás. */
+.filtro-chip {
+  min-height: 44px;
+  padding: var(--ds-space-2) var(--ds-space-4);
+  border-radius: var(--ds-radius-full);
+  border: 1px solid var(--ds-color-border);
+  background: var(--ds-color-surface-secondary);
+  color: var(--ds-color-text-secondary);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-caption);
+  font-weight: var(--ds-font-weight-button);
+  cursor: pointer;
+  transition-property: background-color, border-color, color;
+  transition-duration: var(--ds-duration-fast);
+  transition-timing-function: var(--ds-ease-standard);
+}
+.filtro-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--ds-shadow-focus);
+}
+.filtro-chip:hover {
+  color: var(--ds-color-text-primary);
+}
+.filtro-chip.is-active {
+  background: var(--ds-color-accent);
+  border-color: var(--ds-color-accent);
+  color: var(--ds-color-on-accent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ds-scope *, .ds-scope *::before, .ds-scope *::after {
     animation-duration: 0.01ms !important;

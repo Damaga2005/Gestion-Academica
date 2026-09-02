@@ -141,6 +141,14 @@
   text-decoration: line-through;
 }
 
+.tarea-item-check {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  cursor: pointer;
+}
+
 .btn-borrar-tarea {
   position: absolute;
   top: 2px;
