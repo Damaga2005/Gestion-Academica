@@ -78,6 +78,7 @@
                 Ver en calendario
               </a>
               {% include "_buscador_global.html" %}
+              {% include "_notificaciones_bell.html" %}
               <button id="toggle-tema" class="ds-btn ds-btn-secondary detalle-btn-icono" type="button" data-tooltip="Cambiar tema" aria-label="Cambiar tema"></button>
               <button id="btn-borrar-espacio" class="ds-btn ds-btn-secondary detalle-btn-icono" type="button" data-tooltip="Eliminar espacio de estudio" aria-label="Eliminar espacio de estudio">
                 <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-x"></use></svg>
@@ -215,6 +216,7 @@
   <script src="{{ url_for('static', filename='js/tema.js') }}"></script>
   <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
   <script src="{{ url_for('static', filename='js/buscador_global.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/notificaciones-bell.js') }}"></script>
   <script>
     const ESPACIO_ID = {{ espacio_id }};
   </script>

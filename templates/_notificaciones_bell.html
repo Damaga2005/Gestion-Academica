@@ -1,0 +1,15 @@
+{# Campanita de avisos (spec "qué mejorar": /notificaciones ya calculaba tareas
+   atrasadas/inminentes y asignaturas cursando sin actividad, pero solo se veía una
+   vez por arranque como toast nativo de Windows). Mismo patrón que
+   _buscador_global.html: sin layout base compartido, así que esto evita duplicar el
+   marcado en cada plantilla. Comportamiento en notificaciones-bell.js. #}
+<div class="nb-wrap">
+  <button id="btn-notificaciones-bell" class="ds-btn ds-btn-secondary" type="button" title="Avisos" aria-label="Avisos">
+    <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-bell"></use></svg>
+    <span id="nb-badge" class="nb-badge" hidden>0</span>
+  </button>
+  <div id="nb-dropdown" class="nb-dropdown" hidden>
+    <p class="ds-caption nb-dropdown-titulo">Avisos</p>
+    <div id="nb-lista"></div>
+  </div>
+</div>

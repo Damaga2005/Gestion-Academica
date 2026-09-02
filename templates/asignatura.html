@@ -88,6 +88,7 @@
               </div>
               <button id="btn-quitar-eleccion" class="ds-btn ds-btn-secondary" type="button" style="display:none">Quitar elección</button>
               {% include "_buscador_global.html" %}
+              {% include "_notificaciones_bell.html" %}
               <button id="toggle-tema" class="ds-btn ds-btn-secondary detalle-btn-icono" type="button" data-tooltip="Cambiar tema" aria-label="Cambiar tema"></button>
               <button id="btn-borrar-asignatura" class="ds-btn ds-btn-secondary detalle-btn-icono" type="button" title="Eliminar asignatura">
                 <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-trash-2"></use></svg>
@@ -449,6 +450,7 @@
   <script src="{{ url_for('static', filename='js/tema.js') }}"></script>
   <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
   <script src="{{ url_for('static', filename='js/buscador_global.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/notificaciones-bell.js') }}"></script>
   <script src="{{ url_for('static', filename='js/asignatura.js') }}"></script>
 </body>
 </html>
