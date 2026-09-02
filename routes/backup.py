@@ -30,25 +30,45 @@ def _ruta_db_actual():
     return uri.replace("sqlite:///", "", 1)
 
 
+def _volcar_zip_backup(zf):
+    """Añade la BD SQLite + toda la carpeta documentos/ al ZipFile ya abierto `zf`.
+    Compartido entre construir_zip_backup() (en memoria, para la descarga por HTTP)
+    y escribir_zip_backup() (directo a disco, para el backup automático — con
+    documentos/ real pudiendo pesar más de 1 GB, duplicarlo en memoria de más no
+    tiene sentido si de todas formas se va a escribir a un archivo)."""
+    ruta_db = _ruta_db_actual()
+    if os.path.isfile(ruta_db):
+        zf.write(ruta_db, arcname="academico.db")
+
+    documentos_dir = current_app.config["DOCUMENTOS_DIR"]
+    for raiz, _dirs, archivos in os.walk(documentos_dir):
+        for nombre in archivos:
+            ruta_absoluta = os.path.join(raiz, nombre)
+            ruta_relativa = os.path.join("documentos", os.path.relpath(ruta_absoluta, documentos_dir))
+            zf.write(ruta_absoluta, arcname=ruta_relativa)
+
+
+def construir_zip_backup():
+    """BD SQLite + toda la carpeta documentos/ en un .zip en memoria (para send_file)."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        _volcar_zip_backup(zf)
+    buffer.seek(0)
+    return buffer
+
+
+def escribir_zip_backup(destino):
+    """Igual que construir_zip_backup() pero escribiendo directo a un archivo en
+    disco, para el backup automático de escritorio.py."""
+    with zipfile.ZipFile(destino, "w", zipfile.ZIP_DEFLATED) as zf:
+        _volcar_zip_backup(zf)
+
+
 @backup_bp.get("/backup/exportar")
 def exportar_backup():
     """Genera un .zip con la BD SQLite + toda la carpeta documentos/, con fecha en el nombre."""
     nombre_zip = f"backup_{datetime.now().strftime('%Y-%m-%d')}.zip"
-
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        ruta_db = _ruta_db_actual()
-        if os.path.isfile(ruta_db):
-            zf.write(ruta_db, arcname="academico.db")
-
-        documentos_dir = current_app.config["DOCUMENTOS_DIR"]
-        for raiz, _dirs, archivos in os.walk(documentos_dir):
-            for nombre in archivos:
-                ruta_absoluta = os.path.join(raiz, nombre)
-                ruta_relativa = os.path.join("documentos", os.path.relpath(ruta_absoluta, documentos_dir))
-                zf.write(ruta_absoluta, arcname=ruta_relativa)
-
-    buffer.seek(0)
+    buffer = construir_zip_backup()
     return send_file(buffer, mimetype="application/zip", as_attachment=True, download_name=nombre_zip)
 
 

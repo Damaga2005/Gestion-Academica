@@ -11,11 +11,12 @@ import os
 import socket
 import threading
 import time
+from datetime import datetime
 
 import webview
 
 from app import create_app
-from config import RESOURCE_DIR
+from config import RESOURCE_DIR, DATA_DIR
 
 HOST = os.environ.get("GREELEC_HOST", "127.0.0.1")
 PUERTO = int(os.environ.get("GREELEC_PORT", "5000"))
@@ -124,6 +125,45 @@ def _avisar_notificaciones_urgentes(app):
         print(f"No se pudo mostrar el aviso nativo: {exc}")
 
 
+def _backup_automatico(app):
+    """Backup automático al arrancar (spec 'qué mejorar': antes solo había export
+    manual desde Configuración, y toda la nota real vive en 2 .db locales sin más
+    copia). Se hace ANTES de que la sesión de hoy toque nada, así el backup más
+    reciente es siempre un punto de vuelta atrás bueno si algo se corrompe hoy.
+    Guarda los últimos 10 y borra el resto; si falla, no debe impedir arrancar la app.
+
+    Se lanza en un hilo daemon (ver main()) y escribe directo a disco: con
+    documentos/ real pesando más de 1 GB, generarlo en memoria y bloquear la
+    ventana hasta que termine sería una espera larga e injustificada al abrir la
+    app. Tampoco se repite si ya hay uno de hoy (evita re-comprimir 1+ GB cada vez
+    que se abre la app varias veces el mismo día).
+    """
+    try:
+        carpeta = os.path.join(DATA_DIR, "backups")
+        os.makedirs(carpeta, exist_ok=True)
+
+        hoy = datetime.now().strftime("%Y-%m-%d")
+        if any(p.startswith(f"auto_{hoy}") for p in os.listdir(carpeta)):
+            return
+
+        nombre = f"auto_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.zip"
+        destino = os.path.join(carpeta, nombre)
+        with app.app_context():
+            from routes.backup import escribir_zip_backup
+            escribir_zip_backup(destino)
+
+        # ponytail: número fijo de backups a conservar, sin configuración de cuántos
+        # ni de cada cuánto tiempo — si algún día hace falta afinarlo, ese es el upgrade.
+        antiguos = sorted(p for p in os.listdir(carpeta) if p.startswith("auto_") and p.endswith(".zip"))
+        for viejo in antiguos[:-10]:
+            try:
+                os.remove(os.path.join(carpeta, viejo))
+            except OSError:
+                pass
+    except Exception as exc:  # pragma: no cover - nunca debe impedir arrancar la app
+        print(f"No se pudo generar el backup automático: {exc}")
+
+
 def _iniciar_servidor(app):
     # debug=False y use_reloader=False: el reloader de Flask (que relanza el
     # proceso) no es compatible con ejecutar Flask dentro de un hilo de la app.
@@ -157,6 +197,9 @@ def main():
         raise RuntimeError("El servidor Flask no arrancó a tiempo")
 
     _habilitar_copiar_y_atajos()
+    # En un hilo aparte: con documentos/ real pesando más de 1 GB, esperar a que
+    # termine de comprimir bloquearía la apertura de la ventana varios minutos.
+    threading.Thread(target=_backup_automatico, args=(app,), daemon=True).start()
     _avisar_notificaciones_urgentes(app)
 
     # ALLOW_DOWNLOADS: sin esto el botón de guardar/descargar del visor de PDF
