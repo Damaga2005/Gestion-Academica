@@ -157,6 +157,27 @@
             </div>
           </section>
 
+          <section class="dashboard-section">
+            <h2 class="ds-h2">Repaso y Hitos</h2>
+            <div class="dashboard-widgets-grid">
+              <a class="ds-card ds-card--interactive dashboard-widget-repaso" href="{{ url_for('vistas.vista_repaso') }}">
+                <p class="ds-caption">Repaso</p>
+                <div class="dashboard-progreso-stat">
+                  <span class="ds-display" id="repaso-hoy-count">—</span>
+                  <span class="ds-body ds-text-secondary">conceptos pendientes hoy</span>
+                </div>
+              </a>
+              <div class="ds-card dashboard-widget-hitos">
+                <p class="ds-caption">Hitos</p>
+                <ul class="dashboard-hitos-list" id="hitos-list"></ul>
+                <form id="form-nuevo-hito" class="dashboard-hitos-form">
+                  <input type="text" id="nuevo-hito-nombre" class="ds-input" placeholder="Nuevo hito..." maxlength="200" required>
+                  <button type="submit" class="ds-btn ds-btn-secondary" aria-label="Añadir hito">+</button>
+                </form>
+              </div>
+            </div>
+          </section>
+
           <section class="dashboard-section" id="seccion-continuar" style="display:none">
             <h2 class="ds-h2">📖 Continúa donde lo dejaste</h2>
             <div class="dashboard-grid" id="continuar-grid"></div>

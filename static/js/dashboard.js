@@ -309,8 +309,83 @@ async function cargarMediaCurso() {
   }
 }
 
+// --- Repaso pendiente hoy + Hitos (spec "qué se puede mejorar": ambas existían en el
+// backend pero sin ningún acceso desde la UI; este widget las hace visibles) ---
+
+async function cargarRepasoHoy() {
+  try {
+    const conceptos = await api('/repaso-hoy');
+    document.getElementById('repaso-hoy-count').textContent = conceptos.length;
+  } catch (err) {
+    document.getElementById('repaso-hoy-count').textContent = '—';
+  }
+}
+
+const ETIQUETA_ESTADO_HITO = { pendiente: '⚪', en_progreso: '🟡', hecho: '🟢' };
+const SIGUIENTE_ESTADO_HITO = { pendiente: 'en_progreso', en_progreso: 'hecho', hecho: 'pendiente' };
+
+let HITOS = [];
+
+function renderHitos() {
+  const lista = document.getElementById('hitos-list');
+  if (HITOS.length === 0) {
+    lista.innerHTML = '<li class="dashboard-hito-vacio ds-caption ds-text-secondary">Sin hitos todavía.</li>';
+    return;
+  }
+  lista.innerHTML = HITOS.map((h) => `
+    <li class="dashboard-hito-item${h.estado === 'hecho' ? ' completado' : ''}" data-id="${h.id}">
+      <button type="button" class="dashboard-hito-estado" title="Cambiar estado (${h.estado})">${ETIQUETA_ESTADO_HITO[h.estado]}</button>
+      <span class="dashboard-hito-nombre">${escapeHtml(h.nombre)}</span>
+      <button type="button" class="dashboard-hito-borrar" aria-label="Borrar hito">
+        <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-x"></use></svg>
+      </button>
+    </li>
+  `).join('');
+
+  lista.querySelectorAll('.dashboard-hito-estado').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = Number(btn.closest('.dashboard-hito-item').dataset.id);
+      const hito = HITOS.find((h) => h.id === id);
+      await api(`/hitos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: SIGUIENTE_ESTADO_HITO[hito.estado] }),
+      });
+      await cargarHitos();
+    });
+  });
+  lista.querySelectorAll('.dashboard-hito-borrar').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.closest('.dashboard-hito-item').dataset.id;
+      await api(`/hitos/${id}`, { method: 'DELETE' });
+      await cargarHitos();
+    });
+  });
+}
+
+async function cargarHitos() {
+  HITOS = await api('/hitos');
+  renderHitos();
+}
+
+document.getElementById('form-nuevo-hito').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const input = document.getElementById('nuevo-hito-nombre');
+  const nombre = input.value.trim();
+  if (!nombre) return;
+  await api('/hitos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombre }),
+  });
+  input.value = '';
+  await cargarHitos();
+});
+
 mostrarSaludo();
 cargarAsignaturas();
 cargarEntregas();
 cargarContinuar();
 cargarMediaCurso();
+cargarRepasoHoy();
+cargarHitos();
