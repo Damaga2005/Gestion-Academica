@@ -724,10 +724,21 @@ function renderEvaluacion(componentes) {
     mediaWrap.style.display = 'none';
   }
 
+  const calculadora = document.getElementById('evaluacion-calculadora');
   if (componentes.length === 0) {
     contenedor.innerHTML = '<p class="sin-elementos">Sin componentes de evaluación todavía.</p>';
+    calculadora.style.display = 'none';
     return;
   }
+  calculadora.style.display = '';
+  const objetivoInput = document.getElementById('evaluacion-objetivo');
+  const actualizarCalculadora = () => {
+    const objetivo = parseFloat(objetivoInput.value);
+    const resultado = calcularNotaNecesaria(componentes, Number.isNaN(objetivo) ? 5 : objetivo);
+    document.getElementById('evaluacion-calculadora-resultado').textContent = textoNotaNecesaria(resultado);
+  };
+  actualizarCalculadora();
+  objetivoInput.oninput = actualizarCalculadora;
 
   contenedor.innerHTML = componentes.map((c) => `
     <div class="detalle-fila" data-id="${c.id}">

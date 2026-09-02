@@ -24,6 +24,7 @@ a = Analysis(
         "sqlalchemy.dialects.sqlite",
         "sqlalchemy.dialects.sqlite.pysqlite",
         "clr_loader",
+        "winotify",
         "webview.platforms.winforms",
         "webview.platforms.edgechromium",
         "webview.platforms.mshtml",

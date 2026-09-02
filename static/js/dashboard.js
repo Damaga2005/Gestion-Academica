@@ -309,6 +309,88 @@ async function cargarMediaCurso() {
   }
 }
 
+// --- Esta semana: horario recurrente + tareas/exámenes de la semana en curso,
+// unificados (antes había que mirar Horario y Calendario por separado) ---
+
+const NOMBRES_DIA_SEMANA = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const ETIQUETA_TIPO_HORARIO = { teoria: 'Teoría', problemas: 'Problemas', laboratorio: 'Laboratorio', seminario: 'Seminario' };
+
+function fechaISO(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function inicioDeSemana(fecha) {
+  const d = new Date(fecha);
+  const diaSemana = (d.getDay() + 6) % 7; // lunes = 0
+  d.setDate(d.getDate() - diaSemana);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function renderSemana(dias, eventosPorDia) {
+  const grid = document.getElementById('semana-grid');
+  const hoyIso = fechaISO(new Date());
+
+  grid.innerHTML = dias.map((d, i) => {
+    const iso = fechaISO(d);
+    const eventos = (eventosPorDia[iso] || []).sort((a, b) => (a.hora || '99:99').localeCompare(b.hora || '99:99'));
+    const items = eventos.length === 0
+      ? '<p class="dashboard-semana-vacio ds-caption ds-text-secondary">—</p>'
+      : eventos.map((e) => {
+          const contenido = `
+            ${e.hora ? `<span class="dashboard-semana-hora">${e.hora}</span>` : ''}
+            <span class="dashboard-semana-texto dashboard-semana-texto--${e.tipo}">${escapeHtml(e.texto)}</span>
+          `;
+          return e.url
+            ? `<a class="dashboard-semana-item" href="${e.url}">${contenido}</a>`
+            : `<div class="dashboard-semana-item">${contenido}</div>`;
+        }).join('');
+    return `
+      <div class="dashboard-semana-dia${iso === hoyIso ? ' es-hoy' : ''}">
+        <p class="ds-caption dashboard-semana-dia-titulo">${NOMBRES_DIA_SEMANA[i]} ${d.getDate()}</p>
+        ${items}
+      </div>
+    `;
+  }).join('');
+  reanimar(grid);
+}
+
+async function cargarSemana() {
+  try {
+    const lunes = inicioDeSemana(new Date());
+    const dias = [...Array(7)].map((_, i) => { const d = new Date(lunes); d.setDate(d.getDate() + i); return d; });
+    const diasIso = dias.map(fechaISO);
+    const eventosPorDia = Object.fromEntries(diasIso.map((iso) => [iso, []]));
+
+    const horarios = await api('/horarios');
+    await Promise.all(horarios.map(async (h) => {
+      const sesiones = await api(`/horarios/${h.id}/sesiones`);
+      sesiones.filter((iso) => eventosPorDia[iso]).forEach((iso) => {
+        eventosPorDia[iso].push({
+          hora: h.hora_inicio,
+          texto: `${h.asignatura_siglas || h.asignatura_nombre} · ${ETIQUETA_TIPO_HORARIO[h.tipo] || h.tipo}`,
+          tipo: 'clase',
+          url: h.asignatura_id ? `/vista/asignaturas/${h.asignatura_id}` : null,
+        });
+      });
+    }));
+
+    const tareas = await api('/tareas?completada=false');
+    tareas.filter((t) => eventosPorDia[t.fecha]).forEach((t) => {
+      eventosPorDia[t.fecha].push({
+        hora: t.hora_inicio,
+        texto: t.titulo,
+        tipo: 'tarea',
+        url: t.asignatura_id ? `/vista/asignaturas/${t.asignatura_id}` : `/vista/calendario`,
+      });
+    });
+
+    renderSemana(dias, eventosPorDia);
+  } catch (err) {
+    mostrarToast('Error al cargar la semana: ' + err.message, 'danger');
+  }
+}
+
 // --- Repaso pendiente hoy + Hitos (spec "qué se puede mejorar": ambas existían en el
 // backend pero sin ningún acceso desde la UI; este widget las hace visibles) ---
 
@@ -387,5 +469,6 @@ cargarAsignaturas();
 cargarEntregas();
 cargarContinuar();
 cargarMediaCurso();
+cargarSemana();
 cargarRepasoHoy();
 cargarHitos();

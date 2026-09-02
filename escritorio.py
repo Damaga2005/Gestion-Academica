@@ -85,6 +85,45 @@ def _habilitar_copiar_y_atajos():
     edgechromium.EdgeChrome.on_webview_ready = on_webview_ready
 
 
+def _avisar_notificaciones_urgentes(app):
+    """Aviso nativo de Windows al arrancar: GET /notificaciones (routes/notificaciones.py)
+    ya calculaba tareas atrasadas/inminentes y asignaturas cursando sin actividad, pero
+    no había ningún sitio en la UI donde verlas. Solo se muestra un toast por arranque,
+    y solo con los avisos nivel rojo (lo urgente de verdad), para no ser spam.
+    """
+    try:
+        from winotify import Notification
+    except Exception as exc:  # pragma: no cover - opcional, no debe impedir arrancar la app
+        print(f"No se pudo cargar winotify (sin avisos nativos): {exc}")
+        return
+
+    with app.app_context():
+        from routes.notificaciones import calcular_notificaciones
+        urgentes = [n for n in calcular_notificaciones() if n["nivel"] == "rojo"]
+
+    if not urgentes:
+        return
+
+    if len(urgentes) == 1:
+        mensaje = urgentes[0]["mensaje"]
+    else:
+        mensaje = f"{len(urgentes)} avisos urgentes: " + "; ".join(n["titulo"] for n in urgentes[:3])
+
+    try:
+        Notification(
+            app_id="GestionAcademicaGREELEC",
+            title="GREELEC",
+            msg=mensaje,
+            duration="long",
+            icon=ICONO if os.path.isfile(ICONO) else "",
+        ).show()
+    except Exception as exc:
+        # ponytail: el toast nativo de Windows depende de un AUMID registrado; sin
+        # empaquetado MSIX/firma puede fallar en silencio en alguna máquina. Si eso
+        # pasa de forma consistente, el upgrade real es empaquetar con MSIX.
+        print(f"No se pudo mostrar el aviso nativo: {exc}")
+
+
 def _iniciar_servidor(app):
     # debug=False y use_reloader=False: el reloader de Flask (que relanza el
     # proceso) no es compatible con ejecutar Flask dentro de un hilo de la app.
@@ -118,6 +157,7 @@ def main():
         raise RuntimeError("El servidor Flask no arrancó a tiempo")
 
     _habilitar_copiar_y_atajos()
+    _avisar_notificaciones_urgentes(app)
 
     # ALLOW_DOWNLOADS: sin esto el botón de guardar/descargar del visor de PDF
     # no hace nada.

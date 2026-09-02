@@ -105,6 +105,59 @@
   height: 6px;
 }
 
+.dashboard-semana-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--ds-space-3);
+}
+@media (max-width: 900px) {
+  .dashboard-semana-grid {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
+}
+
+.dashboard-semana-dia {
+  min-width: 0;
+  padding: var(--ds-space-2);
+  border-radius: var(--ds-radius-sm);
+}
+.dashboard-semana-dia.es-hoy {
+  background: color-mix(in srgb, var(--ds-color-accent) 10%, transparent);
+}
+
+.dashboard-semana-dia-titulo {
+  margin-bottom: var(--ds-space-2);
+  text-transform: uppercase;
+  font-weight: var(--ds-font-weight-button);
+}
+
+.dashboard-semana-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--ds-space-1) 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.dashboard-semana-hora {
+  font-size: 0.7rem;
+  color: var(--ds-color-text-secondary);
+}
+
+.dashboard-semana-texto {
+  font-size: 0.8rem;
+  overflow-wrap: break-word;
+}
+.dashboard-semana-texto--tarea {
+  color: var(--ds-color-danger);
+  font-weight: var(--ds-font-weight-button);
+}
+
+.dashboard-semana-vacio {
+  padding: var(--ds-space-1) 0;
+}
+
 .dashboard-widgets-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));

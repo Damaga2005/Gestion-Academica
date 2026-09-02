@@ -1,0 +1,112 @@
+"""
+Tests de Notificaciones (calcular_notificaciones en routes/notificaciones.py):
+tareas atrasadas/próximas + asignaturas "cursando" sin actividad reciente. Sin
+test previo pese a construirse enteramente sobre configuración (dias_aviso_examen,
+dias_asignatura_abandonada) y aritmética de fechas.
+"""
+
+from datetime import date, datetime, timedelta
+
+import pytest
+
+
+@pytest.fixture
+def asignatura_id(client_abierto):
+    return client_abierto.get("/asignaturas").get_json()[0]["id"]
+
+
+def _crear_tarea(client, fecha, **extra):
+    r = client.post("/tareas", json={"titulo": "Tarea de prueba", "fecha": fecha.isoformat(), **extra})
+    assert r.status_code == 201
+    return r.get_json()
+
+
+# --- Tareas atrasadas / próximas ---
+
+def test_tarea_atrasada_es_nivel_rojo(client_abierto):
+    _crear_tarea(client_abierto, date.today() - timedelta(days=2))
+    notif = client_abierto.get("/notificaciones").get_json()
+    assert any(n["nivel"] == "rojo" and "atrasada" in n["mensaje"] for n in notif)
+
+
+def test_tarea_a_menos_de_3_dias_es_rojo(client_abierto):
+    _crear_tarea(client_abierto, date.today() + timedelta(days=2))
+    notif = client_abierto.get("/notificaciones").get_json()
+    assert any(n["nivel"] == "rojo" and "atrasada" not in n["mensaje"] for n in notif)
+
+
+def test_tarea_dentro_del_aviso_pero_no_inminente_es_naranja(client_abierto):
+    # default dias_aviso_examen=7: 5 días cae dentro del aviso pero no en la zona roja (<3)
+    _crear_tarea(client_abierto, date.today() + timedelta(days=5))
+    notif = client_abierto.get("/notificaciones").get_json()
+    assert any(n["nivel"] == "naranja" for n in notif)
+
+
+def test_tarea_fuera_del_plazo_de_aviso_no_aparece(client_abierto):
+    _crear_tarea(client_abierto, date.today() + timedelta(days=30))
+    notif = client_abierto.get("/notificaciones").get_json()
+    assert notif == []
+
+
+def test_tarea_completada_no_genera_aviso(client_abierto):
+    _crear_tarea(client_abierto, date.today() - timedelta(days=1), completada=True)
+    notif = client_abierto.get("/notificaciones").get_json()
+    assert notif == []
+
+
+def test_aviso_respeta_config_dias_aviso_examen(client_abierto):
+    client_abierto.put("/configuracion", json={"dias_aviso_examen": 20})
+    _crear_tarea(client_abierto, date.today() + timedelta(days=15))
+    notif = client_abierto.get("/notificaciones").get_json()
+    assert len(notif) == 1
+
+
+def test_orden_rojo_antes_que_naranja(client_abierto):
+    _crear_tarea(client_abierto, date.today() + timedelta(days=5), titulo="Naranja")
+    _crear_tarea(client_abierto, date.today() + timedelta(days=1), titulo="Roja")
+    niveles = [n["nivel"] for n in client_abierto.get("/notificaciones").get_json()]
+    assert niveles.index("rojo") < niveles.index("naranja")
+
+
+# --- Asignatura "cursando" sin actividad reciente ---
+
+def _marcar_cursando_con_actividad(app, asignatura_id, hace_dias):
+    """Simula una asignatura cursando con notas editadas hace X días: la API siempre
+    pone notas_actualizado_en=ahora, así que la fecha pasada se fuerza directo en BD."""
+    with app.app_context():
+        from models import db, Asignatura
+        a = db.session.get(Asignatura, asignatura_id)
+        a.estado = "cursando"
+        a.notas = "algo"
+        a.notas_actualizado_en = datetime.utcnow() - timedelta(days=hace_dias)
+        db.session.commit()
+
+
+def test_asignatura_cursando_inactiva_genera_aviso_gris(app_abierta, client_abierto, asignatura_id):
+    _marcar_cursando_con_actividad(app_abierta, asignatura_id, hace_dias=20)  # > default 14
+    notif = client_abierto.get("/notificaciones").get_json()
+    assert any(n["tipo"] == "asignatura_inactiva" and n["nivel"] == "gris" for n in notif)
+
+
+def test_asignatura_cursando_con_actividad_reciente_no_avisa(app_abierta, client_abierto, asignatura_id):
+    _marcar_cursando_con_actividad(app_abierta, asignatura_id, hace_dias=1)
+    notif = client_abierto.get("/notificaciones").get_json()
+    assert not any(n["tipo"] == "asignatura_inactiva" for n in notif)
+
+
+def test_asignatura_cursando_sin_actividad_previa_no_avisa(client_abierto, asignatura_id):
+    # cursando pero sin notas ni documentos nunca registrados: no hay fecha base para
+    # medir "inactivo desde cuándo", así que calcular_notificaciones la deja fuera.
+    client_abierto.put(f"/asignaturas/{asignatura_id}", json={"estado": "cursando"})
+    notif = client_abierto.get("/notificaciones").get_json()
+    assert not any(n["tipo"] == "asignatura_inactiva" for n in notif)
+
+
+def test_asignatura_no_cursando_nunca_avisa_por_inactividad(app_abierta, client_abierto, asignatura_id):
+    with app_abierta.app_context():
+        from models import db, Asignatura
+        a = db.session.get(Asignatura, asignatura_id)
+        a.estado = "pendiente"
+        db.session.commit()
+    notif = client_abierto.get("/notificaciones").get_json()
+    assert not any(n["tipo"] == "asignatura_inactiva" for n in notif)
