@@ -1,0 +1,50 @@
+.me-cuenta-atras-card {
+  text-align: center;
+  padding: var(--ds-space-8) var(--ds-space-6);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-color-surface-secondary);
+  margin-bottom: var(--ds-space-6);
+}
+.me-cuenta-atras-card.es-hoy {
+  background: color-mix(in srgb, var(--ds-color-danger) 15%, var(--ds-color-surface-secondary));
+}
+
+.me-dias {
+  font-size: 2.5rem;
+  font-weight: var(--ds-font-weight-bold, 700);
+  margin: 0 0 var(--ds-space-2);
+}
+.me-cuenta-atras-card.es-hoy .me-dias {
+  color: var(--ds-color-danger);
+}
+
+.me-datos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--ds-space-4);
+  margin-bottom: var(--ds-space-6);
+}
+
+.me-dato {
+  text-align: center;
+}
+
+.me-doc-fila {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-3) var(--ds-space-1);
+  border-bottom: 1px solid var(--ds-color-border);
+}
+.me-doc-fila:last-child { border-bottom: none; }
+.me-doc-fila.es-leido .me-doc-fila-nombre {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.me-doc-fila-nombre {
+  color: var(--ds-color-text-primary);
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+.me-doc-fila-nombre:hover { text-decoration: underline; }

@@ -869,6 +869,13 @@ class EspacioEstudio(db.Model):
             "nombre": self.nombre,
             "fecha": self.tarea_evento.fecha.isoformat() if self.tarea_evento else None,
             "dias_restantes": (self.tarea_evento.fecha - date.today()).days if self.tarea_evento else None,
+            # Para "Modo examen" (pantalla del día del examen, sin ir a buscarlo al
+            # calendario): mismos datos que TareaEvento.to_dict(), leídos de la
+            # relación ya cargada, sin otra consulta.
+            "hora_inicio": self.tarea_evento.hora_inicio.strftime("%H:%M") if self.tarea_evento and self.tarea_evento.hora_inicio else None,
+            "hora_fin": self.tarea_evento.hora_fin.strftime("%H:%M") if self.tarea_evento and self.tarea_evento.hora_fin else None,
+            "aula": self.tarea_evento.aula if self.tarea_evento else None,
+            "ubicacion": self.tarea_evento.ubicacion if self.tarea_evento else None,
             "asignatura_id": asignatura.id if asignatura else None,
             "asignatura_nombre": asignatura.nombre if asignatura else None,
             "asignatura_siglas": asignatura.siglas if asignatura else None,

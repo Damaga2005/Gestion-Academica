@@ -77,6 +77,9 @@
                 <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-calendar"></use></svg>
                 Ver en calendario
               </a>
+              <a class="ds-btn ds-btn-secondary" href="{{ url_for('vistas.vista_modo_examen', espacio_id=espacio_id) }}">
+                🎯 Modo examen
+              </a>
               {% include "_buscador_global.html" %}
               {% include "_notificaciones_bell.html" %}
               <button id="toggle-tema" class="ds-btn ds-btn-secondary detalle-btn-icono" type="button" data-tooltip="Cambiar tema" aria-label="Cambiar tema"></button>

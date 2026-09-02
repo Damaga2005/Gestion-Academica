@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="es" data-theme="{{ tema_actual }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title id="titulo-pagina">Modo examen · GREELEC</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/buscador_global.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/modo-examen.css') }}">
+</head>
+<body>
+  <a class="ds-skip-link" href="#contenido">Saltar al contenido</a>
+  <div class="ds-scope">
+    <div class="ds-shell">
+      <aside class="ds-sidebar">
+        <ul class="ds-sidebar-nav">
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.dashboard') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-layout-dashboard"></use></svg>
+              Resumen
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.index') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-graduation-cap"></use></svg>
+              Asignaturas
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_calendario') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-calendar"></use></svg>
+              Calendario
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_horario') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-history"></use></svg>
+              Horario
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_repaso') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-check"></use></svg>
+              Repaso
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link is-active" href="{{ url_for('vistas.vista_espacios_estudio') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-open"></use></svg>
+              Espacios de Estudio
+            </a>
+          </li>
+          <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_ajustes') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-settings"></use></svg>
+              Configuración
+            </a>
+          </li>
+        </ul>
+      </aside>
+
+      <main class="ds-shell-main">
+        <div class="ds-shell-content" id="contenido">
+          <a class="detalle-volver" id="me-volver" href="#">
+            <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-arrow-left"></use></svg>
+            Volver al Espacio de Estudio
+          </a>
+
+          <header class="ds-page-header">
+            <div>
+              <h1 class="ds-h1 ds-page-header-title">🎯 Modo examen</h1>
+              <p class="ds-body ds-text-secondary" id="me-asignatura">Cargando…</p>
+            </div>
+            <div class="ds-page-header-actions">
+              {% include "_buscador_global.html" %}
+              {% include "_notificaciones_bell.html" %}
+              <button id="toggle-tema" class="ds-btn ds-btn-secondary" type="button" data-tooltip="Cambiar tema" aria-label="Cambiar tema"></button>
+            </div>
+          </header>
+
+          <section class="me-cuenta-atras-card" id="me-cuenta-atras-card">
+            <p class="me-dias" id="me-dias">—</p>
+            <p class="ds-body" id="me-fecha"></p>
+          </section>
+
+          <section class="me-datos-grid" id="me-datos-grid">
+            <div class="ds-card me-dato">
+              <p class="ds-caption">Hora</p>
+              <p class="ds-h2" id="me-hora">—</p>
+            </div>
+            <div class="ds-card me-dato">
+              <p class="ds-caption">Aula</p>
+              <p class="ds-h2" id="me-aula">—</p>
+            </div>
+            <div class="ds-card me-dato">
+              <p class="ds-caption">Ubicación</p>
+              <p class="ds-h2" id="me-ubicacion">—</p>
+            </div>
+          </section>
+
+          <section class="ds-card">
+            <h2 class="ds-h2 detalle-bloque-titulo">⭐ Material importante</h2>
+            <div id="me-lista-destacados"></div>
+          </section>
+
+          <section class="ds-card">
+            <h2 class="ds-h2 detalle-bloque-titulo">✅ Tareas</h2>
+            <div id="me-lista-objetivos"></div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/tooltip.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/tema.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/buscador_global.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/notificaciones-bell.js') }}"></script>
+  <script>window.ESPACIO_ID = {{ espacio_id }};</script>
+  <script src="{{ url_for('static', filename='js/modo-examen.js') }}"></script>
+</body>
+</html>

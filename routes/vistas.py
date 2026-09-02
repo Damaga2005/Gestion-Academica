@@ -67,6 +67,17 @@ def vista_espacio_estudio_detalle(espacio_id):
     return render_template("espacio_estudio_detalle.html", espacio_id=espacio_id)
 
 
+@vistas_bp.get("/vista/modo-examen/<int:espacio_id>")
+def vista_modo_examen(espacio_id):
+    """Pantalla del día del examen (spec 'qué construimos, que no exista'): aula,
+    hora y el material ⭐ destacado del Espacio de Estudio, todo junto y sin el
+    resto de secciones (documentos sin destacar, formularios de añadir, etc.)."""
+    from models import EspacioEstudio
+
+    EspacioEstudio.query.get_or_404(espacio_id)
+    return render_template("modo_examen.html", espacio_id=espacio_id)
+
+
 @vistas_bp.get("/vista/ajustes")
 def vista_ajustes():
     return render_template(
