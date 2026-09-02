@@ -54,7 +54,7 @@ INTERVALO_DIAS_CONCEPTO = {"no_visto": 0, "flojo": 3, "dominado": 18}
 # los documentos se referencian, nunca se copian ni se mueven de su ubicación original.
 # "Material importante" no es una sección propia: es una vista filtrada de las
 # referencias con destacado=True (ver EspacioEstudioDocumento).
-SECCIONES_ESPACIO_ESTUDIO = ("examenes_anteriores", "teoria", "ejercicios")
+SECCIONES_ESPACIO_ESTUDIO = ("examenes_anteriores", "teoria", "ejercicios", "laboratorio")
 # Tipos de entidad indexables por la búsqueda global (V2.1): identifican qué modelo/tabla
 # referencia entidad_id en BusquedaFavorito/BusquedaReciente, ya que ambas tablas son
 # genéricas y no tienen una FK real a cada tabla posible.

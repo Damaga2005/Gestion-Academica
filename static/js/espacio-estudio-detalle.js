@@ -23,8 +23,10 @@ function escapeHtml(texto) {
   return div.innerHTML;
 }
 
-const SECCIONES = ['examenes_anteriores', 'teoria', 'ejercicios'];
-const ETIQUETA_SECCION = { examenes_anteriores: 'Exámenes de años anteriores', teoria: 'Teoría', ejercicios: 'Ejercicios' };
+const SECCIONES = ['examenes_anteriores', 'teoria', 'ejercicios', 'laboratorio'];
+const ETIQUETA_SECCION = {
+  examenes_anteriores: 'Exámenes de años anteriores', teoria: 'Teoría', ejercicios: 'Ejercicios', laboratorio: 'Laboratorio',
+};
 
 let ESPACIO = null;
 let seccionParaAnadir = null;
