@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from sqlalchemy.orm import joinedload
 
 from models import (
-    Asignatura, Documento, PaginaTexto, Profesor, TareaEvento,
+    Asignatura, Concepto, Documento, Hito, PaginaTexto, Profesor, TareaEvento,
     BusquedaFavorito, BusquedaReciente, db,
 )
 from routes.errors import ApiError
@@ -53,6 +53,7 @@ def buscar():
     resultados = {
         "asignaturas": [], "profesores": [], "documentos": [], "paginas_pdf": [],
         "notas": [], "tareas": [], "examenes": [], "eventos": [], "etiquetas": [],
+        "hitos": [], "conceptos": [],
     }
 
     if termino:
@@ -94,6 +95,22 @@ def buscar():
                 resultados["eventos"].append(item)
             else:
                 resultados["tareas"].append(item)
+
+        for h in Hito.query.all():
+            if _contiene(h.nombre, termino):
+                resultados["hitos"].append({
+                    "id": h.id, "nombre": h.nombre, "estado": h.estado, "url": "/vista/dashboard",
+                })
+
+        for c in Concepto.query.options(joinedload(Concepto.asignatura)).all():
+            if _contiene(c.nombre, termino):
+                resultados["conceptos"].append({
+                    "id": c.id,
+                    "nombre": c.nombre,
+                    "asignatura_id": c.asignatura_id,
+                    "asignatura_nombre": c.asignatura.nombre if c.asignatura else None,
+                    "url": f"/vista/asignaturas/{c.asignatura_id}",
+                })
 
         for p in PaginaTexto.query.options(joinedload(PaginaTexto.documento)).all():
             if _pagina_coincide(p, termino):

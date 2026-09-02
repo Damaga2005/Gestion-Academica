@@ -34,6 +34,10 @@
       render: (n) => ({ titulo: n.asignatura_nombre, fragmento: n.fragmento, url: n.url }) },
     { clave: 'etiquetas', titulo: 'Etiquetas', icono: 'tag', tipo: 'etiqueta',
       render: (e) => ({ titulo: e.etiqueta, contexto: null, url: e.url }) },
+    { clave: 'hitos', titulo: 'Hitos', icono: 'star', tipo: 'hito',
+      render: (h) => ({ titulo: h.nombre, contexto: h.estado, url: h.url }) },
+    { clave: 'conceptos', titulo: 'Repaso', icono: 'book-check', tipo: 'concepto',
+      render: (c) => ({ titulo: c.nombre, contexto: c.asignatura_nombre, url: c.url }) },
   ];
 
   function escapeHtml(texto) {
