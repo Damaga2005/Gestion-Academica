@@ -5,7 +5,7 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify, send_from_directory, current_app
 from werkzeug.utils import secure_filename
 
-from models import db, Documento, Apartado, Asignatura, PaginaTexto
+from models import db, Documento, Apartado, Asignatura, PaginaTexto, TareaEvento
 from routes.errors import ApiError
 from utils import (
     carpeta_apartado, ruta_absoluta, nombre_archivo_disponible,
@@ -239,6 +239,10 @@ def quitar_de_continuar(documento_id):
 def borrar_documento(documento_id):
     documento = Documento.query.get_or_404(documento_id)
     _borrar_archivo_fisico(documento)
+    # Desvincula (no borra) cualquier examen/tarea que enlazara este documento
+    # (spec V2.2_VISOR_PDF): las referencias en Espacios de Estudio se limpian solas
+    # vía cascade en el modelo.
+    TareaEvento.query.filter_by(documento_id=documento.id).update({"documento_id": None})
     db.session.delete(documento)
     db.session.commit()
     return "", 204

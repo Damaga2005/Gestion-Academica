@@ -200,6 +200,28 @@ def test_quitar_referencia_no_borra_el_documento(client_abierto, espacio_id, doc
     assert doc["id"] == documento_id  # el documento real sigue existiendo
 
 
+def test_borrar_documento_quita_su_referencia_del_espacio(client_abierto, espacio_id, documento_id):
+    ref = client_abierto.post(f"/espacios-estudio/{espacio_id}/documentos", json={
+        "documento_id": documento_id, "seccion": "teoria",
+    }).get_json()
+
+    r = client_abierto.delete(f"/documentos/{documento_id}")
+    assert r.status_code == 204
+
+    espacio = client_abierto.get(f"/espacios-estudio/{espacio_id}").get_json()
+    assert ref["id"] not in [d["id"] for d in espacio["documentos_ref"]]
+
+
+def test_borrar_documento_desvincula_tarea_sin_borrarla(client_abierto, tarea_examen_id, documento_id):
+    client_abierto.put(f"/tareas/{tarea_examen_id}", json={"documento_id": documento_id})
+
+    r = client_abierto.delete(f"/documentos/{documento_id}")
+    assert r.status_code == 204
+
+    tarea = client_abierto.get(f"/tareas/{tarea_examen_id}").get_json()
+    assert tarea["documento_id"] is None
+
+
 def test_borrar_examen_borra_su_espacio_en_cascada(client_abierto, tarea_examen_id, espacio_id, documento_id):
     client_abierto.post(f"/espacios-estudio/{espacio_id}/documentos", json={
         "documento_id": documento_id, "seccion": "teoria",

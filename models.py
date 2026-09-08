@@ -621,6 +621,11 @@ class Documento(db.Model):
         "AnotacionPdf", back_populates="documento", cascade="all, delete-orphan",
         order_by="AnotacionPdf.numero_pagina",
     )
+    # Borrar el documento borra también las referencias a él en Espacios de Estudio
+    # (la fila de referencia, nunca otro documento: mismo patrón que arriba).
+    referencias_espacio_estudio = db.relationship(
+        "EspacioEstudioDocumento", cascade="all, delete-orphan"
+    )
 
     EXTENSIONES_IMAGEN = (".jpg", ".jpeg", ".png", ".gif", ".webp")
 
