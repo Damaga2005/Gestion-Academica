@@ -846,7 +846,12 @@ class EspacioEstudio(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    tarea_evento = db.relationship("TareaEvento", backref=db.backref("espacio_estudio", uselist=False))
+    # cascade en el backref: borrar el examen borra su Espacio de Estudio (y, por sus
+    # propias relaciones cascade abajo, sus objetivos y referencias a documentos —
+    # nunca los Documento reales, solo la fila de referencia).
+    tarea_evento = db.relationship(
+        "TareaEvento", backref=db.backref("espacio_estudio", uselist=False, cascade="all, delete-orphan")
+    )
     documentos_ref = db.relationship(
         "EspacioEstudioDocumento", back_populates="espacio",
         cascade="all, delete-orphan", order_by="EspacioEstudioDocumento.orden",
