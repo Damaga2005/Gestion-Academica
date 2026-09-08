@@ -1409,3 +1409,29 @@ class BusquedaReciente(db.Model):
             "url": self.url,
             "fecha_acceso": self.fecha_acceso.isoformat(),
         }
+
+
+class NotaRapida(db.Model):
+    """Apunte suelto para anotar algo al vuelo mientras se estudia, sin perder de
+    vista lo que se está mirando (panel accesible desde cualquier página, igual que
+    la campanita/buscador). Deliberadamente sin asignatura ni ningún otro vínculo:
+    es un bloc de notas, no una entidad más del modelo académico."""
+    __tablename__ = "nota_rapida"
+
+    id = db.Column(db.Integer, primary_key=True)
+    texto = db.Column(db.String(1000), nullable=False)
+    fecha_creacion = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    @validates("texto")
+    def validar_texto(self, key, value):
+        limpio = (value or "").strip()
+        if not limpio:
+            raise ValueError("texto de NotaRapida no puede estar vacío")
+        return limpio
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "texto": self.texto,
+            "fecha_creacion": self.fecha_creacion.isoformat(),
+        }

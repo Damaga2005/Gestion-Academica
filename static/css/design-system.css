@@ -395,6 +395,49 @@ html, body {
   padding: var(--ds-space-2) var(--ds-space-1);
 }
 
+.nr-wrap {
+  position: relative;
+}
+
+.nr-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-2);
+  margin-bottom: var(--ds-space-3);
+}
+
+.nr-textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.nr-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ds-space-2);
+  padding: var(--ds-space-2) var(--ds-space-1);
+  border-bottom: 1px solid var(--ds-color-border);
+}
+.nr-item:last-child { border-bottom: none; }
+
+.nr-item-texto {
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.nr-item-borrar {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--ds-color-text-secondary);
+  padding: 0;
+}
+.nr-item-borrar:hover { color: var(--ds-color-danger); }
+.nr-item-borrar .ds-icon { width: 14px; height: 14px; }
+
 @media (prefers-reduced-motion: reduce) {
   .ds-scope *, .ds-scope *::before, .ds-scope *::after {
     animation-duration: 0.01ms !important;

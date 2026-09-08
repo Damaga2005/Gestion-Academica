@@ -75,6 +75,7 @@
             <div class="ds-page-header-actions">
               {% include "_buscador_global.html" %}
               {% include "_notificaciones_bell.html" %}
+              {% include "_notas_rapidas.html" %}
               <button id="toggle-tema" class="ds-btn ds-btn-secondary detalle-btn-icono" type="button" data-tooltip="Cambiar tema" aria-label="Cambiar tema"></button>
               {% if lock_activo %}
               <form method="post" action="{{ url_for('auth.cerrar_sesion') }}" class="form-lock">
@@ -159,5 +160,6 @@
   <script src="{{ url_for('static', filename='js/tema.js') }}"></script>
   <script src="{{ url_for('static', filename='js/buscador_global.js') }}"></script>
   <script src="{{ url_for('static', filename='js/notificaciones-bell.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/notas-rapidas.js') }}"></script>
 </body>
 </html>
