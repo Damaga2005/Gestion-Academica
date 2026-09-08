@@ -65,7 +65,12 @@
           <header class="ds-page-header">
             <div>
               <h1 class="ds-h1 ds-page-header-title" id="saludo">Hola</h1>
-              <p class="ds-body ds-text-secondary ds-page-header-subtitle">Resumen académico</p>
+              <p class="ds-body ds-text-secondary ds-page-header-subtitle">
+                Resumen académico
+                <span id="racha-badge" class="ds-badge ds-badge-warning" style="display:none;margin-left:var(--ds-space-2)" data-tooltip="Días seguidos de actividad">
+                  🔥 <span id="racha-dias"></span>
+                </span>
+              </p>
             </div>
             <div class="ds-page-header-actions">
               {% include "_buscador_global.html" %}

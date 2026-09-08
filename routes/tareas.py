@@ -3,7 +3,10 @@ from datetime import date, datetime, time
 
 from flask import Blueprint, request, jsonify
 
-from models import db, TareaEvento, Asignatura, Documento, EspacioEstudio, TIPOS_TAREA_EXAMEN, resolver_asignatura
+from models import (
+    db, TareaEvento, Asignatura, Documento, EspacioEstudio, TIPOS_TAREA_EXAMEN,
+    resolver_asignatura, registrar_actividad_hoy,
+)
 from routes.errors import ApiError
 from routes.conflictos import detectar_conflictos
 
@@ -161,6 +164,8 @@ def actualizar_tarea(tarea_id):
         tarea.tipo = data["tipo"]
     if "completada" in data:
         tarea.completada = data["completada"]
+        if tarea.completada:
+            registrar_actividad_hoy()
     if "prioridad" in data:
         tarea.prioridad = data["prioridad"]
     if "hora_inicio" in data:

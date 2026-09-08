@@ -25,6 +25,7 @@ from routes.configuracion import configuracion_bp, obtener_configuracion
 from routes.backup import backup_bp
 from routes.busqueda import busqueda_bp
 from routes.notificaciones import notificaciones_bp
+from routes.racha import racha_bp
 from routes.hitos import hitos_bp
 from routes.conceptos import conceptos_bp
 from routes.recursos_externos import recursos_externos_bp
@@ -97,6 +98,7 @@ def create_app(auto_seed=True, database_uri=None, documentos_dir=None):
     app.register_blueprint(backup_bp)
     app.register_blueprint(busqueda_bp)
     app.register_blueprint(notificaciones_bp)
+    app.register_blueprint(racha_bp)
     app.register_blueprint(hitos_bp)
     app.register_blueprint(conceptos_bp)
     app.register_blueprint(recursos_externos_bp)

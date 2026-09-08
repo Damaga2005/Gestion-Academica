@@ -1240,6 +1240,38 @@ class PaginaTexto(db.Model):
         }
 
 
+class DiaActividad(db.Model):
+    """Un día en el que hubo actividad real de estudio (leer un documento, completar
+    una tarea, revisar un concepto): una fila por día, para calcular la racha (días
+    consecutivos) sin reconstruirla a partir de fecha_ultima_apertura de Documento
+    (que solo guarda la ÚLTIMA apertura de CADA documento, no un histórico de días)."""
+    __tablename__ = "dia_actividad"
+
+    fecha = db.Column(db.Date, primary_key=True)
+
+
+def registrar_actividad_hoy():
+    """Llamar desde cualquier acción que cuente como "estudiar hoy" (spec racha de
+    estudio). Idempotente: como máximo una fila por día, sin importar cuántas veces
+    se llame. No hace commit propio: se guarda junto al commit de quien la llama."""
+    hoy = date.today()
+    if db.session.get(DiaActividad, hoy) is None:
+        db.session.add(DiaActividad(fecha=hoy))
+
+
+def calcular_racha_actual():
+    """Días consecutivos de actividad terminando hoy o ayer (si hoy aún no hay
+    actividad registrada, la racha de ayer sigue "viva" hasta que acabe el día)."""
+    dias = {d.fecha for d in DiaActividad.query.all()}
+    hoy = date.today()
+    cursor = hoy if hoy in dias else hoy - timedelta(days=1)
+    racha = 0
+    while cursor in dias:
+        racha += 1
+        cursor -= timedelta(days=1)
+    return racha
+
+
 class RecursoExterno(db.Model):
     """
     Enlaces externos libres de una asignatura (Wuolah, Studocu, Drive, GitHub, etc.).

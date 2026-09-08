@@ -287,6 +287,17 @@ async function cargarContinuar() {
   }
 }
 
+async function cargarRacha() {
+  try {
+    const { dias } = await api('/racha');
+    if (dias < 2) return;  // 0-1 días no dice nada útil, evita ruido
+    document.getElementById('racha-dias').textContent = `${dias} día${dias !== 1 ? 's' : ''}`;
+    document.getElementById('racha-badge').style.display = '';
+  } catch (err) {
+    // sin racha, sin badge
+  }
+}
+
 function formatoNota(nota) {
   return nota.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
 }
@@ -472,3 +483,4 @@ cargarMediaCurso();
 cargarSemana();
 cargarRepasoHoy();
 cargarHitos();
+cargarRacha();

@@ -2,7 +2,7 @@ from datetime import date
 
 from flask import Blueprint, request, jsonify
 
-from models import db, Concepto, Asignatura
+from models import db, Concepto, Asignatura, registrar_actividad_hoy
 from routes.errors import ApiError
 
 conceptos_bp = Blueprint("conceptos", __name__)
@@ -55,6 +55,7 @@ def borrar_concepto(concepto_id):
 def subir_concepto(concepto_id):
     concepto = Concepto.query.get_or_404(concepto_id)
     concepto.reclasificar(1)
+    registrar_actividad_hoy()
     db.session.commit()
     return jsonify(concepto.to_dict())
 
@@ -63,6 +64,7 @@ def subir_concepto(concepto_id):
 def bajar_concepto(concepto_id):
     concepto = Concepto.query.get_or_404(concepto_id)
     concepto.reclasificar(-1)
+    registrar_actividad_hoy()
     db.session.commit()
     return jsonify(concepto.to_dict())
 
