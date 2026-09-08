@@ -3,6 +3,7 @@
 // visible en cualquier momento desde cualquier página, sin tener que reiniciar la app.
 
 const NB_BADGE_POR_NIVEL = { rojo: 'ds-badge-danger', naranja: 'ds-badge-warning', gris: 'ds-badge' };
+const NB_TITULO_ORIGINAL = document.title;
 
 function nbEscapeHtml(texto) {
   const div = document.createElement('div');
@@ -35,8 +36,10 @@ async function nbCargar() {
       badge.textContent = notificaciones.length > 9 ? '9+' : String(notificaciones.length);
       badge.hidden = false;
       badge.classList.toggle('nb-badge--urgente', notificaciones.some((n) => n.nivel === 'rojo'));
+      document.title = `(${notificaciones.length}) ${NB_TITULO_ORIGINAL}`;
     } else {
       badge.hidden = true;
+      document.title = NB_TITULO_ORIGINAL;
     }
     nbRenderLista(notificaciones);
   } catch (err) {
