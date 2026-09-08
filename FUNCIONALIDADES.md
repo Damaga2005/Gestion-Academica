@@ -133,28 +133,82 @@ Lista libre de certificaciones, proyectos personales u objetivos fuera del
 plan de estudios, cada uno con nombre, estado (pendiente/en progreso/hecho) y
 fecha opcional.
 
-## 10. Dashboard (Resumen)
+## 10. Espacios de Estudio
+
+Cada examen/entrega del calendario puede tener su propio **Espacio de Estudio**:
+una carpeta de preparación que agrupa **referencias** (nunca copias) a
+documentos ya subidos, organizadas en secciones (Material destacado, Exámenes
+de años anteriores, Teoría, Ejercicios, Laboratorio), más una checklist de
+tareas propia.
+
+- Se crea **solo** al programar un examen (parcial, final o recuperación) en
+  el calendario, sin ningún paso aparte; y se borra en cascada si se borra el
+  examen.
+- Cada documento referenciado se puede marcar como leído/destacado sin que
+  eso afecte al documento en sí ni a otros espacios que también lo referencien.
+- **Modo examen**: pantalla resumida del día del examen — cuenta atrás,
+  hora/aula/ubicación, solo el material destacado y la checklist de tareas,
+  sin el resto de secciones. Incluye una **chuleta imprimible** (botón 🖨️) con
+  estilos propios para llevarla en papel.
+
+## 11. Racha de estudio
+
+Contador de días consecutivos con actividad real (leer un documento,
+completar una tarea, subir/bajar un concepto en repaso): badge 🔥 en el
+Dashboard con la racha actual y, en el tooltip, el récord histórico. Al
+igualar o superar el récord, aviso nativo de Windows al arrancar.
+
+## 12. Notas rápidas
+
+Bloc de notas accesible desde cualquier página (icono ✏️ en la cabecera, o
+atajo de teclado **n**): para apuntar algo al vuelo sin perder de vista lo
+que se está mirando ni tener que crear una tarea formal para ello.
+
+## 13. Notificaciones
+
+- **Campanita** en la cabecera de cada página: lista los avisos activos
+  (examen/entrega inminente o atrasada, asignatura "cursando" sin actividad
+  reciente) con acceso directo a cada uno.
+- El **número de avisos pendientes** aparece también en el título de la
+  pestaña del navegador (p. ej. "(2) Resumen · GREELEC").
+- **Aviso nativo de Windows** al arrancar la app, solo con lo urgente de
+  verdad (nivel rojo), para no repetir lo que ya se ve en la campanita.
+- Un examen ya pasado sin marcar como completado se autocompleta solo (no
+  puede quedar "atrasado": ya ocurrió).
+
+## 14. Dashboard (Resumen)
 
 - **Progreso del grado**: ECTS aprobados sobre el total, desglosado en
   obligatorias / optativas / TFG.
+- **Media del curso** y desglose de asignaturas aprobadas/suspendidas/
+  pendientes de evaluar.
+- **Esta semana**: horario + tareas de los próximos 7 días en una sola vista.
+- **Repaso y Hitos**: conceptos pendientes de repasar hoy y checklist de hitos.
+- **Racha de estudio** (badge 🔥, ver sección 11).
 - **Asignaturas cursándose** ahora mismo.
 - **Próximas entregas**: tareas/eventos más cercanos en el tiempo.
-- **Notificaciones** automáticas: aviso de examen/entrega próxima (umbral
-  configurable en días) y aviso de asignatura "abandonada" (sin actividad
-  reciente, umbral también configurable).
 - **Accesos rápidos**: atajos internos (nueva asignatura, calendario,
   documentos, configuración) y enlaces externos a los portales de la UPC
   (Plan de estudios, Prisma, UPCommons, calendario de trámites y calendario
   de exámenes).
 
-## 11. Buscador global
+## 15. Buscador global
 
-Barra de búsqueda en la cabecera, disponible desde cualquier pantalla: busca a
-la vez en nombres de asignatura, **contenido de documentos PDF ya indexado**,
-notas rápidas y tareas, y muestra resultados agrupados con el fragmento de
-texto donde aparece la coincidencia.
+Barra de búsqueda en la cabecera, disponible desde cualquier pantalla (atajo
+**Ctrl+K**): busca a la vez en nombres de asignatura, **contenido de
+documentos PDF ya indexado**, notas rápidas, tareas, hitos y conceptos de
+repaso, y muestra resultados agrupados con el fragmento de texto donde
+aparece la coincidencia.
 
-## 12. Ajustes
+## 16. Atajos de teclado
+
+Navegación estilo Gmail: **g** seguido de una letra (d Resumen, a
+Asignaturas, c Calendario, h Horario, r Repaso, s Configuración). Además,
+**Ctrl+K** para buscar, **n** para una nota rápida, **?** para ver el
+registro completo de atajos y **Esc** para cerrar lo que esté abierto. Se
+ignoran mientras se escribe en un campo de formulario.
+
+## 17. Ajustes
 
 - **Notificaciones**: umbral de días para avisar de examen/entrega próxima y
   para considerar una asignatura abandonada.
@@ -163,6 +217,9 @@ texto donde aparece la coincidencia.
 - **Acceso desde el móvil**: IP local + puerto para entrar desde otro
   dispositivo en la misma red WiFi.
 - **Backup**:
+  - *Automático*: una copia diaria (las últimas 10) sin ninguna acción manual,
+    generada en segundo plano al arrancar la app; Ajustes muestra fecha de la
+    última, cuántas hay guardadas y cuánto ocupan en total.
   - *Exportar todo*: `.zip` con la base de datos completa + todos los
     documentos, con fecha en el nombre.
   - *Importar backup*: restaura BD + documentos desde un `.zip` exportado
@@ -172,7 +229,7 @@ texto donde aparece la coincidencia.
 - **Acerca de**: registro de cambios de la app y el design system interno
   (tokens y componentes de UI).
 
-## 13. Bloqueo opcional de la app
+## 18. Bloqueo opcional de la app
 
 Si se define la variable de entorno `GREELEC_LOCK_KEY`, toda la app (web y
 API) exige una clave para entrar:
@@ -185,7 +242,7 @@ API) exige una clave para entrar:
   completamente abierta — pensado para poder exponerla en la red local (móvil)
   sin dejarla expuesta a cualquiera.
 
-## 14. Multiplataforma / despliegue
+## 19. Multiplataforma / despliegue
 
 - Modo servidor web normal (`python app.py`), accesible también desde el
   móvil en la misma red si se define `GREELEC_HOST=0.0.0.0`.
@@ -201,13 +258,16 @@ API) exige una clave para entrar:
 ## Estado actual de los datos (a fecha de este documento)
 
 - 54 asignaturas de las 4 años del grado; 53 con siglas oficiales UPC.
-- 61 profesores cargados (21 asignaturas, sobre todo de cuatrimestres futuros,
-  aún sin profesorado publicado por la UPC).
+- 61 profesores cargados (33 asignaturas; el resto, sobre todo de
+  cuatrimestres futuros, aún sin profesorado publicado por la UPC).
 - 65 esquemas de evaluación / 164 componentes, extraídos de las guías docentes
   oficiales (4 asignaturas sin desglose claro se dejan para nota final directa).
-- 659 documentos organizados en 185 subgrupos, con ~6800 páginas de PDF
+- 674 documentos organizados en 185 subgrupos, con ~7400 páginas de PDF
   indexadas para búsqueda de contenido.
 - 81 recursos externos: enlaces de Wuolah (50 asignaturas) y Studocu (31
   asignaturas) verificados.
-- Horario, tareas/eventos, hitos y conceptos de repaso: **todavía sin rellenar**
-  — son de uso personal continuo, no se pueden completar desde fuera.
+- Horario semanal (9 clases recurrentes) y calendario (9 tareas/eventos, con
+  7 Espacios de Estudio) rellenos con datos reales del cuatrimestre en curso.
+- Hitos y conceptos de repaso: **sin usar todavía** — son de uso personal
+  continuo (certificaciones propias, repaso espaciado), no se pueden
+  completar desde fuera y dependen de que el usuario los vaya añadiendo.
