@@ -9,7 +9,10 @@ CAMBIOS = [
         "titulo": "Fase 9 — Automatizaciones y hábito de estudio",
         "cambios": [
             "Campanita de avisos en la cabecera + aviso nativo de Windows al arrancar",
+            "Widget \"Repaso y Hitos\" en el Dashboard",
+            "Widget \"Esta semana\" en el Dashboard (horario + tareas de la semana)",
             "Calculadora de \"¿qué nota necesito?\" en cada asignatura",
+            "Checkbox para crear el Espacio de Estudio directamente al guardar un examen en el Calendario",
             "Modo examen: vista resumida del día del examen, con chuleta imprimible",
             "Sección Laboratorio en Espacios de Estudio",
             "El buscador global también encuentra Hitos y Conceptos de repaso",
