@@ -110,4 +110,6 @@ async function cargar() {
   renderObjetivos(espacio);
 }
 
+document.getElementById('btn-imprimir').addEventListener('click', () => window.print());
+
 cargar();

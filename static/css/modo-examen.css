@@ -48,3 +48,14 @@
   font-size: 0.95rem;
 }
 .me-doc-fila-nombre:hover { text-decoration: underline; }
+
+/* Chuleta imprimible (botón #btn-imprimir → window.print()): ignora el tema activo
+   (claro/oscuro) y fuerza texto negro sobre blanco, sin importar qué combinación de
+   colores esté puesta en pantalla — lo único que importa en papel es que se lea. */
+@media print {
+  .ds-sidebar, .detalle-volver, .ds-page-header-actions, #toggle-tema { display: none !important; }
+  .ds-scope, .ds-shell, .ds-shell-main, .ds-shell-content { all: unset; display: block; }
+  body, .ds-scope * { background: #fff !important; color: #000 !important; box-shadow: none !important; }
+  .me-cuenta-atras-card, .me-dato, .ds-card { border: 1px solid #999 !important; break-inside: avoid; }
+  .ds-checkbox-nativo { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

@@ -76,6 +76,9 @@
               {% include "_buscador_global.html" %}
               {% include "_notificaciones_bell.html" %}
               {% include "_notas_rapidas.html" %}
+              <button id="btn-imprimir" class="ds-btn ds-btn-secondary" type="button" data-tooltip="Imprimir chuleta" aria-label="Imprimir chuleta">
+                <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-file-text"></use></svg>
+              </button>
               <button id="toggle-tema" class="ds-btn ds-btn-secondary" type="button" data-tooltip="Cambiar tema" aria-label="Cambiar tema"></button>
             </div>
           </header>
