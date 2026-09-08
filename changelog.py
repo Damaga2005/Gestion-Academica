@@ -5,6 +5,23 @@ al principio de CAMBIOS cada vez que se implemente una fase o funcionalidad nuev
 
 CAMBIOS = [
     {
+        "version": "0.5",
+        "titulo": "Fase 9 — Automatizaciones y hábito de estudio",
+        "cambios": [
+            "Campanita de avisos en la cabecera + aviso nativo de Windows al arrancar",
+            "Calculadora de \"¿qué nota necesito?\" en cada asignatura",
+            "Modo examen: vista resumida del día del examen, con chuleta imprimible",
+            "Sección Laboratorio en Espacios de Estudio",
+            "El buscador global también encuentra Hitos y Conceptos de repaso",
+            "Al programar un examen se crea solo su Espacio de Estudio (y se borra solo si borras el examen)",
+            "Los exámenes ya pasados dejan de salir como \"atrasados\" en los avisos",
+            "Racha de estudio: días seguidos y récord histórico, con badge en el Dashboard",
+            "Notas rápidas: bloc de notas accesible desde cualquier página (atajo \"n\")",
+            "El número de avisos pendientes aparece en el título de la pestaña",
+            "Backup automático diario + visibilidad de las copias guardadas en Ajustes",
+        ],
+    },
+    {
         "version": "0.4",
         "titulo": "Fase 8 — Calidad de vida",
         "cambios": [
