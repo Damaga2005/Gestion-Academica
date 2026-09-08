@@ -3,7 +3,7 @@ from datetime import date, datetime, time
 
 from flask import Blueprint, request, jsonify
 
-from models import db, TareaEvento, Asignatura, Documento, resolver_asignatura
+from models import db, TareaEvento, Asignatura, Documento, EspacioEstudio, TIPOS_TAREA_EXAMEN, resolver_asignatura
 from routes.errors import ApiError
 from routes.conflictos import detectar_conflictos
 
@@ -57,6 +57,15 @@ def _resolver_documento_opcional(data, asignatura_id):
     if asignatura_id is not None and documento.asignatura_id != asignatura_id:
         raise ApiError("el documento debe pertenecer a la misma asignatura que la tarea/examen")
     return documento
+
+
+def _autocrear_espacio_estudio_si_examen(tarea):
+    """Automatización: un examen sin Espacio de Estudio propio obliga a crearlo aparte
+    a mano, repitiendo fecha/asignatura que ya se acaban de escribir. Se crea aquí en
+    el mismo paso; idempotente (no hace nada si ya existe), igual que POST /espacios-estudio."""
+    if tarea.tipo in TIPOS_TAREA_EXAMEN and tarea.espacio_estudio is None:
+        db.session.add(EspacioEstudio(tarea_evento_id=tarea.id, nombre=tarea.titulo))
+        db.session.commit()
 
 
 @tareas_bp.get("/tareas")
@@ -123,6 +132,7 @@ def crear_tarea():
     )
     db.session.add(tarea)
     db.session.commit()
+    _autocrear_espacio_estudio_si_examen(tarea)
 
     respuesta = tarea.to_dict()
     if hora_inicio and hora_fin:
@@ -171,6 +181,7 @@ def actualizar_tarea(tarea_id):
         tarea.link_relacionado = data["link_relacionado"]
 
     db.session.commit()
+    _autocrear_espacio_estudio_si_examen(tarea)
     return jsonify(tarea.to_dict())
 
 

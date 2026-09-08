@@ -42,16 +42,54 @@ def tarea_examen_id(client_abierto, asignatura_id):
 
 @pytest.fixture
 def espacio_id(client_abierto, tarea_examen_id):
+    # 200 (no 201): tarea_examen_id ya lo autocreó al ser tipo examen_parcial.
     r = client_abierto.post("/espacios-estudio", json={"tarea_evento_id": tarea_examen_id})
-    assert r.status_code == 201
+    assert r.status_code == 200
     return r.get_json()["id"]
 
 
 # --- Creación del espacio ---
 
-def test_crear_espacio_desde_tarea(client_abierto, tarea_examen_id):
-    r = client_abierto.post("/espacios-estudio", json={"tarea_evento_id": tarea_examen_id})
+def test_examen_autocrea_espacio_de_estudio(client_abierto, asignatura_id):
+    """Automatización: crear una tarea tipo examen crea su Espacio de Estudio sin
+    llamada aparte a POST /espacios-estudio."""
+    r = client_abierto.post("/tareas", json={
+        "titulo": "Final CEM", "fecha": "2026-06-10",
+        "tipo": "examen_final", "asignatura_id": asignatura_id,
+    })
     assert r.status_code == 201
+    tarea_id = r.get_json()["id"]
+    espacio = client_abierto.get(f"/tareas/{tarea_id}/espacio-estudio")
+    assert espacio.status_code == 200
+    assert espacio.get_json()["nombre"] == "Final CEM"
+
+
+def test_evento_no_examen_no_autocrea_espacio(client_abierto, asignatura_id):
+    r = client_abierto.post("/tareas", json={
+        "titulo": "Tutoría", "fecha": "2026-06-10",
+        "tipo": "tutoria", "asignatura_id": asignatura_id,
+    })
+    assert r.status_code == 201
+    tarea_id = r.get_json()["id"]
+    assert client_abierto.get(f"/tareas/{tarea_id}/espacio-estudio").status_code == 404
+
+
+def test_cambiar_tipo_a_examen_autocrea_espacio(client_abierto, asignatura_id):
+    r = client_abierto.post("/tareas", json={
+        "titulo": "Posible examen", "fecha": "2026-06-10",
+        "tipo": "tarea_general", "asignatura_id": asignatura_id,
+    })
+    tarea_id = r.get_json()["id"]
+    assert client_abierto.get(f"/tareas/{tarea_id}/espacio-estudio").status_code == 404
+
+    client_abierto.put(f"/tareas/{tarea_id}", json={"tipo": "recuperacion"})
+    assert client_abierto.get(f"/tareas/{tarea_id}/espacio-estudio").status_code == 200
+
+
+def test_crear_espacio_desde_tarea(client_abierto, tarea_examen_id):
+    # 200, no 201: tarea_examen_id (tipo examen_parcial) ya lo autocreó.
+    r = client_abierto.post("/espacios-estudio", json={"tarea_evento_id": tarea_examen_id})
+    assert r.status_code == 200
     data = r.get_json()
     assert data["nombre"] == "Parcial Diseño Digital"
     assert data["fecha"] == "2026-11-15"
@@ -63,7 +101,7 @@ def test_crear_espacio_desde_tarea(client_abierto, tarea_examen_id):
 def test_crear_espacio_es_idempotente(client_abierto, tarea_examen_id):
     r1 = client_abierto.post("/espacios-estudio", json={"tarea_evento_id": tarea_examen_id})
     r2 = client_abierto.post("/espacios-estudio", json={"tarea_evento_id": tarea_examen_id})
-    assert r1.status_code == 201
+    assert r1.status_code == 200
     assert r2.status_code == 200
     assert r1.get_json()["id"] == r2.get_json()["id"]
 

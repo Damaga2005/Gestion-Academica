@@ -40,6 +40,10 @@ TIPOS_TAREA = (
     "examen", "examen_parcial", "examen_final", "recuperacion",
     "entrega", "tarea_general", "tutoria", "evento",
 )
+# Subconjunto de TIPOS_TAREA que dispara la autocreación del Espacio de Estudio
+# (routes/tareas.py): programar un examen y tener que crear aparte su Espacio de
+# Estudio a mano era trabajo duplicado (misma fecha/asignatura ya escrita).
+TIPOS_TAREA_EXAMEN = ("examen", "examen_parcial", "examen_final", "recuperacion")
 PRIORIDADES_TAREA = ("alta", "media", "baja")
 TIPOS_HORARIO = ("teoria", "problemas", "laboratorio", "seminario")
 DIAS_SEMANA = (1, 2, 3, 4, 5)  # 1=lunes ... 5=viernes (spec: cuadrícula lunes-viernes)
