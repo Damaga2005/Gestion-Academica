@@ -61,3 +61,45 @@ def test_fallo_al_mostrar_el_toast_no_propaga_excepcion(app_abierta):
     instancia.show.side_effect = RuntimeError("sin AUMID registrado")
     with patch("winotify.Notification", return_value=instancia):
         escritorio._avisar_notificaciones_urgentes(app_abierta)  # no debe lanzar
+
+
+def _sembrar_racha(app, dias):
+    from datetime import date, timedelta as td
+    from models import db, DiaActividad
+    with app.app_context():
+        for hace in range(dias):
+            db.session.add(DiaActividad(fecha=date.today() - td(days=hace)))
+        db.session.commit()
+
+
+def test_racha_sin_record_no_avisa(app_abierta):
+    _sembrar_racha(app_abierta, 1)  # 1 día: por debajo del mínimo (2) para avisar
+    with patch("winotify.Notification") as MockNotification:
+        escritorio._avisar_racha_record(app_abierta)
+        MockNotification.assert_not_called()
+
+
+def test_racha_que_iguala_el_record_avisa(app_abierta):
+    _sembrar_racha(app_abierta, 3)  # racha actual == récord (solo tiene esta racha)
+    instancia = MagicMock()
+    with patch("winotify.Notification", return_value=instancia) as MockNotification:
+        escritorio._avisar_racha_record(app_abierta)
+    MockNotification.assert_called_once()
+    assert "3 días" in MockNotification.call_args.kwargs["msg"]
+    instancia.show.assert_called_once()
+
+
+def test_racha_activa_pero_por_debajo_del_record_no_avisa(app_abierta):
+    from datetime import date, timedelta
+    from models import db, DiaActividad
+    with app_abierta.app_context():
+        # récord viejo de 5 días, roto, más la racha actual de 2
+        for hace in (10, 11, 12, 13, 14):
+            db.session.add(DiaActividad(fecha=date.today() - timedelta(days=hace)))
+        for hace in (0, 1):
+            db.session.add(DiaActividad(fecha=date.today() - timedelta(days=hace)))
+        db.session.commit()
+
+    with patch("winotify.Notification") as MockNotification:
+        escritorio._avisar_racha_record(app_abierta)
+        MockNotification.assert_not_called()

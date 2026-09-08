@@ -125,6 +125,35 @@ def _avisar_notificaciones_urgentes(app):
         print(f"No se pudo mostrar el aviso nativo: {exc}")
 
 
+def _avisar_racha_record(app):
+    """Aviso nativo cuando la racha de estudio (routes/racha.py) iguala o supera el
+    récord histórico: solo en ese caso, no en cada arranque con racha activa, para
+    que sea una celebración puntual y no ruido constante."""
+    try:
+        from winotify import Notification
+    except Exception:  # pragma: no cover - ya se registra el aviso arriba
+        return
+
+    with app.app_context():
+        from models import calcular_racha_actual, calcular_racha_maxima
+        dias = calcular_racha_actual()
+        record = calcular_racha_maxima()
+
+    if dias < 2 or dias != record:
+        return
+
+    try:
+        Notification(
+            app_id="GestionAcademicaGREELEC",
+            title="GREELEC",
+            msg=f"🔥 ¡{dias} días seguidos! Tu racha de estudio más larga hasta ahora.",
+            duration="long",
+            icon=ICONO if os.path.isfile(ICONO) else "",
+        ).show()
+    except Exception as exc:
+        print(f"No se pudo mostrar el aviso de racha: {exc}")
+
+
 def _backup_automatico(app):
     """Backup automático al arrancar (spec 'qué mejorar': antes solo había export
     manual desde Configuración, y toda la nota real vive en 2 .db locales sin más
@@ -201,6 +230,7 @@ def main():
     # termine de comprimir bloquearía la apertura de la ventana varios minutos.
     threading.Thread(target=_backup_automatico, args=(app,), daemon=True).start()
     _avisar_notificaciones_urgentes(app)
+    _avisar_racha_record(app)
 
     # ALLOW_DOWNLOADS: sin esto el botón de guardar/descargar del visor de PDF
     # no hace nada.
