@@ -23,6 +23,7 @@
     { teclas: ['g', 'h'], descripcion: 'Ir a Horario' },
     { teclas: ['g', 'r'], descripcion: 'Ir a Repaso' },
     { teclas: ['g', 's'], descripcion: 'Ir a Configuración' },
+    { teclas: ['n'], descripcion: 'Nueva nota rápida' },
     { teclas: ['?'], descripcion: 'Mostrar esta ayuda' },
     { teclas: ['Esc'], descripcion: 'Cerrar ventana/menú activo' },
   ];
@@ -93,6 +94,17 @@
     if (e.key === '?') {
       e.preventDefault();
       abrirAyuda();
+      return;
+    }
+
+    if (e.key === 'n') {
+      const boton = document.getElementById('btn-notas-rapidas');
+      const dropdown = document.getElementById('nr-dropdown');
+      const campo = document.getElementById('nr-texto');
+      if (!boton || !dropdown || !campo) return; // página sin _notas_rapidas.html (defensivo)
+      e.preventDefault();
+      if (dropdown.hidden) boton.click();
+      campo.focus();
     }
   });
 })();
