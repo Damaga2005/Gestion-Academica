@@ -2,7 +2,7 @@ from datetime import datetime
 
 from flask import Blueprint, request, jsonify
 
-from models import db, Asignatura, Cuatrimestre, TareaEvento, ESTADOS_ASIGNATURA, resolver_asignatura, calcular_estado_notas
+from models import db, Asignatura, Cuatrimestre, TareaEvento, HorarioClase, ESTADOS_ASIGNATURA, resolver_asignatura, calcular_estado_notas
 from routes.errors import ApiError
 from utils import crear_apartados_por_defecto, borrar_carpeta_asignatura
 
@@ -226,6 +226,11 @@ def borrar_asignatura(asignatura_id):
     # borrar una tarea suelta — un bulk delete la salta y dejaría espacios huérfanos.
     for tarea in TareaEvento.query.filter_by(asignatura_id=asignatura_id).all():
         db.session.delete(tarea)
+    # HorarioClase tampoco cuelga de Asignatura por relación con cascade (su
+    # asignatura_id, a diferencia del de TareaEvento, ni siquiera es opcional: toda
+    # serie de horario pertenece a una asignatura). Bulk delete aquí es seguro (no
+    # tiene hijos propios que dependan de ella).
+    HorarioClase.query.filter_by(asignatura_id=asignatura_id).delete(synchronize_session=False)
     db.session.delete(asignatura)
     db.session.commit()
     return "", 204

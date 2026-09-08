@@ -624,7 +624,7 @@ class Documento(db.Model):
     # Borrar el documento borra también las referencias a él en Espacios de Estudio
     # (la fila de referencia, nunca otro documento: mismo patrón que arriba).
     referencias_espacio_estudio = db.relationship(
-        "EspacioEstudioDocumento", cascade="all, delete-orphan"
+        "EspacioEstudioDocumento", back_populates="documento", cascade="all, delete-orphan"
     )
 
     EXTENSIONES_IMAGEN = (".jpg", ".jpeg", ".png", ".gif", ".webp")
@@ -933,7 +933,7 @@ class EspacioEstudioDocumento(db.Model):
     fecha_referencia = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     espacio = db.relationship("EspacioEstudio", back_populates="documentos_ref")
-    documento = db.relationship("Documento")
+    documento = db.relationship("Documento", back_populates="referencias_espacio_estudio")
 
     @validates("seccion")
     def validar_seccion(self, key, value):
