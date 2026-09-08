@@ -63,3 +63,20 @@ def test_racha_se_rompe_si_falta_un_dia(app_abierta, client_abierto):
         db.session.add(DiaActividad(fecha=date.today() - timedelta(days=3)))
         db.session.commit()
     assert client_abierto.get("/racha").get_json()["dias"] == 0
+
+
+def test_racha_record_es_la_mas_larga_de_la_historia_no_la_actual(app_abierta, client_abierto):
+    with app_abierta.app_context():
+        from models import db, DiaActividad
+        # racha vieja de 3 días, rota, y la actual de 1 día (hoy)
+        for hace_dias in (10, 11, 12):
+            db.session.add(DiaActividad(fecha=date.today() - timedelta(days=hace_dias)))
+        db.session.commit()
+    r = client_abierto.post("/tareas", json={
+        "titulo": "Hoy", "fecha": date.today().isoformat(), "tipo": "tarea_general",
+    }).get_json()
+    client_abierto.put(f"/tareas/{r['id']}", json={"completada": True})
+
+    respuesta = client_abierto.get("/racha").get_json()
+    assert respuesta["dias"] == 1
+    assert respuesta["record"] == 3

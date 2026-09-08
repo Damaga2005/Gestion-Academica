@@ -1272,6 +1272,18 @@ def calcular_racha_actual():
     return racha
 
 
+def calcular_racha_maxima():
+    """Racha más larga de toda la historia (no solo la que sigue viva ahora mismo)."""
+    dias = sorted(d.fecha for d in DiaActividad.query.all())
+    mejor = racha = 0
+    anterior = None
+    for fecha in dias:
+        racha = racha + 1 if anterior == fecha - timedelta(days=1) else 1
+        mejor = max(mejor, racha)
+        anterior = fecha
+    return mejor
+
+
 class RecursoExterno(db.Model):
     """
     Enlaces externos libres de una asignatura (Wuolah, Studocu, Drive, GitHub, etc.).

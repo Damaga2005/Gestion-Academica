@@ -289,10 +289,14 @@ async function cargarContinuar() {
 
 async function cargarRacha() {
   try {
-    const { dias } = await api('/racha');
+    const { dias, record } = await api('/racha');
     if (dias < 2) return;  // 0-1 días no dice nada útil, evita ruido
     document.getElementById('racha-dias').textContent = `${dias} día${dias !== 1 ? 's' : ''}`;
-    document.getElementById('racha-badge').style.display = '';
+    const badge = document.getElementById('racha-badge');
+    badge.style.display = '';
+    badge.dataset.tooltip = dias >= record
+      ? '¡Tu racha más larga hasta ahora!'
+      : `Tu récord: ${record} día${record !== 1 ? 's' : ''}`;
   } catch (err) {
     // sin racha, sin badge
   }
