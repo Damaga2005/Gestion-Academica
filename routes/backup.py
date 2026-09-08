@@ -9,6 +9,7 @@ from datetime import datetime
 
 from flask import Blueprint, current_app, request, jsonify, send_file
 
+from config import DATA_DIR
 from models import db
 from routes.errors import ApiError
 
@@ -62,6 +63,29 @@ def escribir_zip_backup(destino):
     disco, para el backup automático de escritorio.py."""
     with zipfile.ZipFile(destino, "w", zipfile.ZIP_DEFLATED) as zf:
         _volcar_zip_backup(zf)
+
+
+@backup_bp.get("/backup/automaticos")
+def listar_backups_automaticos():
+    """Visibilidad del backup automático diario (escritorio.py _backup_automatico):
+    hasta ahora era un proceso 100% invisible, sin ningún sitio en la UI para
+    comprobar que de verdad se está generando."""
+    carpeta = os.path.join(DATA_DIR, "backups")
+    if not os.path.isdir(carpeta):
+        return jsonify([])
+
+    archivos = sorted(
+        (p for p in os.listdir(carpeta) if p.startswith("auto_") and p.endswith(".zip")),
+        reverse=True,
+    )
+    return jsonify([
+        {
+            "nombre": nombre,
+            "fecha": datetime.fromtimestamp(os.path.getmtime(os.path.join(carpeta, nombre))).isoformat(),
+            "tamano_bytes": os.path.getsize(os.path.join(carpeta, nombre)),
+        }
+        for nombre in archivos
+    ])
 
 
 @backup_bp.get("/backup/exportar")

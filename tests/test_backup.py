@@ -159,6 +159,24 @@ def test_rollback_si_falla_la_migracion(client_abierto, monkeypatch):
         assert Asignatura.query.count() == total_antes
 
 
+def test_listar_backups_automaticos_sin_carpeta_devuelve_vacio(client_abierto, tmp_path, monkeypatch):
+    monkeypatch.setattr("routes.backup.DATA_DIR", str(tmp_path))
+    assert client_abierto.get("/backup/automaticos").get_json() == []
+
+
+def test_listar_backups_automaticos_los_devuelve_mas_reciente_primero(client_abierto, tmp_path, monkeypatch):
+    monkeypatch.setattr("routes.backup.DATA_DIR", str(tmp_path))
+    carpeta = tmp_path / "backups"
+    carpeta.mkdir()
+    (carpeta / "auto_2026-09-01_100000.zip").write_bytes(b"x" * 1024)
+    (carpeta / "auto_2026-09-02_100000.zip").write_bytes(b"x" * 2048)
+    (carpeta / "otro_archivo.txt").write_bytes(b"no cuenta")
+
+    backups = client_abierto.get("/backup/automaticos").get_json()
+    assert [b["nombre"] for b in backups] == ["auto_2026-09-02_100000.zip", "auto_2026-09-01_100000.zip"]
+    assert backups[0]["tamano_bytes"] == 2048
+
+
 def test_restore_tmp_se_limpia_tras_cada_intento(client_abierto, tmp_path):
     zip_bytes = _zip_bytes([("otro.txt", b"nada")])
     client_abierto.post(

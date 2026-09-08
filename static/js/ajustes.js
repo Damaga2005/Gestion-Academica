@@ -87,4 +87,28 @@ document.getElementById('form-importar-backup').addEventListener('submit', async
   }
 });
 
+function formatoTamano(bytes) {
+  const mb = bytes / (1024 * 1024);
+  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
+}
+
+async function cargarBackupsAutomaticos() {
+  const resumen = document.getElementById('backups-auto-resumen');
+  try {
+    const backups = await api('/backup/automaticos');
+    if (backups.length === 0) {
+      resumen.textContent = 'Todavía no se ha generado ninguna.';
+      return;
+    }
+    const total = backups.reduce((suma, b) => suma + b.tamano_bytes, 0);
+    const ultima = new Date(backups[0].fecha);
+    resumen.textContent =
+      `Última: ${ultima.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })} · ` +
+      `${backups.length} copia${backups.length !== 1 ? 's' : ''} guardada${backups.length !== 1 ? 's' : ''} · ${formatoTamano(total)} en total`;
+  } catch (err) {
+    resumen.textContent = 'No se pudo comprobar el estado de las copias automáticas.';
+  }
+}
+
 cargarConfiguracion();
+cargarBackupsAutomaticos();
