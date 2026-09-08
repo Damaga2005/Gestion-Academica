@@ -29,6 +29,22 @@ def test_tarea_atrasada_es_nivel_rojo(client_abierto):
     assert any(n["nivel"] == "rojo" and "atrasada" in n["mensaje"] for n in notif)
 
 
+def test_examen_pasado_se_autocompleta_en_vez_de_salir_atrasado(client_abierto):
+    tarea = _crear_tarea(client_abierto, date.today() - timedelta(days=2), tipo="examen_parcial")
+    notif = client_abierto.get("/notificaciones").get_json()
+    assert not any(n["titulo"] == "Tarea de prueba" for n in notif)
+
+    r = client_abierto.get(f"/tareas/{tarea['id']}")
+    assert r.get_json()["completada"] is True
+
+
+def test_tarea_general_pasada_sigue_atrasada_no_se_autocompleta(client_abierto):
+    tarea = _crear_tarea(client_abierto, date.today() - timedelta(days=2), tipo="entrega")
+    client_abierto.get("/notificaciones")
+    r = client_abierto.get(f"/tareas/{tarea['id']}")
+    assert r.get_json()["completada"] is False
+
+
 def test_tarea_a_menos_de_3_dias_es_rojo(client_abierto):
     _crear_tarea(client_abierto, date.today() + timedelta(days=2))
     notif = client_abierto.get("/notificaciones").get_json()

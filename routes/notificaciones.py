@@ -2,7 +2,7 @@ from datetime import date
 
 from flask import Blueprint, jsonify
 
-from models import Asignatura, TareaEvento
+from models import db, Asignatura, TareaEvento, TIPOS_TAREA_EXAMEN
 from routes.configuracion import obtener_configuracion
 
 notificaciones_bp = Blueprint("notificaciones", __name__)
@@ -20,9 +20,23 @@ def _ultima_actividad(asignatura):
     return max(fechas) if fechas else None
 
 
+def _autocompletar_examenes_pasados(hoy):
+    """Un examen ya pasado no puede estar "atrasado" (no es algo pendiente de hacer,
+    ya ocurrió): a diferencia de una entrega/tarea/tutoría, que sí necesitan que el
+    usuario haga algo y por tanto siguen mostrándose como atrasadas hasta marcarlas
+    a mano. Update simple (no borra ni tiene hijos que cascadear), seguro en bulk."""
+    TareaEvento.query.filter(
+        TareaEvento.tipo.in_(TIPOS_TAREA_EXAMEN),
+        TareaEvento.completada.is_(False),
+        TareaEvento.fecha < hoy,
+    ).update({"completada": True}, synchronize_session=False)
+    db.session.commit()
+
+
 def calcular_notificaciones():
     config = obtener_configuracion()
     hoy = date.today()
+    _autocompletar_examenes_pasados(hoy)
     notificaciones = []
 
     for tarea in TareaEvento.query.filter_by(completada=False).all():
