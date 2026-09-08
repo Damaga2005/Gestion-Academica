@@ -221,7 +221,11 @@ def borrar_asignatura(asignatura_id):
     # sus tareas asociadas hay que eliminarlas a mano aquí; si no, quedarían huérfanas
     # apuntando a una asignatura inexistente. Solo se borran las tareas de ESTA
     # asignatura: las generales (asignatura_id NULL) no se tocan.
-    TareaEvento.query.filter_by(asignatura_id=asignatura_id).delete(synchronize_session=False)
+    # Una a una (no bulk .delete()): así SQLAlchemy dispara la cascada de cada tarea
+    # a su Espacio de Estudio (models.py, cascade="all, delete-orphan"), igual que al
+    # borrar una tarea suelta — un bulk delete la salta y dejaría espacios huérfanos.
+    for tarea in TareaEvento.query.filter_by(asignatura_id=asignatura_id).all():
+        db.session.delete(tarea)
     db.session.delete(asignatura)
     db.session.commit()
     return "", 204

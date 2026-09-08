@@ -77,7 +77,12 @@ def importar_guia_docente(asignatura_id):
     if esquemas_datos:
         modo_esquemas = _validar_modo(data.get("modo_esquemas", "añadir"), "modo_esquemas")
         if modo_esquemas == "reemplazar":
-            EsquemaEvaluacion.query.filter_by(asignatura_id=asignatura_id).delete()
+            # Uno a uno (no bulk .delete()): dispara la cascade de cada esquema a sus
+            # ComponenteEvaluacion (models.py). Un bulk delete la salta y deja
+            # componentes huérfanos apuntando a un esquema_id ya borrado — ya pasó
+            # una vez con datos reales de CCE.
+            for esquema in EsquemaEvaluacion.query.filter_by(asignatura_id=asignatura_id).all():
+                db.session.delete(esquema)
 
         max_orden = db.session.query(func.max(EsquemaEvaluacion.orden)).filter_by(
             asignatura_id=asignatura_id

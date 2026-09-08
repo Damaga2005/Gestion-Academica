@@ -233,6 +233,27 @@ def test_importar_modo_reemplazar_borra_lo_existente(client_abierto, asignatura_
     assert nombres == {"Profesor Nuevo"}
 
 
+def test_importar_modo_reemplazar_esquemas_no_deja_componentes_huerfanos(app_abierta, client_abierto, asignatura_id):
+    client_abierto.post(f"/asignaturas/{asignatura_id}/importar-guia-docente", json={
+        "esquemas": [{"nombre": "Evaluación previa", "componentes": [
+            {"nombre": "Parcial", "tipo": "examen_parcial", "porcentaje": 100},
+        ]}],
+    })
+    r = client_abierto.post(f"/asignaturas/{asignatura_id}/importar-guia-docente", json={
+        "esquemas": [{"nombre": "Evaluación nueva", "componentes": [
+            {"nombre": "Final", "tipo": "examen_final", "porcentaje": 100},
+        ]}],
+        "modo_esquemas": "reemplazar",
+    })
+    assert r.status_code == 200
+
+    with app_abierta.app_context():
+        from models import ComponenteEvaluacion
+        componentes = ComponenteEvaluacion.query.filter_by(asignatura_id=asignatura_id).all()
+        assert len(componentes) == 1
+        assert componentes[0].nombre == "Final"
+
+
 def test_importar_modo_invalido_rechazado(client_abierto, asignatura_id):
     client_abierto.post(f"/asignaturas/{asignatura_id}/profesores", json={"nombre": "Profesor Previo"})
     r = client_abierto.post(f"/asignaturas/{asignatura_id}/importar-guia-docente", json={
