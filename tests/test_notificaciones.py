@@ -5,6 +5,7 @@ test previo pese a construirse enteramente sobre configuración (dias_aviso_exam
 dias_asignatura_abandonada) y aritmética de fechas.
 """
 
+import io
 from datetime import date, datetime, timedelta
 
 import pytest
@@ -13,6 +14,16 @@ import pytest
 @pytest.fixture
 def asignatura_id(client_abierto):
     return client_abierto.get("/asignaturas").get_json()[0]["id"]
+
+
+@pytest.fixture
+def documento_id(client_abierto, asignatura_id):
+    r = client_abierto.post(
+        f"/asignaturas/{asignatura_id}/categorias/teoria/documentos",
+        data={"archivos": [(io.BytesIO(b"%PDF-1.4 x"), "t.pdf")]},
+        content_type="multipart/form-data",
+    )
+    return r.get_json()[0]["id"]
 
 
 def _crear_tarea(client, fecha, **extra):
@@ -43,6 +54,60 @@ def test_tarea_general_pasada_sigue_atrasada_no_se_autocompleta(client_abierto):
     client_abierto.get("/notificaciones")
     r = client_abierto.get(f"/tareas/{tarea['id']}")
     assert r.get_json()["completada"] is False
+
+
+# --- Examen próximo sin empezar a repasar (Espacio de Estudio en 0%) ---
+
+def test_examen_proximo_sin_leer_nada_avisa(client_abierto, asignatura_id, documento_id):
+    tarea = client_abierto.post("/tareas", json={
+        "titulo": "Final", "fecha": (date.today() + timedelta(days=2)).isoformat(),
+        "tipo": "examen_final", "asignatura_id": asignatura_id,
+    }).get_json()
+    espacio_id = client_abierto.get(f"/tareas/{tarea['id']}/espacio-estudio").get_json()["id"]
+    client_abierto.post(f"/espacios-estudio/{espacio_id}/documentos", json={
+        "documento_id": documento_id, "seccion": "teoria",
+    })
+
+    notif = client_abierto.get("/notificaciones").get_json()
+    assert any(n["tipo"] == "espacio_sin_empezar" and n["titulo"] == "Final" for n in notif)
+
+
+def test_examen_proximo_con_algo_leido_no_avisa(client_abierto, asignatura_id, documento_id):
+    tarea = client_abierto.post("/tareas", json={
+        "titulo": "Final", "fecha": (date.today() + timedelta(days=2)).isoformat(),
+        "tipo": "examen_final", "asignatura_id": asignatura_id,
+    }).get_json()
+    espacio_id = client_abierto.get(f"/tareas/{tarea['id']}/espacio-estudio").get_json()["id"]
+    ref = client_abierto.post(f"/espacios-estudio/{espacio_id}/documentos", json={
+        "documento_id": documento_id, "seccion": "teoria",
+    }).get_json()
+    client_abierto.put(f"/espacios-estudio/documentos/{ref['id']}", json={"leido": True})
+
+    notif = client_abierto.get("/notificaciones").get_json()
+    assert not any(n["tipo"] == "espacio_sin_empezar" for n in notif)
+
+
+def test_examen_lejano_sin_leer_no_avisa_todavia(client_abierto, asignatura_id, documento_id):
+    tarea = client_abierto.post("/tareas", json={
+        "titulo": "Final", "fecha": (date.today() + timedelta(days=10)).isoformat(),
+        "tipo": "examen_final", "asignatura_id": asignatura_id,
+    }).get_json()
+    espacio_id = client_abierto.get(f"/tareas/{tarea['id']}/espacio-estudio").get_json()["id"]
+    client_abierto.post(f"/espacios-estudio/{espacio_id}/documentos", json={
+        "documento_id": documento_id, "seccion": "teoria",
+    })
+
+    notif = client_abierto.get("/notificaciones").get_json()
+    assert not any(n["tipo"] == "espacio_sin_empezar" for n in notif)
+
+
+def test_espacio_sin_documentos_no_avisa(client_abierto, asignatura_id):
+    client_abierto.post("/tareas", json={
+        "titulo": "Final", "fecha": (date.today() + timedelta(days=1)).isoformat(),
+        "tipo": "examen_final", "asignatura_id": asignatura_id,
+    })
+    notif = client_abierto.get("/notificaciones").get_json()
+    assert not any(n["tipo"] == "espacio_sin_empezar" for n in notif)
 
 
 def test_tarea_a_menos_de_3_dias_es_rojo(client_abierto):

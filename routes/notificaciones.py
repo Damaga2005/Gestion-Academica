@@ -2,7 +2,7 @@ from datetime import date
 
 from flask import Blueprint, jsonify
 
-from models import db, Asignatura, TareaEvento, TIPOS_TAREA_EXAMEN
+from models import db, Asignatura, TareaEvento, EspacioEstudio, TIPOS_TAREA_EXAMEN
 from routes.configuracion import obtener_configuracion
 
 notificaciones_bp = Blueprint("notificaciones", __name__)
@@ -63,6 +63,29 @@ def calcular_notificaciones():
                 "titulo": tarea.titulo,
                 "mensaje": f"{etiqueta_tipo} {cuando} ({tarea.fecha.isoformat()})",
                 "url": url,
+            })
+
+    # Examen próximo (≤3 días, mismo umbral que el "rojo" de arriba) cuyo Espacio de
+    # Estudio sigue en 0% leído: avisa de que falta empezar a repasar, no solo de que
+    # el examen se acerca (ese aviso ya sale arriba). Solo si tiene material referenciado
+    # (un espacio vacío no tiene nada que "no haber empezado a leer").
+    DIAS_AVISO_SIN_EMPEZAR = 3
+    espacios = (
+        EspacioEstudio.query.join(TareaEvento)
+        .filter(TareaEvento.completada.is_(False), TareaEvento.fecha >= hoy)
+        .all()
+    )
+    for espacio in espacios:
+        dias_restantes = (espacio.tarea_evento.fecha - hoy).days
+        datos = espacio.to_dict()
+        if dias_restantes <= DIAS_AVISO_SIN_EMPEZAR and datos["total_documentos"] > 0 and datos["progreso_pct"] == 0:
+            cuando = "hoy" if dias_restantes == 0 else f"en {dias_restantes} día{'s' if dias_restantes != 1 else ''}"
+            notificaciones.append({
+                "tipo": "espacio_sin_empezar",
+                "nivel": "rojo" if dias_restantes < 2 else "naranja",
+                "titulo": espacio.nombre,
+                "mensaje": f"Examen {cuando} y todavía no has empezado a repasar (0% leído)",
+                "url": f"/vista/espacios-estudio/{espacio.id}",
             })
 
     # Asignaturas que se están cursando activamente, sin actividad reciente registrada.
