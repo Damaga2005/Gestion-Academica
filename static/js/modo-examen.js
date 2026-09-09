@@ -106,6 +106,12 @@ async function cargar() {
   document.getElementById('me-aula').textContent = espacio.aula || '—';
   document.getElementById('me-ubicacion').textContent = espacio.ubicacion || '—';
 
+  // Mismo umbral que "espacio_sin_empezar" en routes/notificaciones.py: examen en
+  // ≤3 días con 0% leído y material real referenciado.
+  document.getElementById('me-aviso-sin-empezar').hidden = !(
+    dias >= 0 && dias <= 3 && espacio.total_documentos > 0 && espacio.progreso_pct === 0
+  );
+
   renderDestacados(espacio);
   renderObjetivos(espacio);
 }

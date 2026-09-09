@@ -1,3 +1,12 @@
+.me-aviso-sin-empezar {
+  padding: var(--ds-space-3) var(--ds-space-4);
+  border-radius: var(--ds-radius-md);
+  background: color-mix(in srgb, var(--ds-color-danger) 12%, var(--ds-color-surface));
+  color: color-mix(in srgb, var(--ds-color-danger) 55%, var(--ds-color-text-primary));
+  font-weight: var(--ds-font-weight-button);
+  margin-bottom: var(--ds-space-4);
+}
+
 .me-cuenta-atras-card {
   text-align: center;
   padding: var(--ds-space-8) var(--ds-space-6);
