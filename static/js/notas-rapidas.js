@@ -18,6 +18,17 @@ async function nrApi(path, options = {}) {
   return res.status === 204 ? null : res.json();
 }
 
+function nrTiempoRelativo(fechaCreacionUtc) {
+  const minutos = Math.round((Date.now() - new Date(fechaCreacionUtc + 'Z').getTime()) / 60000);
+  if (minutos < 1) return 'ahora mismo';
+  if (minutos < 60) return `hace ${minutos} min`;
+  const horas = Math.round(minutos / 60);
+  if (horas < 24) return `hace ${horas}h`;
+  const dias = Math.round(horas / 24);
+  if (dias === 1) return 'ayer';
+  return `hace ${dias} días`;
+}
+
 function nrRenderLista(notas) {
   const lista = document.getElementById('nr-lista');
   if (notas.length === 0) {
@@ -26,7 +37,10 @@ function nrRenderLista(notas) {
   }
   lista.innerHTML = notas.map((n) => `
     <div class="nr-item" data-id="${n.id}">
-      <span class="nr-item-texto">${nrEscapeHtml(n.texto)}</span>
+      <div class="nr-item-cuerpo">
+        <span class="nr-item-texto" title="Click para editar">${nrEscapeHtml(n.texto)}</span>
+        <span class="ds-caption ds-text-secondary nr-item-fecha">${nrTiempoRelativo(n.fecha_creacion)}</span>
+      </div>
       <div class="nr-item-acciones">
         <button type="button" class="nr-item-a-tarea" title="Convertir en tarea" aria-label="Convertir en tarea">
           <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-calendar"></use></svg>
@@ -37,6 +51,10 @@ function nrRenderLista(notas) {
       </div>
     </div>
   `).join('');
+
+  lista.querySelectorAll('.nr-item-texto').forEach((span) => {
+    span.addEventListener('click', () => nrEmpezarEdicion(span));
+  });
   lista.querySelectorAll('.nr-item-borrar').forEach((boton) => {
     boton.addEventListener('click', async () => {
       const id = boton.closest('.nr-item').dataset.id;
@@ -67,9 +85,49 @@ function nrRenderLista(notas) {
   });
 }
 
+function nrEmpezarEdicion(span) {
+  const fila = span.closest('.nr-item');
+  const id = fila.dataset.id;
+  const textoActual = span.textContent;
+
+  const campo = document.createElement('textarea');
+  campo.className = 'ds-input nr-textarea';
+  campo.value = textoActual;
+  campo.maxLength = 1000;
+  span.replaceWith(campo);
+  campo.focus();
+  campo.setSelectionRange(campo.value.length, campo.value.length);
+
+  let guardado = false;
+  const guardar = async () => {
+    if (guardado) return;
+    guardado = true;
+    const nuevo = campo.value.trim();
+    if (nuevo && nuevo !== textoActual) {
+      await nrApi(`/notas-rapidas/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texto: nuevo }),
+      });
+    }
+    nrCargar();
+  };
+  campo.addEventListener('blur', guardar);
+  campo.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); campo.blur(); }
+    if (e.key === 'Escape') { guardado = true; nrCargar(); }
+  });
+}
+
 async function nrCargar() {
+  const badge = document.getElementById('nr-badge');
   try {
-    nrRenderLista(await nrApi('/notas-rapidas'));
+    const notas = await nrApi('/notas-rapidas');
+    nrRenderLista(notas);
+    if (badge) {
+      badge.textContent = notas.length > 9 ? '9+' : String(notas.length);
+      badge.hidden = notas.length === 0;
+    }
   } catch (err) {
     document.getElementById('nr-lista').innerHTML = '<p class="ds-caption nb-vacio">Error al cargar.</p>';
   }
@@ -80,6 +138,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const dropdown = document.getElementById('nr-dropdown');
   const form = document.getElementById('nr-form');
   if (!boton || !dropdown || !form) return; // página sin el include (defensivo)
+
+  nrCargar();
 
   boton.addEventListener('click', (e) => {
     e.stopPropagation();
