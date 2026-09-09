@@ -17,11 +17,19 @@
   color: var(--ds-color-text-primary);
 }
 
+.espacios-filtros-chips {
+  display: flex;
+  gap: var(--ds-space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--ds-space-4);
+}
+
 .espacio-card-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--ds-space-3);
+  gap: var(--ds-space-2);
+  flex-wrap: wrap;
 }
 
 .espacio-card-cuenta-atras {

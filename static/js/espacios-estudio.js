@@ -44,11 +44,12 @@ function renderEspacios(espacios) {
   const grid = document.getElementById('espacios-grid');
 
   if (espacios.length === 0) {
+    const filtrando = typeof filtroActivo !== 'undefined' && filtroActivo !== 'todos';
     grid.innerHTML = `
       <div class="ds-empty-state" style="grid-column: 1 / -1">
         <div class="ds-empty-state-icon">📚</div>
-        <div class="ds-empty-state-title">Sin espacios de estudio todavía</div>
-        <p class="ds-empty-state-description">Créalos marcando "Crear Espacio de Estudio automáticamente" al guardar un examen o entrega en el Calendario.</p>
+        <div class="ds-empty-state-title">${filtrando ? 'Ningún espacio con este filtro' : 'Sin espacios de estudio todavía'}</div>
+        <p class="ds-empty-state-description">${filtrando ? 'Prueba con otro filtro.' : 'Créalos marcando "Crear Espacio de Estudio automáticamente" al guardar un examen o entrega en el Calendario.'}</p>
       </div>
     `;
     reanimar(grid);
@@ -57,10 +58,13 @@ function renderEspacios(espacios) {
 
   grid.innerHTML = espacios.map((e) => {
     const urgente = e.dias_restantes !== null && e.dias_restantes <= 3;
+    // Mismo umbral que "espacio_sin_empezar" en routes/notificaciones.py.
+    const sinEmpezar = urgente && e.dias_restantes >= 0 && e.total_documentos > 0 && e.progreso_pct === 0;
     return `
       <a class="ds-card ds-card--interactive espacio-card" href="/vista/espacios-estudio/${e.id}">
         <div class="espacio-card-header">
           <p class="ds-h3">${escapeHtml(e.nombre)}</p>
+          ${sinEmpezar ? '<span class="ds-badge ds-badge-danger">Sin empezar</span>' : ''}
           ${e.asignatura_siglas ? `<span class="ds-badge ds-badge-accent">${escapeHtml(e.asignatura_siglas)}</span>` : ''}
         </div>
         <p class="ds-caption">${e.asignatura_nombre ? escapeHtml(e.asignatura_nombre) : 'Sin asignatura'}${e.fecha ? ' · ' + new Date(e.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' }) : ''}</p>
@@ -81,13 +85,35 @@ function renderEspacios(espacios) {
   reanimar(grid);
 }
 
+let espaciosCache = [];
+let filtroActivo = 'todos';
+
+function aplicarFiltro() {
+  const filtrados = espaciosCache.filter((e) => {
+    if (filtroActivo === 'sin_empezar') return e.total_documentos > 0 && e.progreso_pct === 0;
+    if (filtroActivo === 'en_progreso') return e.progreso_pct > 0 && e.progreso_pct < 100;
+    if (filtroActivo === 'completados') return e.total_documentos > 0 && e.progreso_pct === 100;
+    return true;
+  });
+  renderEspacios(filtrados);
+}
+
 async function cargarEspacios() {
   try {
-    const espacios = await api('/espacios-estudio');
-    renderEspacios(espacios);
+    espaciosCache = await api('/espacios-estudio');
+    aplicarFiltro();
   } catch (err) {
     mostrarToast('Error al cargar espacios de estudio: ' + err.message, 'danger');
   }
 }
+
+document.getElementById('espacios-filtros').addEventListener('click', (e) => {
+  const boton = e.target.closest('.filtro-chip');
+  if (!boton) return;
+  document.querySelectorAll('#espacios-filtros .filtro-chip').forEach((b) => b.classList.remove('is-active'));
+  boton.classList.add('is-active');
+  filtroActivo = boton.dataset.filtro;
+  aplicarFiltro();
+});
 
 cargarEspacios();
