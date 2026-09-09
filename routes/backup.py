@@ -1,5 +1,6 @@
 import io
 import os
+import re
 import shutil
 import sqlite3
 import stat
@@ -86,6 +87,22 @@ def listar_backups_automaticos():
         }
         for nombre in archivos
     ])
+
+
+# Formato exacto que genera _backup_automatico (escritorio.py): validarlo estricto
+# antes de tocar el filesystem descarta cualquier intento de path traversal (../,
+# rutas absolutas...) sin necesidad de resolver y comparar rutas.
+_NOMBRE_BACKUP_AUTO = re.compile(r"^auto_\d{4}-\d{2}-\d{2}_\d{6}\.zip$")
+
+
+@backup_bp.get("/backup/automaticos/<nombre>")
+def descargar_backup_automatico(nombre):
+    if not _NOMBRE_BACKUP_AUTO.match(nombre):
+        raise ApiError("nombre de backup inválido", 404)
+    ruta = os.path.join(DATA_DIR, "backups", nombre)
+    if not os.path.isfile(ruta):
+        raise ApiError("no existe ese backup", 404)
+    return send_file(ruta, mimetype="application/zip", as_attachment=True, download_name=nombre)
 
 
 @backup_bp.get("/backup/exportar")

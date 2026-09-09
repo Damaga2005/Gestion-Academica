@@ -177,6 +177,31 @@ def test_listar_backups_automaticos_los_devuelve_mas_reciente_primero(client_abi
     assert backups[0]["tamano_bytes"] == 2048
 
 
+def test_descargar_backup_automatico(client_abierto, tmp_path, monkeypatch):
+    monkeypatch.setattr("routes.backup.DATA_DIR", str(tmp_path))
+    carpeta = tmp_path / "backups"
+    carpeta.mkdir()
+    (carpeta / "auto_2026-09-01_100000.zip").write_bytes(b"contenido real")
+
+    r = client_abierto.get("/backup/automaticos/auto_2026-09-01_100000.zip")
+    assert r.status_code == 200
+    assert r.data == b"contenido real"
+
+
+def test_descargar_backup_automatico_inexistente_404(client_abierto, tmp_path, monkeypatch):
+    monkeypatch.setattr("routes.backup.DATA_DIR", str(tmp_path))
+    r = client_abierto.get("/backup/automaticos/auto_2026-01-01_000000.zip")
+    assert r.status_code == 404
+
+
+def test_descargar_backup_automatico_rechaza_path_traversal(client_abierto, tmp_path, monkeypatch):
+    monkeypatch.setattr("routes.backup.DATA_DIR", str(tmp_path))
+    # fuera de backups/: si el nombre no encaja con el patrón auto_YYYY-MM-DD_HHMMSS.zip,
+    # ni se llega a construir la ruta.
+    r = client_abierto.get("/backup/automaticos/..%2f..%2facademico.db")
+    assert r.status_code == 404
+
+
 def test_restore_tmp_se_limpia_tras_cada_intento(client_abierto, tmp_path):
     zip_bytes = _zip_bytes([("otro.txt", b"nada")])
     client_abierto.post(

@@ -69,6 +69,23 @@
   margin-bottom: 0;
 }
 
+.ajustes-backups-auto-lista {
+  list-style: none;
+  margin: var(--ds-space-3) 0 0;
+  padding: 0;
+}
+.ajustes-backups-auto-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+  padding: var(--ds-space-2) 0;
+  border-bottom: 1px solid var(--ds-color-border);
+  font-size: var(--ds-font-size-caption);
+}
+.ajustes-backups-auto-item:last-child { border-bottom: none; }
+.ajustes-backups-auto-descargar { padding: var(--ds-space-1) var(--ds-space-3); }
+
 .ajustes-enlace {
   display: inline-flex;
   align-items: center;

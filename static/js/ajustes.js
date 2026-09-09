@@ -105,6 +105,13 @@ async function cargarBackupsAutomaticos() {
     resumen.textContent =
       `Última: ${ultima.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })} · ` +
       `${backups.length} copia${backups.length !== 1 ? 's' : ''} guardada${backups.length !== 1 ? 's' : ''} · ${formatoTamano(total)} en total`;
+
+    document.getElementById('backups-auto-lista').innerHTML = backups.map((b) => `
+      <li class="ajustes-backups-auto-item">
+        <span>${new Date(b.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })} · ${formatoTamano(b.tamano_bytes)}</span>
+        <a href="/backup/automaticos/${encodeURIComponent(b.nombre)}" class="ds-btn ds-btn-secondary ajustes-backups-auto-descargar">Descargar</a>
+      </li>
+    `).join('');
   } catch (err) {
     resumen.textContent = 'No se pudo comprobar el estado de las copias automáticas.';
   }
