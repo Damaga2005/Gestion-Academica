@@ -1240,6 +1240,18 @@ class PaginaTexto(db.Model):
         }
 
 
+class AvisoDescartado(db.Model):
+    """Un aviso de calcular_notificaciones() (routes/notificaciones.py) descartado
+    por el usuario para hoy: vuelve a aparecer mañana si sigue siendo cierto, en vez
+    de exigir completar la tarea/leer el espacio de verdad solo para quitarlo de la
+    campanita. (tipo, entidad_id) identifica el aviso igual que lo hace el frontend."""
+    __tablename__ = "aviso_descartado"
+
+    tipo = db.Column(db.String(30), primary_key=True)
+    entidad_id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.Date, primary_key=True)
+
+
 class DiaActividad(db.Model):
     """Un día en el que hubo actividad real de estudio (leer un documento, completar
     una tarea, revisar un concepto): una fila por día, para calcular la racha (días

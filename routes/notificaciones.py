@@ -1,9 +1,10 @@
 from datetime import date
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, request, jsonify
 
-from models import db, Asignatura, TareaEvento, EspacioEstudio, TIPOS_TAREA_EXAMEN
+from models import db, Asignatura, TareaEvento, EspacioEstudio, AvisoDescartado, TIPOS_TAREA_EXAMEN
 from routes.configuracion import obtener_configuracion
+from routes.errors import ApiError
 
 notificaciones_bp = Blueprint("notificaciones", __name__)
 
@@ -37,6 +38,9 @@ def calcular_notificaciones():
     config = obtener_configuracion()
     hoy = date.today()
     _autocompletar_examenes_pasados(hoy)
+    descartados_hoy = {
+        (a.tipo, a.entidad_id) for a in AvisoDescartado.query.filter_by(fecha=hoy).all()
+    }
     notificaciones = []
 
     for tarea in TareaEvento.query.filter_by(completada=False).all():
@@ -48,6 +52,7 @@ def calcular_notificaciones():
             dias_atraso = -dias_restantes
             notificaciones.append({
                 "tipo": "tarea",
+                "entidad_id": tarea.id,
                 "nivel": "rojo",
                 "titulo": tarea.titulo,
                 "mensaje": f"{etiqueta_tipo} atrasada desde hace {dias_atraso} día{'s' if dias_atraso != 1 else ''} "
@@ -59,6 +64,7 @@ def calcular_notificaciones():
             cuando = "hoy" if dias_restantes == 0 else f"en {dias_restantes} día{'s' if dias_restantes != 1 else ''}"
             notificaciones.append({
                 "tipo": "tarea",
+                "entidad_id": tarea.id,
                 "nivel": nivel,
                 "titulo": tarea.titulo,
                 "mensaje": f"{etiqueta_tipo} {cuando} ({tarea.fecha.isoformat()})",
@@ -82,6 +88,7 @@ def calcular_notificaciones():
             cuando = "hoy" if dias_restantes == 0 else f"en {dias_restantes} día{'s' if dias_restantes != 1 else ''}"
             notificaciones.append({
                 "tipo": "espacio_sin_empezar",
+                "entidad_id": espacio.id,
                 "nivel": "rojo" if dias_restantes < 2 else "naranja",
                 "titulo": espacio.nombre,
                 "mensaje": f"Examen {cuando} y todavía no has empezado a repasar (0% leído)",
@@ -98,12 +105,14 @@ def calcular_notificaciones():
         if dias_inactivo > config.dias_asignatura_abandonada:
             notificaciones.append({
                 "tipo": "asignatura_inactiva",
+                "entidad_id": asignatura.id,
                 "nivel": "gris",
                 "titulo": asignatura.nombre,
                 "mensaje": f"Sin actividad registrada desde hace {dias_inactivo} días",
                 "url": f"/vista/asignaturas/{asignatura.id}",
             })
 
+    notificaciones = [n for n in notificaciones if (n["tipo"], n["entidad_id"]) not in descartados_hoy]
     notificaciones.sort(key=lambda n: NIVEL_ORDEN[n["nivel"]])
     return notificaciones
 
@@ -111,3 +120,18 @@ def calcular_notificaciones():
 @notificaciones_bp.get("/notificaciones")
 def obtener_notificaciones():
     return jsonify(calcular_notificaciones())
+
+
+@notificaciones_bp.post("/notificaciones/descartar")
+def descartar_notificacion():
+    """Descarta un aviso concreto solo por hoy: vuelve a salir mañana si sigue
+    siendo cierto. No completa ninguna tarea ni toca ningún dato real."""
+    data = request.get_json(silent=True) or {}
+    if "tipo" not in data or "entidad_id" not in data:
+        raise ApiError("'tipo' y 'entidad_id' son obligatorios")
+
+    hoy = date.today()
+    if db.session.get(AvisoDescartado, (data["tipo"], data["entidad_id"], hoy)) is None:
+        db.session.add(AvisoDescartado(tipo=data["tipo"], entidad_id=data["entidad_id"], fecha=hoy))
+        db.session.commit()
+    return "", 204

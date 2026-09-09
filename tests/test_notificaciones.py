@@ -56,6 +56,41 @@ def test_tarea_general_pasada_sigue_atrasada_no_se_autocompleta(client_abierto):
     assert r.get_json()["completada"] is False
 
 
+# --- Descartar un aviso por hoy ---
+
+def test_descartar_quita_el_aviso_de_la_lista(client_abierto):
+    tarea = _crear_tarea(client_abierto, date.today() - timedelta(days=1))
+    notif = client_abierto.get("/notificaciones").get_json()
+    aviso = next(n for n in notif if n["titulo"] == "Tarea de prueba")
+
+    r = client_abierto.post("/notificaciones/descartar", json={
+        "tipo": aviso["tipo"], "entidad_id": aviso["entidad_id"],
+    })
+    assert r.status_code == 204
+
+    notif2 = client_abierto.get("/notificaciones").get_json()
+    assert not any(n["titulo"] == "Tarea de prueba" for n in notif2)
+
+
+def test_descartar_no_completa_la_tarea(client_abierto):
+    tarea = _crear_tarea(client_abierto, date.today() - timedelta(days=1))
+    client_abierto.post("/notificaciones/descartar", json={"tipo": "tarea", "entidad_id": tarea["id"]})
+    r = client_abierto.get(f"/tareas/{tarea['id']}")
+    assert r.get_json()["completada"] is False
+
+
+def test_descartar_es_idempotente(client_abierto):
+    tarea = _crear_tarea(client_abierto, date.today() - timedelta(days=1))
+    body = {"tipo": "tarea", "entidad_id": tarea["id"]}
+    assert client_abierto.post("/notificaciones/descartar", json=body).status_code == 204
+    assert client_abierto.post("/notificaciones/descartar", json=body).status_code == 204
+
+
+def test_descartar_sin_campos_da_error(client_abierto):
+    r = client_abierto.post("/notificaciones/descartar", json={})
+    assert r.status_code == 400
+
+
 # --- Examen próximo sin empezar a repasar (Espacio de Estudio en 0%) ---
 
 def test_examen_proximo_sin_leer_nada_avisa(client_abierto, asignatura_id, documento_id):

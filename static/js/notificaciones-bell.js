@@ -11,6 +11,15 @@ function nbEscapeHtml(texto) {
   return div.innerHTML;
 }
 
+async function nbDescartar(tipo, entidadId) {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  await fetch('/notificaciones/descartar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': meta ? meta.content : '' },
+    body: JSON.stringify({ tipo, entidad_id: entidadId }),
+  });
+}
+
 function nbRenderLista(notificaciones) {
   const lista = document.getElementById('nb-lista');
   if (notificaciones.length === 0) {
@@ -18,14 +27,28 @@ function nbRenderLista(notificaciones) {
     return;
   }
   lista.innerHTML = notificaciones.map((n) => `
-    <a class="nb-item" href="${n.url}">
-      <span class="ds-badge ${NB_BADGE_POR_NIVEL[n.nivel] || 'ds-badge'}">&nbsp;</span>
-      <span class="nb-item-texto">
-        <span class="nb-item-titulo">${nbEscapeHtml(n.titulo)}</span>
-        <span class="ds-caption ds-text-secondary">${nbEscapeHtml(n.mensaje)}</span>
-      </span>
-    </a>
+    <div class="nb-item" data-tipo="${n.tipo}" data-entidad-id="${n.entidad_id}">
+      <a class="nb-item-link" href="${n.url}">
+        <span class="ds-badge ${NB_BADGE_POR_NIVEL[n.nivel] || 'ds-badge'}">&nbsp;</span>
+        <span class="nb-item-texto">
+          <span class="nb-item-titulo">${nbEscapeHtml(n.titulo)}</span>
+          <span class="ds-caption ds-text-secondary">${nbEscapeHtml(n.mensaje)}</span>
+        </span>
+      </a>
+      <button type="button" class="nb-item-descartar" title="Descartar por hoy" aria-label="Descartar por hoy">
+        <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-x"></use></svg>
+      </button>
+    </div>
   `).join('');
+  lista.querySelectorAll('.nb-item-descartar').forEach((boton) => {
+    boton.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const fila = boton.closest('.nb-item');
+      await nbDescartar(fila.dataset.tipo, Number(fila.dataset.entidadId));
+      nbCargar();
+    });
+  });
 }
 
 async function nbCargar() {
