@@ -24,6 +24,17 @@ def crear_nota_rapida():
     return jsonify(nota.to_dict()), 201
 
 
+@notas_rapidas_bp.put("/notas-rapidas/<int:nota_id>")
+def actualizar_nota_rapida(nota_id):
+    nota = NotaRapida.query.get_or_404(nota_id)
+    data = request.get_json(silent=True) or {}
+    if not (data.get("texto") or "").strip():
+        raise ApiError("'texto' es obligatorio")
+    nota.texto = data["texto"]
+    db.session.commit()
+    return jsonify(nota.to_dict())
+
+
 @notas_rapidas_bp.delete("/notas-rapidas/<int:nota_id>")
 def borrar_nota_rapida(nota_id):
     nota = NotaRapida.query.get_or_404(nota_id)

@@ -441,11 +441,22 @@ html, body {
 }
 .nr-item:last-child { border-bottom: none; }
 
+.nr-item-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .nr-item-texto {
   font-size: 0.85rem;
   white-space: pre-wrap;
   word-break: break-word;
+  cursor: text;
 }
+.nr-item-texto:hover { text-decoration: underline dotted; }
+
+.nr-item-fecha { font-size: 0.7rem; }
 
 .nr-item-acciones {
   display: flex;
