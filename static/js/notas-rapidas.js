@@ -1,5 +1,5 @@
-// Notas rápidas (ver templates/_notas_rapidas.html): bloc de notas accesible desde
-// cualquier página, para apuntar algo al vuelo sin perder de vista lo que se mira.
+// Notas al vuelo (ver templates/_notas_rapidas.html): bloc de notas accesible desde
+// cualquier página, para apuntar algo sin perder de vista lo que se mira.
 
 function nrEscapeHtml(texto) {
   const div = document.createElement('div');

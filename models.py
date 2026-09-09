@@ -64,7 +64,7 @@ SECCIONES_ESPACIO_ESTUDIO = ("examenes_anteriores", "teoria", "ejercicios", "lab
 # genéricas y no tienen una FK real a cada tabla posible.
 TIPOS_ENTIDAD_BUSQUEDA = (
     "asignatura", "profesor", "documento", "pagina_pdf", "tarea", "examen", "evento", "etiqueta",
-    "hito", "concepto",
+    "hito", "concepto", "nota_al_vuelo",
 )
 # Nota de corte del indicador visual "Estado de las Asignaturas" (🟢/🟡/🔴/⚪),
 # calculado solo a partir de las notas: no toca ni depende del campo `estado`

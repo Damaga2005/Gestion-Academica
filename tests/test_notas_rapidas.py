@@ -1,4 +1,4 @@
-"""Notas rápidas: bloc de notas suelto, sin vínculo con ninguna otra entidad."""
+"""Notas al vuelo: bloc de notas suelto, sin vínculo con ninguna otra entidad."""
 
 
 def test_crear_y_listar_mas_recientes_primero(client_abierto):

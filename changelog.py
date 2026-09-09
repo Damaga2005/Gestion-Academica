@@ -19,7 +19,7 @@ CAMBIOS = [
             "Al programar un examen se crea solo su Espacio de Estudio (y se borra solo si borras el examen)",
             "Los exámenes ya pasados dejan de salir como \"atrasados\" en los avisos",
             "Racha de estudio: días seguidos y récord histórico, con badge en el Dashboard",
-            "Notas rápidas: bloc de notas accesible desde cualquier página (atajo \"n\")",
+            "Notas al vuelo: bloc de notas accesible desde cualquier página (atajo \"n\")",
             "El número de avisos pendientes aparece en el título de la pestaña",
             "Backup automático diario + visibilidad de las copias guardadas en Ajustes",
         ],

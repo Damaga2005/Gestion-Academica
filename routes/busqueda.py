@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from sqlalchemy.orm import joinedload
 
 from models import (
-    Asignatura, Concepto, Documento, Hito, PaginaTexto, Profesor, TareaEvento,
+    Asignatura, Concepto, Documento, Hito, NotaRapida, PaginaTexto, Profesor, TareaEvento,
     BusquedaFavorito, BusquedaReciente, db,
 )
 from routes.errors import ApiError
@@ -52,7 +52,7 @@ def buscar():
 
     resultados = {
         "asignaturas": [], "profesores": [], "documentos": [], "paginas_pdf": [],
-        "notas": [], "tareas": [], "examenes": [], "eventos": [], "etiquetas": [],
+        "notas": [], "notas_al_vuelo": [], "tareas": [], "examenes": [], "eventos": [], "etiquetas": [],
         "hitos": [], "conceptos": [],
     }
 
@@ -95,6 +95,14 @@ def buscar():
                 resultados["eventos"].append(item)
             else:
                 resultados["tareas"].append(item)
+
+        for n in NotaRapida.query.all():
+            if _contiene(n.texto, termino):
+                resultados["notas_al_vuelo"].append({
+                    "id": n.id,
+                    "fragmento": _fragmento(n.texto, termino),
+                    "url": "/vista/dashboard",
+                })
 
         for h in Hito.query.all():
             if _contiene(h.nombre, termino):

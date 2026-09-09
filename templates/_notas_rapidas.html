@@ -1,14 +1,16 @@
-{# Notas rápidas: bloc de notas accesible desde cualquier página, para apuntar algo
-   al vuelo sin perder de vista lo que se está mirando. Mismo patrón que
+{# Notas al vuelo: bloc de notas accesible desde cualquier página, para apuntar algo
+   sin perder de vista lo que se está mirando. Nombre deliberadamente distinto de las
+   "Notas rápidas" por asignatura (Asignatura.notas, ya existentes): son dos cosas
+   distintas, esto evita que se confundan en la UI. Mismo patrón que
    _notificaciones_bell.html/_buscador_global.html (sin layout base compartido).
    Comportamiento en notas-rapidas.js. #}
 <div class="nr-wrap">
-  <button id="btn-notas-rapidas" class="ds-btn ds-btn-secondary" type="button" title="Notas rápidas" aria-label="Notas rápidas">
+  <button id="btn-notas-rapidas" class="ds-btn ds-btn-secondary" type="button" title="Notas al vuelo" aria-label="Notas al vuelo">
     <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-pencil"></use></svg>
     <span id="nr-badge" class="nb-badge" hidden>0</span>
   </button>
   <div id="nr-dropdown" class="nb-dropdown" hidden>
-    <p class="ds-caption nb-dropdown-titulo">Notas rápidas</p>
+    <p class="ds-caption nb-dropdown-titulo">Notas al vuelo</p>
     <form id="nr-form" class="nr-form">
       <textarea id="nr-texto" class="ds-input nr-textarea" placeholder="Apunta algo…" maxlength="1000" required></textarea>
       <button type="submit" class="ds-btn ds-btn-secondary">Añadir</button>

@@ -158,11 +158,13 @@ completar una tarea, subir/bajar un concepto en repaso): badge 🔥 en el
 Dashboard con la racha actual y, en el tooltip, el récord histórico. Al
 igualar o superar el récord, aviso nativo de Windows al arrancar.
 
-## 12. Notas rápidas
+## 12. Notas al vuelo
 
 Bloc de notas accesible desde cualquier página (icono ✏️ en la cabecera, o
-atajo de teclado **n**): para apuntar algo al vuelo sin perder de vista lo
-que se está mirando ni tener que crear una tarea formal para ello.
+atajo de teclado **n**): para apuntar algo sin perder de vista lo que se
+está mirando ni tener que crear una tarea formal para ello. Buscable desde
+el buscador global. Nombre distinto de las "Notas rápidas" por asignatura
+(sección 1): son dos cosas distintas.
 
 ## 13. Notificaciones
 
@@ -196,8 +198,9 @@ que se está mirando ni tener que crear una tarea formal para ello.
 
 Barra de búsqueda en la cabecera, disponible desde cualquier pantalla (atajo
 **Ctrl+K**): busca a la vez en nombres de asignatura, **contenido de
-documentos PDF ya indexado**, notas rápidas, tareas, hitos y conceptos de
-repaso, y muestra resultados agrupados con el fragmento de texto donde
+documentos PDF ya indexado**, notas rápidas de asignatura, notas al vuelo,
+tareas, hitos y conceptos de repaso, y muestra resultados agrupados con el
+fragmento de texto donde
 aparece la coincidencia.
 
 ## 16. Atajos de teclado

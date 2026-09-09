@@ -23,7 +23,7 @@
     { teclas: ['g', 'h'], descripcion: 'Ir a Horario' },
     { teclas: ['g', 'r'], descripcion: 'Ir a Repaso' },
     { teclas: ['g', 's'], descripcion: 'Ir a Configuración' },
-    { teclas: ['n'], descripcion: 'Nueva nota rápida' },
+    { teclas: ['n'], descripcion: 'Nueva nota al vuelo' },
     { teclas: ['?'], descripcion: 'Mostrar esta ayuda' },
     { teclas: ['Esc'], descripcion: 'Cerrar ventana/menú activo' },
   ];

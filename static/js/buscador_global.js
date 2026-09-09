@@ -32,6 +32,8 @@
       render: (t) => ({ titulo: t.titulo, contexto: t.fecha, url: t.url }) },
     { clave: 'notas', titulo: 'Notas rápidas', icono: 'file-text', tipo: 'asignatura',
       render: (n) => ({ titulo: n.asignatura_nombre, fragmento: n.fragmento, url: n.url }) },
+    { clave: 'notas_al_vuelo', titulo: 'Notas al vuelo', icono: 'pencil', tipo: 'nota_al_vuelo',
+      render: (n) => ({ titulo: n.fragmento, contexto: null, url: n.url }) },
     { clave: 'etiquetas', titulo: 'Etiquetas', icono: 'tag', tipo: 'etiqueta',
       render: (e) => ({ titulo: e.etiqueta, contexto: null, url: e.url }) },
     { clave: 'hitos', titulo: 'Hitos', icono: 'star', tipo: 'hito',

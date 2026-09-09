@@ -44,3 +44,16 @@ def test_hito_y_concepto_favoriteables(client_abierto):
     assert r1.status_code == 201
     r2 = client_abierto.post("/busqueda/favoritos", json={"tipo_entidad": "concepto", "entidad_id": 1})
     assert r2.status_code == 201
+
+
+def test_buscar_encuentra_nota_al_vuelo(client_abierto):
+    """Notas al vuelo (NotaRapida) no se buscaban en absoluto hasta ahora."""
+    client_abierto.post("/notas-rapidas", json={"texto": "Revisar la transformada de Fourier antes del parcial"})
+    data = client_abierto.get("/buscar?q=fourier").get_json()
+    assert len(data["notas_al_vuelo"]) == 1
+    assert "Fourier" in data["notas_al_vuelo"][0]["fragmento"]
+
+
+def test_nota_al_vuelo_favoriteable(client_abierto):
+    r = client_abierto.post("/busqueda/favoritos", json={"tipo_entidad": "nota_al_vuelo", "entidad_id": 1})
+    assert r.status_code == 201
