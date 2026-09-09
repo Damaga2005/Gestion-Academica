@@ -427,7 +427,13 @@ html, body {
   word-break: break-word;
 }
 
-.nr-item-borrar {
+.nr-item-acciones {
+  display: flex;
+  gap: var(--ds-space-2);
+  flex-shrink: 0;
+}
+
+.nr-item-borrar, .nr-item-a-tarea {
   flex-shrink: 0;
   border: none;
   background: none;
@@ -436,7 +442,8 @@ html, body {
   padding: 0;
 }
 .nr-item-borrar:hover { color: var(--ds-color-danger); }
-.nr-item-borrar .ds-icon { width: 14px; height: 14px; }
+.nr-item-a-tarea:hover { color: var(--ds-color-accent); }
+.nr-item-borrar .ds-icon, .nr-item-a-tarea .ds-icon { width: 14px; height: 14px; }
 
 @media (prefers-reduced-motion: reduce) {
   .ds-scope *, .ds-scope *::before, .ds-scope *::after {

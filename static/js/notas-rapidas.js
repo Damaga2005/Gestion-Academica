@@ -27,15 +27,41 @@ function nrRenderLista(notas) {
   lista.innerHTML = notas.map((n) => `
     <div class="nr-item" data-id="${n.id}">
       <span class="nr-item-texto">${nrEscapeHtml(n.texto)}</span>
-      <button type="button" class="nr-item-borrar" title="Borrar" aria-label="Borrar nota">
-        <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-x"></use></svg>
-      </button>
+      <div class="nr-item-acciones">
+        <button type="button" class="nr-item-a-tarea" title="Convertir en tarea" aria-label="Convertir en tarea">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-calendar"></use></svg>
+        </button>
+        <button type="button" class="nr-item-borrar" title="Borrar" aria-label="Borrar nota">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-x"></use></svg>
+        </button>
+      </div>
     </div>
   `).join('');
   lista.querySelectorAll('.nr-item-borrar').forEach((boton) => {
     boton.addEventListener('click', async () => {
       const id = boton.closest('.nr-item').dataset.id;
       await nrApi(`/notas-rapidas/${id}`, { method: 'DELETE' });
+      nrCargar();
+    });
+  });
+  lista.querySelectorAll('.nr-item-a-tarea').forEach((boton) => {
+    boton.addEventListener('click', async () => {
+      const fila = boton.closest('.nr-item');
+      const id = fila.dataset.id;
+      const texto = fila.querySelector('.nr-item-texto').textContent;
+      const titulo = texto.length > 200 ? texto.slice(0, 197) + '…' : texto;
+      await nrApi('/tareas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titulo,
+          fecha: new Date().toISOString().slice(0, 10),
+          tipo: 'tarea_general',
+          descripcion: titulo === texto ? null : texto,
+        }),
+      });
+      await nrApi(`/notas-rapidas/${id}`, { method: 'DELETE' });
+      if (typeof mostrarToast === 'function') mostrarToast('Convertida en tarea de hoy', 'success');
       nrCargar();
     });
   });
