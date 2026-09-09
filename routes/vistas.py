@@ -49,6 +49,11 @@ def vista_horario():
     return render_template("horario.html")
 
 
+@vistas_bp.get("/vista/linea-tiempo")
+def vista_linea_tiempo():
+    return render_template("linea_tiempo.html")
+
+
 @vistas_bp.get("/vista/repaso")
 def vista_repaso():
     return render_template("repaso.html")

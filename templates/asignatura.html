@@ -40,6 +40,12 @@
             </a>
           </li>
           <li>
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_linea_tiempo') }}">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-clock"></use></svg>
+              Línea de tiempo
+            </a>
+          </li>
+          <li>
             <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_repaso') }}">
               <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-check"></use></svg>
               Repaso

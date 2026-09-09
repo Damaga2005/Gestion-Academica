@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <title id="titulo-pagina">Modo examen · GREELEC</title>
+  <title>Línea de tiempo · GREELEC</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/buscador_global.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/modo-examen.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/linea-tiempo.css') }}">
 </head>
 <body>
   <a class="ds-skip-link" href="#contenido">Saltar al contenido</a>
@@ -40,7 +40,7 @@
             </a>
           </li>
           <li>
-            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_linea_tiempo') }}">
+            <a class="ds-sidebar-link is-active" href="{{ url_for('vistas.vista_linea_tiempo') }}">
               <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-clock"></use></svg>
               Línea de tiempo
             </a>
@@ -52,7 +52,7 @@
             </a>
           </li>
           <li>
-            <a class="ds-sidebar-link is-active" href="{{ url_for('vistas.vista_espacios_estudio') }}">
+            <a class="ds-sidebar-link" href="{{ url_for('vistas.vista_espacios_estudio') }}">
               <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-book-open"></use></svg>
               Espacios de Estudio
             </a>
@@ -68,72 +68,58 @@
 
       <main class="ds-shell-main">
         <div class="ds-shell-content" id="contenido">
-          <a class="detalle-volver" id="me-volver" href="#">
-            <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-arrow-left"></use></svg>
-            Volver al Espacio de Estudio
-          </a>
-
           <header class="ds-page-header">
             <div>
-              <h1 class="ds-h1 ds-page-header-title">🎯 Modo examen</h1>
-              <p class="ds-body ds-text-secondary" id="me-asignatura">Cargando…</p>
+              <h1 class="ds-h1 ds-page-header-title">Línea de tiempo</h1>
+              <p class="ds-body ds-text-secondary ds-page-header-subtitle">Clases, exámenes y entregas del cuatrimestre, todo en una vista</p>
             </div>
             <div class="ds-page-header-actions">
               {% include "_buscador_global.html" %}
               {% include "_notificaciones_bell.html" %}
               {% include "_notas_rapidas.html" %}
-              <button id="btn-imprimir" class="ds-btn ds-btn-secondary" type="button" data-tooltip="Imprimir chuleta" aria-label="Imprimir chuleta">
-                <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-file-text"></use></svg>
-              </button>
-              <button id="toggle-tema" class="ds-btn ds-btn-secondary" type="button" data-tooltip="Cambiar tema" aria-label="Cambiar tema"></button>
+              <button id="toggle-tema" class="ds-btn ds-btn-secondary detalle-btn-icono" type="button" data-tooltip="Cambiar tema" aria-label="Cambiar tema"></button>
+              {% if lock_activo %}
+              <form method="post" action="{{ url_for('auth.cerrar_sesion') }}" class="form-lock">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="ds-btn ds-btn-secondary detalle-btn-icono" data-tooltip="Bloquear la app" aria-label="Bloquear la app">🔒</button>
+              </form>
+              {% endif %}
             </div>
           </header>
 
-          <div id="me-aviso-sin-empezar" class="me-aviso-sin-empezar" hidden>
-            ⚠ Todavía no has leído nada de tu material destacado.
+          <div id="lt-vacio" class="ds-empty-state" style="display:none">
+            <div class="ds-empty-state-icon">📅</div>
+            <div class="ds-empty-state-title">Sin cuatrimestre activo</div>
+            <p class="ds-empty-state-description">Marca un cuatrimestre como "actual" en Asignaturas para ver su línea de tiempo.</p>
           </div>
 
-          <section class="me-cuenta-atras-card" id="me-cuenta-atras-card">
-            <p class="me-dias" id="me-dias">—</p>
-            <p class="ds-body" id="me-fecha"></p>
-          </section>
-
-          <section class="me-datos-grid" id="me-datos-grid">
-            <div class="ds-card me-dato">
-              <p class="ds-caption">Hora</p>
-              <p class="ds-h2" id="me-hora">—</p>
+          <div id="lt-wrap" class="lt-wrap">
+            <div class="lt-etiquetas">
+              <div class="lt-etiquetas-espaciador"></div>
+              <div id="lt-etiquetas-lista"></div>
             </div>
-            <div class="ds-card me-dato">
-              <p class="ds-caption">Aula</p>
-              <p class="ds-h2" id="me-aula">—</p>
+            <div class="lt-scroll" id="lt-scroll">
+              <div class="lt-cabecera" id="lt-cabecera"></div>
+              <div class="lt-filas" id="lt-filas">
+                <div id="lt-marcadores-barras"></div>
+                <div class="lt-hoy-linea" id="lt-hoy-linea" hidden></div>
+              </div>
             </div>
-            <div class="ds-card me-dato">
-              <p class="ds-caption">Ubicación</p>
-              <p class="ds-h2" id="me-ubicacion">—</p>
-            </div>
-          </section>
-
-          <section class="ds-card">
-            <h2 class="ds-h2 detalle-bloque-titulo">⭐ Material importante</h2>
-            <div id="me-lista-destacados"></div>
-          </section>
-
-          <section class="ds-card">
-            <h2 class="ds-h2 detalle-bloque-titulo">✅ Tareas</h2>
-            <div id="me-lista-objetivos"></div>
-          </section>
+          </div>
         </div>
       </main>
     </div>
   </div>
 
   <script src="{{ url_for('static', filename='js/tooltip.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/context-menu.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/layout-state.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/atajos.js') }}"></script>
   <script src="{{ url_for('static', filename='js/tema.js') }}"></script>
   <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
   <script src="{{ url_for('static', filename='js/buscador_global.js') }}"></script>
   <script src="{{ url_for('static', filename='js/notificaciones-bell.js') }}"></script>
   <script src="{{ url_for('static', filename='js/notas-rapidas.js') }}"></script>
-  <script>window.ESPACIO_ID = {{ espacio_id }};</script>
-  <script src="{{ url_for('static', filename='js/modo-examen.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/linea-tiempo.js') }}"></script>
 </body>
 </html>
