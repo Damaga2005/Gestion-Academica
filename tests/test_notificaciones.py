@@ -91,6 +91,22 @@ def test_descartar_sin_campos_da_error(client_abierto):
     assert r.status_code == 400
 
 
+def test_descartar_limpia_filas_de_dias_anteriores(app_abierta, client_abierto):
+    with app_abierta.app_context():
+        from models import db, AvisoDescartado
+        db.session.add(AvisoDescartado(tipo="tarea", entidad_id=999, fecha=date.today() - timedelta(days=5)))
+        db.session.commit()
+
+    tarea = _crear_tarea(client_abierto, date.today() - timedelta(days=1))
+    client_abierto.post("/notificaciones/descartar", json={"tipo": "tarea", "entidad_id": tarea["id"]})
+
+    with app_abierta.app_context():
+        from models import AvisoDescartado
+        restantes = AvisoDescartado.query.all()
+        assert len(restantes) == 1
+        assert restantes[0].fecha == date.today()
+
+
 # --- Examen próximo sin empezar a repasar (Espacio de Estudio en 0%) ---
 
 def test_examen_proximo_sin_leer_nada_avisa(client_abierto, asignatura_id, documento_id):

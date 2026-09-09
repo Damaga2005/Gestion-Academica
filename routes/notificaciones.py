@@ -133,5 +133,9 @@ def descartar_notificacion():
     hoy = date.today()
     if db.session.get(AvisoDescartado, (data["tipo"], data["entidad_id"], hoy)) is None:
         db.session.add(AvisoDescartado(tipo=data["tipo"], entidad_id=data["entidad_id"], fecha=hoy))
+        # calcular_notificaciones() solo consulta los de hoy: cualquier fila de un día
+        # anterior es basura permanente. Se limpia aquí, no en un job aparte — barato
+        # (unas pocas filas por día) y solo hay que acordarse de un sitio.
+        AvisoDescartado.query.filter(AvisoDescartado.fecha < hoy).delete(synchronize_session=False)
         db.session.commit()
     return "", 204
