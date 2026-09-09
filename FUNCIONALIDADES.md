@@ -118,7 +118,14 @@ a mano los apuntes/exámenes de la comunidad sin salir de la app.
 - Vista semanal tipo cuadrícula lunes-viernes.
 - Comparte la misma detección de conflictos que el calendario.
 
-## 8. Repaso espaciado
+## 8. Línea de tiempo
+
+Vista Gantt de todo el cuatrimestre "actual": una fila por asignatura, con
+una barra para el rango de sus clases (horario) y un marcador por cada
+examen/entrega. Línea vertical marcando el día de hoy. Complementa al
+calendario mes a mes con una vista de todo el cuatrimestre de un vistazo.
+
+## 9. Repaso espaciado
 
 - **Conceptos** libres por asignatura (temas, definiciones, lo que se quiera
   repasar), con 3 niveles: *no visto*, *flojo*, *dominado*.
@@ -127,13 +134,13 @@ a mano los apuntes/exámenes de la comunidad sin salir de la app.
 - Pantalla **"Repaso de hoy"**: lista solo los conceptos cuya fecha de repaso
   ya ha llegado.
 
-## 9. Hitos
+## 10. Hitos
 
 Lista libre de certificaciones, proyectos personales u objetivos fuera del
 plan de estudios, cada uno con nombre, estado (pendiente/en progreso/hecho) y
 fecha opcional.
 
-## 10. Espacios de Estudio
+## 11. Espacios de Estudio
 
 Cada examen/entrega del calendario puede tener su propio **Espacio de Estudio**:
 una carpeta de preparación que agrupa **referencias** (nunca copias) a
@@ -151,14 +158,14 @@ tareas propia.
   sin el resto de secciones. Incluye una **chuleta imprimible** (botón 🖨️) con
   estilos propios para llevarla en papel.
 
-## 11. Racha de estudio
+## 12. Racha de estudio
 
 Contador de días consecutivos con actividad real (leer un documento,
 completar una tarea, subir/bajar un concepto en repaso): badge 🔥 en el
 Dashboard con la racha actual y, en el tooltip, el récord histórico. Al
 igualar o superar el récord, aviso nativo de Windows al arrancar.
 
-## 12. Notas al vuelo
+## 13. Notas al vuelo
 
 Bloc de notas accesible desde cualquier página (icono ✏️ en la cabecera, o
 atajo de teclado **n**): para apuntar algo sin perder de vista lo que se
@@ -166,7 +173,7 @@ está mirando ni tener que crear una tarea formal para ello. Buscable desde
 el buscador global. Nombre distinto de las "Notas rápidas" por asignatura
 (sección 1): son dos cosas distintas.
 
-## 13. Notificaciones
+## 14. Notificaciones
 
 - **Campanita** en la cabecera de cada página: lista los avisos activos
   (examen/entrega inminente o atrasada, asignatura "cursando" sin actividad
@@ -178,7 +185,7 @@ el buscador global. Nombre distinto de las "Notas rápidas" por asignatura
 - Un examen ya pasado sin marcar como completado se autocompleta solo (no
   puede quedar "atrasado": ya ocurrió).
 
-## 14. Dashboard (Resumen)
+## 15. Dashboard (Resumen)
 
 - **Progreso del grado**: ECTS aprobados sobre el total, desglosado en
   obligatorias / optativas / TFG.
@@ -194,7 +201,7 @@ el buscador global. Nombre distinto de las "Notas rápidas" por asignatura
   (Plan de estudios, Prisma, UPCommons, calendario de trámites y calendario
   de exámenes).
 
-## 15. Buscador global
+## 16. Buscador global
 
 Barra de búsqueda en la cabecera, disponible desde cualquier pantalla (atajo
 **Ctrl+K**): busca a la vez en nombres de asignatura, **contenido de
@@ -203,7 +210,7 @@ tareas, hitos y conceptos de repaso, y muestra resultados agrupados con el
 fragmento de texto donde
 aparece la coincidencia.
 
-## 16. Atajos de teclado
+## 17. Atajos de teclado
 
 Navegación estilo Gmail: **g** seguido de una letra (d Resumen, a
 Asignaturas, c Calendario, h Horario, r Repaso, s Configuración). Además,
@@ -211,7 +218,7 @@ Asignaturas, c Calendario, h Horario, r Repaso, s Configuración). Además,
 registro completo de atajos y **Esc** para cerrar lo que esté abierto. Se
 ignoran mientras se escribe en un campo de formulario.
 
-## 17. Ajustes
+## 18. Ajustes
 
 - **Notificaciones**: umbral de días para avisar de examen/entrega próxima y
   para considerar una asignatura abandonada.
@@ -232,7 +239,7 @@ ignoran mientras se escribe en un campo de formulario.
 - **Acerca de**: registro de cambios de la app y el design system interno
   (tokens y componentes de UI).
 
-## 18. Bloqueo opcional de la app
+## 19. Bloqueo opcional de la app
 
 Si se define la variable de entorno `GREELEC_LOCK_KEY`, toda la app (web y
 API) exige una clave para entrar:
@@ -245,7 +252,7 @@ API) exige una clave para entrar:
   completamente abierta — pensado para poder exponerla en la red local (móvil)
   sin dejarla expuesta a cualquiera.
 
-## 19. Multiplataforma / despliegue
+## 20. Multiplataforma / despliegue
 
 - Modo servidor web normal (`python app.py`), accesible también desde el
   móvil en la misma red si se define `GREELEC_HOST=0.0.0.0`.

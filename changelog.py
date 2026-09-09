@@ -5,6 +5,21 @@ al principio de CAMBIOS cada vez que se implemente una fase o funcionalidad nuev
 
 CAMBIOS = [
     {
+        "version": "0.6",
+        "titulo": "Fase 10 — Integridad de datos y línea de tiempo",
+        "cambios": [
+            "Línea de tiempo del cuatrimestre: horario + exámenes/entregas de todas las asignaturas en una sola vista Gantt",
+            "Notas al vuelo: renombradas (chocaban de nombre con las Notas rápidas por asignatura), ahora buscables",
+            "Filtro Sin empezar/En progreso/Completados y badge de aviso en Espacios de Estudio",
+            "Aviso visual en Modo examen si el examen está cerca y no has empezado a repasar",
+            "Descartar un aviso de la campanita por hoy, sin completar la tarea de verdad",
+            "Editar el texto de una Nota al vuelo en línea, con fecha relativa (\"hace 2h\")",
+            "Convertir una Nota al vuelo en tarea con un clic",
+            "Descargar una copia de backup automático concreta desde Ajustes",
+            "Corregidos varios bulk-delete que se saltaban las cascadas de borrado (datos huérfanos)",
+        ],
+    },
+    {
         "version": "0.5",
         "titulo": "Fase 9 — Automatizaciones y hábito de estudio",
         "cambios": [
