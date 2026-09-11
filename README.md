@@ -1,152 +1,194 @@
-# Gestión Académica GREELEC
+﻿# 🎓 Gestión Académica GREELEC · UPC
 
-App local (Flask + SQLite) para llevar el seguimiento del grado GREELEC: asignaturas,
-documentos, calendario, repaso espaciado, dashboard con widgets y buscador global.
-Pensada para correr en tu propio ordenador (`python app.py`) o como ejecutable de
-escritorio empaquetado (ver `build.ps1`).
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Framework: Flask](https://img.shields.io/badge/Framework-Flask%20%2B%20SQLAlchemy-red.svg)](https://flask.palletsprojects.com/)
+[![Database: SQLite + Alembic](https://img.shields.io/badge/Database-SQLite%20%2B%20Alembic-lightgrey.svg)]()
+[![UI: Apple Dark & PyWebView](https://img.shields.io/badge/UI-Apple%20Dark%20%2B%20PyWebView-black.svg)]()
+[![Target: UPC GREELEC](https://img.shields.io/badge/Degree-UPC%20GREELEC-0071e3.svg)]()
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## Puesta en marcha
+> **Suite integral de ingeniería y aplicación de escritorio** para el seguimiento y gestión académica del **Grado en Ingeniería Electrónica de Telecomunicación (GREELEC · Universitat Politècnica de Catalunya)**.
+> 
+> Diseñada para centralizar asignaturas, expedientes, fórmulas complejas de evaluación continua, cálculo automático de notas necesarias, calendario de entregas, repositorio documental (apuntes, guías docentes, Wuolah/Studocu) y sesiones de repaso espaciado. Funciona tanto como servidor web local (`http://localhost:5000`) como aplicación de escritorio nativa e independiente (`GestionAcademicaGREELEC.exe`).
 
+---
+
+## 🏛️ Arquitectura del Sistema
+
+```mermaid
+graph TD
+    A["👤 Estudiante / Usuario"] --> B["🖥️ Capa de Interfaz<br/>UI Apple Dark Mode (Web & PyWebView Desktop)"]
+    
+    subgraph "Núcleo de Gestión Académica (Flask + SQLAlchemy)"
+        B --> C["📊 Dashboard & Widgets Dinámicos"]
+        B --> D["📚 Ficha de Asignatura & Prerrequisitos"]
+        B --> E["🧮 Motor de Evaluación & Esquemas Ponderados"]
+        B --> F["📅 Calendario, Horario & Repaso Espaciado"]
+        B --> G["📁 Gestor Documental (PDFs & Guías Docentes)"]
+    end
+    
+    E --> H["🎯 Calculadora '¿Qué nota necesito?'"]
+    G --> I["📥 Importadores Wuolah / Studocu"]
+    
+    C --> J[("💾 Base de Datos Local<br/>academico.db (SQLite + Alembic)")]
+    D --> J
+    E --> J
+    F --> J
+    G --> J
+    
+    J --> K["📦 Sistema de Snapshots y Backups Atómicos"]
+```
+
+---
+
+## ✨ Funcionalidades Principales
+
+### 📊 1. Dashboard Ejecutivo y Widgets Personalizables
+- **Visión Global del Cuatrimestre:** Métricas clave en tiempo real: créditos superados, nota media ponderada de expediente, progreso del cuatrimestre actual y alertas de entregas inminentes.
+- **Widgets Reordenables:** Acceso directo a notas rápidas, próximas evaluaciones, materias activas y accesos directos al Campus Virtual (Atenea / Moodle).
+- **Buscador Global Instantáneo:** Localiza asignaturas, apuntes, conceptos, temas o profesores en milisegundos con un atajo de teclado.
+
+---
+
+### 🧮 2. Motor Avanzado de Evaluación y Calculadora de Notas
+- **Soporte para Múltiples Esquemas de Evaluación:** Configura fórmulas alternativas de evaluación (ej. *Opción A: Evaluación continua con parciales* vs. *Opción B: 100% examen final*). La aplicación calcula y selecciona automáticamente la mejor nota para el alumno.
+- **Calculadora "¿Qué nota necesito?":** Indica exactamente qué calificación mínima debes obtener en las entregas restantes o en el examen final para alcanzar tu objetivo (Aprobado 5.0, Notable 7.0, Sobresaliente 9.0).
+- **Desglose de Componentes:** Ponderación flexible de teoría, prácticas de laboratorio, proyectos, exámenes parciales y finales con control de notas de corte.
+
+---
+
+### 📚 3. Estructura del Grado, Prerrequisitos y Optativas
+- **Árbol Académico Completo:** Organización de los 4 años y 8 cuatrimestres de GREELEC con estados visuales (`superada`, `cursando`, `pendiente`, `no_elegida`).
+- **Control de Prerrequisitos:** Validación cruzada de dependencias académicas para matricular asignaturas posteriores.
+- **Catálogo de Optativas:** Planificación y simulación de itinerarios de optatividad con cálculo del cómputo total de créditos ECTS.
+
+---
+
+### 👨‍🏫 4. Directorio Docente y Comunicación
+- **Ficha del Profesorado:** Registro detallado de profesores por asignatura (teoría, laboratorio, responsable de grupo).
+- **Acceso Rápido:** Botones de un solo clic para redactar correo electrónico corporativo o acceder a la sala de tutorías online.
+
+---
+
+### 📂 5. Repositorio Documental y Guías Docentes
+- **Organización Centralizada:** Almacén estructurado por asignatura de diapositivas, enunciados de problemas, boletines de laboratorio y exámenes resueltos.
+- **Importadores Integrados:** Scripts de procesamiento e importación automática de material descargado de **Wuolah** y **Studocu**, eliminando duplicados y renombrando archivos con nomenclatura estándar.
+- **Guías Docentes Oficiales:** Almacena y consulta las guías de cada curso con competencias y bibliografía recomendada.
+
+---
+
+### 🧠 6. Calendario de Exámenes y Repaso Espaciado
+- **Agenda Temporal:** Calendario mensual y semanal con fechas clave de parciales, entregas de prácticas y fechas límite.
+- **Sistema de Repaso Espaciado (SRS):** Tarjetas de preguntas clave con intervalos de repaso basados en algoritmos de memoria para consolidar conceptos antes de los exámenes.
+
+---
+
+### 🔒 7. Seguridad y Control de Acceso Local
+- **Bloqueo Opcional con Clave (`GREELEC_LOCK_KEY`):** Protege la interfaz con contraseña al utilizar el ordenador en redes Wi-Fi públicas o bibliotecas universitarias.
+- **Backups Automáticos y Exportación en ZIP:** Copia de seguridad en un solo clic de la base de datos y toda la biblioteca de documentos.
+
+---
+
+## 🚀 Instalación y Puesta en Marcha
+
+### Requisitos
+- **Python 3.10** o superior.
+- Git.
+
+### 1. Clonar el Repositorio
+```bash
+git clone https://github.com/Damaga2005/Gestion-Academica.git
+cd Gestion-Academica
+```
+
+### 2. Crear y Activar Entorno Virtual
 ```powershell
+# En Windows (PowerShell):
 python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt      # o requirements-dev.txt si vas a tocar el icono/empaquetado
-python seed.py                       # primera vez: aplica migraciones y siembra los datos reales
-python app.py                        # arranca en http://localhost:5000
+.\venv\Scripts\activate
 ```
 
-`python seed.py` (sin argumentos) es seguro de ejecutar tantas veces como quieras: no
-borra ni duplica nada, solo rellena lo que falte (ver "Migraciones" y "Seed" más abajo).
+### 3. Instalar Dependencias
+```powershell
+pip install -r requirements.txt
+```
 
-## Migraciones de base de datos (Flask-Migrate / Alembic)
+### 4. Inicializar y Sembrar la Base de Datos
+```powershell
+# Aplica las migraciones de esquema y carga los datos oficiales de GREELEC
+python seed.py
+```
+*(Este comando es seguro e idempotente: no duplica datos existentes).*
 
-El esquema se gestiona con Alembic a través de Flask-Migrate. Los scripts viven en
-`migrations/versions/`.
+### 5. Iniciar la Aplicación
+```powershell
+python app.py
+```
+Abre tu navegador en: **`http://localhost:5000`**
 
-### Aplicar migraciones (upgrade)
+---
 
-La app las aplica **sola** al arrancar (`aplicar_migraciones()` en `create_app()`), así
-que en el uso normal no tienes que hacer nada. Para aplicarlas a mano:
+## 🖥️ Aplicación de Escritorio (.exe)
+
+Puedes compilar la aplicación como un ejecutable independiente de escritorio para Windows (usando `pywebview` y `PyInstaller`):
 
 ```powershell
-$env:FLASK_APP = "app:create_app"
-flask db upgrade
-```
-
-### Revertir migraciones (downgrade)
-
-```powershell
-$env:FLASK_APP = "app:create_app"
-flask db downgrade -1      # retrocede una migración
-flask db downgrade base    # retrocede TODAS (vuelve a un esquema vacío)
-```
-
-### Backup antes de migrar (obligatorio)
-
-Antes de aplicar una migración nueva sobre una base de datos con datos reales, copia el
-archivo SQLite:
-
-```powershell
-Copy-Item academico.db "backups\academico_$(Get-Date -Format yyyy-MM-dd_HHmmss).db"
-```
-
-Si algo sale mal, basta con volver a copiar ese archivo de vuelta a `academico.db`
-(con la app cerrada) para restaurar el estado anterior. También puedes usar el botón
-"Exportar todo" de Ajustes, que hace lo mismo (BD + documentos) en un `.zip` con fecha.
-
-### Crear una migración nueva (si tocas el modelo)
-
-```powershell
-$env:FLASK_APP = "app:create_app"
-flask db migrate -m "descripcion del cambio"
-# revisa el archivo generado en migrations/versions/ antes de aplicarlo
-flask db upgrade
-```
-
-### Limitaciones de SQLite a tener en cuenta
-
-SQLite tiene un `ALTER TABLE` muy limitado (no permite modificar tipos de columna,
-añadir `NOT NULL` sin default, ni borrar columnas directamente). Por eso
-`migrations/env.py` tiene activado `render_as_batch=True`: Alembic recrea la tabla
-entera por debajo cuando hace falta, en vez de fallar. Añadir columnas nullable (como
-las de esta fase) funciona sin necesitar ese modo, pero se deja activado por si una
-futura migración sí lo necesita.
-
-## Bloqueo de la app (opcional)
-
-Por defecto la app está completamente abierta, igual que siempre. Si quieres protegerla
-con una clave (por ejemplo, antes de exponerla en tu red local), define la variable de
-entorno `GREELEC_LOCK_KEY`.
-
-### Activar / desactivar
-
-Copia `.env.example` a `.env` (mismo sitio que `academico.db`) y rellena:
-
-```
-GREELEC_LOCK_KEY=una-clave-larga-y-dificil-de-adivinar
-FLASK_SECRET_KEY=otra-clave-distinta-para-firmar-las-sesiones
-```
-
-Para desactivar el bloqueo, deja `GREELEC_LOCK_KEY` vacía o borra la línea del `.env`.
-No hace falta reiniciar nada más que la app.
-
-### Entrar desde el navegador
-
-Con el bloqueo activo, cualquier pantalla te redirige a `/unlock`. Escribe la clave y
-tras acertarla te lleva de vuelta a la página que querías ver. Hay un botón 🔒 en la
-cabecera para cerrar sesión (`/lock`) cuando quieras volver a bloquear la app.
-
-### Autenticar llamadas a la API
-
-Añade la clave en una de estas cabeceras a cada petición:
-
-```
-Authorization: Bearer TU_CLAVE
-```
-o
-```
-X-GREELEC-KEY: TU_CLAVE
-```
-
-Sin la clave (o con una incorrecta), la API responde `401` con
-`{"error": "authentication_required"}`.
-
-### Rutas que siempre quedan públicas
-
-- `/unlock` (formulario de desbloqueo) y `/lock` (cerrar sesión)
-- Archivos estáticos (`/static/...`), necesarios para mostrar el propio formulario
-- `/api`, como comprobación mínima de salud (no expone datos)
-
-Todo lo demás —asignaturas, documentos, calendario, backup, búsqueda, etc.— exige
-autenticación en cuanto `GREELEC_LOCK_KEY` está definida.
-
-## Seed de datos
-
-- `python seed.py` — idempotente, no destructivo. Aplica migraciones pendientes y
-  rellena lo que falte sin tocar nada ya existente (ni asignaturas duplicadas, ni
-  datos editados a mano sobrescritos).
-- `python seed.py --reset` — **destructivo**: borra la base de datos y la recrea desde
-  cero. Solo para desarrollo local; nunca sobre una base con datos reales sin backup.
-
-## Tests
-
-```powershell
-pip install -r requirements-dev.txt
-pytest
-```
-
-Cubren: acceso abierto/bloqueado, login por sesión y por API (clave correcta e
-incorrecta), protección de GET/POST/PATCH/DELETE, cambio de estado de asignatura
-(válido/inválido/404/idempotente), conservación de datos tras migrar, y que `seed.py`
-no duplique nada al repetirlo.
-
-## Empaquetado como ejecutable de escritorio
-
-```powershell
+# Ejecutar script de empaquetado
 .\build.ps1
 ```
+El ejecutable se generará en la carpeta `dist/GestionAcademicaGREELEC.exe`.
 
-Genera `dist\GestionAcademicaGREELEC.exe` (PyWebview + PyInstaller). La primera vez que
-se ejecuta crea `academico.db` y `documentos\` junto al propio `.exe`, y aplica las
-migraciones y el seed inicial automáticamente (sin terminal). Si usas `GREELEC_LOCK_KEY`
-con el `.exe`, coloca el `.env` en esa misma carpeta.
+---
+
+## 🗄️ Gestión del Esquema de Datos (Alembic)
+
+La base de datos SQLite se gestiona de forma declarativa con **Flask-Migrate**:
+
+```powershell
+# Definir variable de entorno
+$env:FLASK_APP = "app:create_app"
+
+# Aplicar migraciones pendientes
+flask db upgrade
+
+# Crear una nueva migración tras modificar models.py
+flask db migrate -m "Detalle del cambio"
+
+# Revertir la última migración
+flask db downgrade -1
+```
+
+---
+
+## 📁 Estructura del Repositorio
+
+```text
+gestion_academica/
+├── app.py                     # Fábrica de la aplicación Flask (create_app)
+├── config.py                  # Parámetros de configuración y variables de entorno
+├── models.py                  # Modelos relacionales ORM de SQLAlchemy
+├── seed.py                    # Script de sembrado de datos iniciales del grado
+├── escritorio.py              # Lanzador nativo de ventana de escritorio (PyWebView)
+├── build.ps1                  # Script de automatización de compilación a .exe
+├── routes/                    # Controladores modulares (Blueprints)
+│   ├── asignaturas.py         # Fichas, prerrequisitos y optativas
+│   ├── evaluacion.py          # Esquemas de notas y cálculos
+│   ├── calendario.py          # Calendario y eventos
+│   ├── documentos.py          # Repositorio de apuntes y archivos
+│   └── api.py                 # Endpoints REST para widgets interactivos
+├── templates/                 # Vistas HTML con motor Jinja2 y componentes
+├── static/                    # Hojas de estilo CSS (Apple Dark), iconos y scripts JS
+├── migrations/                # Historial de migraciones versionadas con Alembic
+├── documentos/                # Almacén de archivos PDF y guías docentes
+├── academico.db               # Base de datos local SQLite
+└── FUNCIONALIDADES.md         # Documentación funcional extendida
+```
+
+---
+
+## 📄 Licencia
+
+Distribuido bajo la Licencia **MIT**. Consulta el archivo [LICENSE](LICENSE) para más información.
+
+---
+Grado en Ingeniería Electrónica de Telecomunicación (GREELEC) · Universitat Politècnica de Catalunya (UPC)
