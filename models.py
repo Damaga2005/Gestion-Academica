@@ -1,6 +1,7 @@
 import json
 import re
 from datetime import date, datetime, timedelta
+from types import SimpleNamespace
 
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import validates
@@ -314,6 +315,11 @@ class ComponenteEvaluacion(db.Model):
     # por compatibilidad con la migración (que rellena esta columna en asignaturas ya
     # existentes); en la práctica toda fila creada por la app siempre tiene un esquema.
     esquema_id = db.Column(db.Integer, db.ForeignKey("esquema_evaluacion.id"), nullable=True)
+    # Si pertenece a un Bloque (spec "nota jerárquica", p. ej. Laboratorio = 40% de la
+    # nota final, calculado a su vez a partir de prácticas/controles): el porcentaje de
+    # este componente es relativo al bloque, no al esquema completo. NULL = componente
+    # "suelto" de siempre, directo sobre el 100% del esquema (comportamiento sin cambios).
+    bloque_id = db.Column(db.Integer, db.ForeignKey("bloque_evaluacion.id"), nullable=True)
     nombre = db.Column(db.String(200), nullable=False)
     tipo = db.Column(db.String(20), nullable=False, default="otro")
     porcentaje = db.Column(db.Float, nullable=False)
@@ -321,6 +327,7 @@ class ComponenteEvaluacion(db.Model):
 
     asignatura = db.relationship("Asignatura", back_populates="componentes")
     esquema = db.relationship("EsquemaEvaluacion", back_populates="componentes")
+    bloque = db.relationship("BloqueEvaluacion", back_populates="componentes")
 
     @validates("tipo")
     def validar_tipo(self, key, value):
@@ -339,11 +346,54 @@ class ComponenteEvaluacion(db.Model):
             "id": self.id,
             "asignatura_id": self.asignatura_id,
             "esquema_id": self.esquema_id,
+            "bloque_id": self.bloque_id,
             "nombre": self.nombre,
             "tipo": self.tipo,
             "porcentaje": self.porcentaje,
             "nota": self.nota,
         }
+
+
+class BloqueEvaluacion(db.Model):
+    """
+    Grupo de componentes dentro de un EsquemaEvaluacion cuya propia nota se calcula a
+    partir de sus componentes (p. ej. "Laboratorio" pesa 40% de la nota final, y esa
+    nota de Laboratorio sale a su vez de una media ponderada de prácticas/controles).
+    Un nivel de anidamiento (no bloques dentro de bloques): cubre el caso real de las
+    guías docentes de la UPC sin la complejidad de un árbol genérico.
+    """
+    __tablename__ = "bloque_evaluacion"
+
+    id = db.Column(db.Integer, primary_key=True)
+    esquema_id = db.Column(db.Integer, db.ForeignKey("esquema_evaluacion.id"), nullable=False)
+    nombre = db.Column(db.String(200), nullable=False)
+    porcentaje = db.Column(db.Float, nullable=False)
+    orden = db.Column(db.Integer, nullable=False, default=0)
+
+    esquema = db.relationship("EsquemaEvaluacion", back_populates="bloques")
+    componentes = db.relationship(
+        "ComponenteEvaluacion", back_populates="bloque", cascade="all, delete-orphan",
+        order_by="ComponenteEvaluacion.id"
+    )
+
+    @validates("porcentaje")
+    def validar_porcentaje(self, key, value):
+        if value is None or not (0 <= float(value) <= 100):
+            raise ValueError("porcentaje debe estar entre 0 y 100")
+        return value
+
+    def to_dict(self, incluir_componentes=True):
+        data = {
+            "id": self.id,
+            "esquema_id": self.esquema_id,
+            "nombre": self.nombre,
+            "porcentaje": self.porcentaje,
+            "orden": self.orden,
+            "resultado": calcular_resultado_componentes(self.componentes),
+        }
+        if incluir_componentes:
+            data["componentes"] = [c.to_dict() for c in self.componentes]
+        return data
 
 
 def calcular_resultado_componentes(componentes):
@@ -392,9 +442,25 @@ class EsquemaEvaluacion(db.Model):
         "ComponenteEvaluacion", back_populates="esquema", cascade="all, delete-orphan",
         order_by="ComponenteEvaluacion.id"
     )
+    bloques = db.relationship(
+        "BloqueEvaluacion", back_populates="esquema", cascade="all, delete-orphan",
+        order_by="BloqueEvaluacion.orden"
+    )
 
     def to_dict(self, incluir_componentes=True):
-        resultado = calcular_resultado_componentes(self.componentes)
+        # "Sueltos": componentes directos sobre el 100% del esquema (comportamiento de
+        # siempre). Cada bloque cuenta como un componente más de cara al resultado del
+        # esquema, con su propia nota ya calculada (None si el bloque no tiene ninguna
+        # nota puesta todavía) — así un esquema sin bloques se comporta exactamente
+        # igual que antes, y calcular_resultado_componentes no necesita saber nada de
+        # bloques (solo lee .porcentaje/.nota, que SimpleNamespace también expone).
+        sueltos = [c for c in self.componentes if c.bloque_id is None]
+        bloques_dict = [b.to_dict() for b in self.bloques]
+        bloques_como_componente = [
+            SimpleNamespace(porcentaje=b.porcentaje, nota=bd["resultado"]["media_ponderada"])
+            for b, bd in zip(self.bloques, bloques_dict)
+        ]
+        resultado = calcular_resultado_componentes(sueltos + bloques_como_componente)
         data = {
             "id": self.id,
             "asignatura_id": self.asignatura_id,
@@ -403,7 +469,21 @@ class EsquemaEvaluacion(db.Model):
             "resultado": resultado,
         }
         if incluir_componentes:
-            data["componentes"] = [c.to_dict() for c in self.componentes]
+            componentes_sueltos_dict = [c.to_dict() for c in sueltos]
+            data["componentes"] = componentes_sueltos_dict
+            data["bloques"] = bloques_dict
+            # Lista plana combinada (sueltos + un "componente" virtual por bloque, con
+            # su nota ya agregada) para reutilizar tal cual la calculadora de "¿qué nota
+            # necesito?" y la tabla comparativa de esquemas, sin que tengan que saber
+            # distinguir un bloque de un componente normal.
+            data["componentes_efectivos"] = componentes_sueltos_dict + [
+                {
+                    "id": f"bloque-{b.id}", "bloque_id": b.id, "es_bloque": True,
+                    "nombre": b.nombre, "tipo": "bloque",
+                    "porcentaje": b.porcentaje, "nota": bd["resultado"]["media_ponderada"],
+                }
+                for b, bd in zip(self.bloques, bloques_dict)
+            ]
         return data
 
 

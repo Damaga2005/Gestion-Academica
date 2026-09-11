@@ -487,6 +487,12 @@ const ETIQUETA_TIPO_COMPONENTE = {
   teoria: 'Teoría', parcial: 'Parcial', examen_final: 'Examen final', laboratorio: 'Laboratorio', otro: 'Otro',
 };
 
+// Esquema único activo en pantalla (para el formulario "+ Añadir bloque", que
+// necesita saber a qué esquema añadirlo). null si la asignatura no tiene ninguno
+// todavía (caso raro: la ruta histórica /asignaturas/<id>/componentes crea uno sobre
+// la marcha en cuanto se añade el primer componente).
+let esquemaUnicoId = null;
+
 // Orquestador: decide entre la vista de un único esquema (igual que siempre) y la
 // vista de comparación lado a lado (solo cuando hay más de un EsquemaEvaluacion).
 function renderEvaluacionAsignatura(asignatura) {
@@ -497,12 +503,17 @@ function renderEvaluacionAsignatura(asignatura) {
   document.getElementById('evaluacion-comparacion').style.display = comparando ? '' : 'none';
 
   if (comparando) {
+    esquemaUnicoId = null;
     renderComparacionEsquemas(esquemas);
+  } else if (esquemas.length === 1) {
+    esquemaUnicoId = esquemas[0].id;
+    renderEvaluacion(esquemas[0]);
   } else {
-    // Con 0 o 1 esquema el comportamiento es exactamente el de siempre: la ruta
-    // histórica /asignaturas/<id>/componentes sigue creando el esquema único sobre
-    // la marcha si hiciera falta, así que aquí no cambia nada respecto a antes.
-    renderEvaluacion(asignatura.componentes);
+    // Sin ningún esquema todavía (raro: solo asignaturas migradas de antes de la
+    // fase de esquemas múltiples): sus componentes cuelgan directo de la asignatura,
+    // sin bloques posibles (bloque_id exige un esquema_id).
+    esquemaUnicoId = null;
+    renderEvaluacion({ componentes: asignatura.componentes, componentes_efectivos: asignatura.componentes, bloques: [] });
   }
 }
 
@@ -560,20 +571,9 @@ function renderComparacionEsquemas(esquemas) {
       </div>
 
       <div class="esquema-componentes-lista">
-        ${esquema.componentes.length === 0 ? '<p class="sin-elementos">Sin componentes todavía.</p>' : esquema.componentes.map((c) => `
-          <div class="detalle-fila" data-id="${c.id}">
-            <div class="evaluacion-fila-nombre">
-              <span class="ds-body">${escapeHtml(c.nombre)}</span>
-              <p class="ds-caption">${ETIQUETA_TIPO_COMPONENTE[c.tipo] || c.tipo} · ${c.porcentaje}%</p>
-            </div>
-            <input type="number" class="ds-input evaluacion-fila-nota campo-nota-esquema" step="0.01" placeholder="Nota" value="${c.nota ?? ''}">
-            <div class="fila-acciones">
-              <button type="button" class="fila-icono-btn btn-borrar-componente-esquema" title="Eliminar">
-                <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
-              </button>
-            </div>
-          </div>
-        `).join('')}
+        ${(esquema.componentes.length === 0 && esquema.bloques.length === 0) ? '<p class="sin-elementos">Sin componentes todavía.</p>' : ''}
+        ${esquema.componentes.map(filaComponenteHtml).join('')}
+        ${esquema.bloques.map(filaBloqueHtml).join('')}
       </div>
 
       <form class="detalle-form-anadir form-nuevo-componente-esquema">
@@ -601,6 +601,19 @@ function renderComparacionEsquemas(esquemas) {
         </button>
       </form>
 
+      <form class="detalle-form-anadir form-nuevo-bloque-esquema">
+        <div class="ds-field">
+          <input type="text" class="ds-input campo-nombre-bloque-nuevo" placeholder="Nombre del bloque" required>
+        </div>
+        <div class="ds-field" style="flex-basis:90px">
+          <input type="number" class="ds-input campo-porcentaje-bloque-nuevo" min="0" max="100" step="0.01" placeholder="% peso" required>
+        </div>
+        <button type="submit" class="ds-btn ds-btn-secondary">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-plus"></use></svg>
+          Añadir bloque
+        </button>
+      </form>
+
       <div class="esquema-calculadora">
         <div class="ds-field">
           <label class="ds-label">¿Qué nota necesito? Objetivo</label>
@@ -619,7 +632,7 @@ function renderComparacionEsquemas(esquemas) {
 
     const actualizarCalculadora = () => {
       const objetivo = parseFloat(tarjeta.querySelector('.campo-objetivo-esquema').value);
-      const resultado = calcularNotaNecesaria(esquema.componentes, Number.isNaN(objetivo) ? 5 : objetivo);
+      const resultado = calcularNotaNecesaria(esquema.componentes_efectivos, Number.isNaN(objetivo) ? 5 : objetivo);
       tarjeta.querySelector('.esquema-calculadora-resultado').textContent = textoNotaNecesaria(resultado);
     };
     actualizarCalculadora();
@@ -641,27 +654,27 @@ function renderComparacionEsquemas(esquemas) {
       await cargarCabeceraYResumen();
     });
 
-    tarjeta.querySelectorAll('.campo-nota-esquema').forEach((input) => {
-      input.addEventListener('change', async (e) => {
-        const componenteId = e.target.closest('.detalle-fila').dataset.id;
-        const valor = e.target.value.trim();
-        await api(`/componentes/${componenteId}`, {
-          method: 'PUT',
+    activarEventosEvaluacion(tarjeta.querySelector('.esquema-componentes-lista'), cargarCabeceraYResumen);
+
+    tarjeta.querySelector('.form-nuevo-bloque-esquema').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nombre = tarjeta.querySelector('.campo-nombre-bloque-nuevo').value.trim();
+      const porcentaje = parseFloat(tarjeta.querySelector('.campo-porcentaje-bloque-nuevo').value);
+      if (!nombre || Number.isNaN(porcentaje)) return;
+      const boton = e.target.querySelector('button[type="submit"]');
+      boton.classList.add('is-loading');
+      try {
+        await api(`/esquemas/${esquemaId}/bloques`, {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nota: valor === '' ? null : parseFloat(valor) }),
+          body: JSON.stringify({ nombre, porcentaje }),
         });
         await cargarCabeceraYResumen();
-      });
-    });
-
-    tarjeta.querySelectorAll('.btn-borrar-componente-esquema').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        if (!confirm('¿Eliminar este componente de evaluación? Esta acción no se puede deshacer.')) return;
-        const componenteId = btn.closest('.detalle-fila').dataset.id;
-        await api(`/componentes/${componenteId}`, { method: 'DELETE' });
-        await cargarCabeceraYResumen();
-        mostrarToast('Componente eliminado', 'success');
-      });
+      } catch (err) {
+        mostrarToast(err.message, 'danger');
+      } finally {
+        boton.classList.remove('is-loading');
+      }
     });
 
     tarjeta.querySelector('.form-nuevo-componente-esquema').addEventListener('submit', async (e) => {
@@ -704,14 +717,136 @@ document.getElementById('btn-anadir-esquema').addEventListener('click', async ()
   }
 });
 
-function renderEvaluacion(componentes) {
+// --- Bloques de evaluación (nota jerárquica: un grupo cuya propia nota sale de sus
+// propios componentes, ej. Laboratorio = 40% calculado a partir de prácticas/control).
+// Helpers compartidos entre la vista de un único esquema y cada tarjeta de comparación.
+
+function filaComponenteHtml(c) {
+  return `
+    <div class="detalle-fila" data-id="${c.id}">
+      <div class="evaluacion-fila-nombre">
+        <span class="ds-body">${escapeHtml(c.nombre)}</span>
+        <p class="ds-caption">${ETIQUETA_TIPO_COMPONENTE[c.tipo] || c.tipo} · ${c.porcentaje}%</p>
+      </div>
+      <input type="number" class="ds-input evaluacion-fila-nota campo-nota" step="0.01" placeholder="Nota" value="${c.nota ?? ''}">
+      <div class="fila-acciones">
+        <button type="button" class="fila-icono-btn btn-borrar-componente" title="Eliminar">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function filaBloqueHtml(b) {
+  const nota = b.resultado.media_ponderada;
+  return `
+    <div class="evaluacion-bloque" data-bloque-id="${b.id}" data-bloque-nombre="${escapeHtml(b.nombre)}">
+      <div class="detalle-fila evaluacion-fila-bloque">
+        <button type="button" class="evaluacion-bloque-toggle" aria-expanded="false" title="Ver componentes del bloque">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-chevron-right"></use></svg>
+        </button>
+        <div class="evaluacion-fila-nombre">
+          <span class="ds-body">${escapeHtml(b.nombre)} <span class="ds-badge ds-badge-accent">Bloque</span></span>
+          <p class="ds-caption">${b.porcentaje}% de la nota final · ${b.resultado.porcentaje_evaluado}% evaluado</p>
+        </div>
+        <span class="evaluacion-fila-nota-calculada" data-tooltip="Nota calculada a partir de sus componentes">${nota != null ? nota.toFixed(2) : '—'}</span>
+        <div class="fila-acciones">
+          <button type="button" class="fila-icono-btn btn-borrar-bloque" title="Eliminar bloque">
+            <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
+          </button>
+        </div>
+      </div>
+      <div class="evaluacion-bloque-sub" hidden>
+        ${b.componentes.length === 0 ? '<p class="sin-elementos">Sin componentes en este bloque todavía.</p>' : b.componentes.map(filaComponenteHtml).join('')}
+        <form class="detalle-form-anadir form-nuevo-componente-bloque">
+          <div class="ds-field">
+            <input type="text" class="ds-input campo-nombre-sub" placeholder="Nombre del componente" required>
+          </div>
+          <div class="ds-field" style="flex-basis:90px">
+            <input type="number" class="ds-input campo-porcentaje-sub" min="0" max="100" step="0.01" placeholder="% del bloque" required>
+          </div>
+          <button type="submit" class="ds-btn ds-btn-secondary">
+            <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-plus"></use></svg>
+            Añadir
+          </button>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
+// Engancha los eventos de todas las filas (sueltas y de bloque, con sus sub-filas)
+// dentro de `contenedor`. `onCambio` se llama tras cualquier cambio que afecte a
+// notas/estructura (recarga toda la asignatura, igual que hacía cada listener suelto
+// antes de esta refactorización).
+function activarEventosEvaluacion(contenedor, onCambio) {
+  contenedor.querySelectorAll('.detalle-fila:not(.evaluacion-fila-bloque)').forEach((fila) => {
+    const id = fila.dataset.id;
+    fila.querySelector('.campo-nota').addEventListener('change', async (e) => {
+      const valor = e.target.value.trim();
+      await api(`/componentes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nota: valor === '' ? null : parseFloat(valor) }),
+      });
+      await onCambio();
+    });
+    fila.querySelector('.btn-borrar-componente').addEventListener('click', async () => {
+      if (!confirm('¿Eliminar este componente de evaluación? Esta acción no se puede deshacer.')) return;
+      await api(`/componentes/${id}`, { method: 'DELETE' });
+      await onCambio();
+      mostrarToast('Componente eliminado', 'success');
+    });
+  });
+
+  contenedor.querySelectorAll('.evaluacion-bloque').forEach((bloqueEl) => {
+    const bloqueId = bloqueEl.dataset.bloqueId;
+    const boton = bloqueEl.querySelector('.evaluacion-bloque-toggle');
+    const sub = bloqueEl.querySelector('.evaluacion-bloque-sub');
+    boton.addEventListener('click', () => {
+      sub.hidden = !sub.hidden;
+      boton.setAttribute('aria-expanded', String(!sub.hidden));
+      boton.classList.toggle('is-expandido', !sub.hidden);
+    });
+    bloqueEl.querySelector('.btn-borrar-bloque').addEventListener('click', async () => {
+      if (!confirm(`¿Eliminar el bloque "${bloqueEl.dataset.bloqueNombre}" y todos sus componentes? Esta acción no se puede deshacer.`)) return;
+      await api(`/bloques/${bloqueId}`, { method: 'DELETE' });
+      await onCambio();
+      mostrarToast('Bloque eliminado', 'success');
+    });
+    bloqueEl.querySelector('.form-nuevo-componente-bloque').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nombre = e.target.querySelector('.campo-nombre-sub').value.trim();
+      const porcentaje = parseFloat(e.target.querySelector('.campo-porcentaje-sub').value);
+      if (!nombre || Number.isNaN(porcentaje)) return;
+      const boton = e.target.querySelector('button[type="submit"]');
+      boton.classList.add('is-loading');
+      try {
+        await api(`/bloques/${bloqueId}/componentes`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre, porcentaje }),
+        });
+        await onCambio();
+      } catch (err) {
+        mostrarToast(err.message, 'danger');
+      } finally {
+        boton.classList.remove('is-loading');
+      }
+    });
+  });
+}
+
+function renderEvaluacion(esquema) {
   const contenedor = document.getElementById('evaluacion-lista');
-  const totalPeso = componentes.reduce((s, c) => s + c.porcentaje, 0);
-  const pesoEvaluado = componentes.filter((c) => c.nota !== null).reduce((s, c) => s + c.porcentaje, 0);
+  const efectivos = esquema.componentes_efectivos;
+  const totalPeso = efectivos.reduce((s, c) => s + c.porcentaje, 0);
+  const pesoEvaluado = efectivos.filter((c) => c.nota !== null).reduce((s, c) => s + c.porcentaje, 0);
   const porcentajeEvaluado = totalPeso > 0 ? Math.round((pesoEvaluado / totalPeso) * 100) : 0;
   document.getElementById('evaluacion-porcentaje').textContent = `${porcentajeEvaluado}%`;
 
-  const conNota = componentes.filter((c) => c.nota !== null);
+  const conNota = efectivos.filter((c) => c.nota !== null);
   const mediaWrap = document.getElementById('evaluacion-media-wrap');
   if (conNota.length > 0) {
     const pesoConNota = conNota.reduce((s, c) => s + c.porcentaje, 0);
@@ -725,7 +860,7 @@ function renderEvaluacion(componentes) {
   }
 
   const calculadora = document.getElementById('evaluacion-calculadora');
-  if (componentes.length === 0) {
+  if (efectivos.length === 0) {
     contenedor.innerHTML = '<p class="sin-elementos">Sin componentes de evaluación todavía.</p>';
     calculadora.style.display = 'none';
     return;
@@ -734,46 +869,16 @@ function renderEvaluacion(componentes) {
   const objetivoInput = document.getElementById('evaluacion-objetivo');
   const actualizarCalculadora = () => {
     const objetivo = parseFloat(objetivoInput.value);
-    const resultado = calcularNotaNecesaria(componentes, Number.isNaN(objetivo) ? 5 : objetivo);
+    const resultado = calcularNotaNecesaria(efectivos, Number.isNaN(objetivo) ? 5 : objetivo);
     document.getElementById('evaluacion-calculadora-resultado').textContent = textoNotaNecesaria(resultado);
   };
   actualizarCalculadora();
   objetivoInput.oninput = actualizarCalculadora;
 
-  contenedor.innerHTML = componentes.map((c) => `
-    <div class="detalle-fila" data-id="${c.id}">
-      <div class="evaluacion-fila-nombre">
-        <span class="ds-body">${escapeHtml(c.nombre)}</span>
-        <p class="ds-caption">${ETIQUETA_TIPO_COMPONENTE[c.tipo] || c.tipo} · ${c.porcentaje}%</p>
-      </div>
-      <input type="number" class="ds-input evaluacion-fila-nota campo-nota" step="0.01" placeholder="Nota" value="${c.nota ?? ''}">
-      <div class="fila-acciones">
-        <button type="button" class="fila-icono-btn btn-borrar-componente" title="Eliminar">
-          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
-        </button>
-      </div>
-    </div>
-  `).join('');
+  contenedor.innerHTML =
+    esquema.componentes.map(filaComponenteHtml).join('') + esquema.bloques.map(filaBloqueHtml).join('');
   reanimar(contenedor);
-
-  contenedor.querySelectorAll('.detalle-fila').forEach((fila) => {
-    const id = fila.dataset.id;
-    fila.querySelector('.campo-nota').addEventListener('change', async (e) => {
-      const valor = e.target.value.trim();
-      await api(`/componentes/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nota: valor === '' ? null : parseFloat(valor) }),
-      });
-      await cargarCabeceraYResumen();
-    });
-    fila.querySelector('.btn-borrar-componente').addEventListener('click', async () => {
-      if (!confirm('¿Eliminar este componente de evaluación? Esta acción no se puede deshacer.')) return;
-      await api(`/componentes/${id}`, { method: 'DELETE' });
-      await cargarCabeceraYResumen();
-      mostrarToast('Componente eliminado', 'success');
-    });
-  });
+  activarEventosEvaluacion(contenedor, cargarCabeceraYResumen);
 }
 
 document.getElementById('form-nuevo-componente').addEventListener('submit', async (e) => {
@@ -798,6 +903,36 @@ document.getElementById('form-nuevo-componente').addEventListener('submit', asyn
     await cargarCabeceraYResumen();
   } catch (err) {
     mostrarErrorCampo('componente-error', err.message);
+  } finally {
+    boton.classList.remove('is-loading');
+  }
+});
+
+document.getElementById('form-nuevo-bloque').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  mostrarErrorCampo('bloque-error', '');
+  const nombre = document.getElementById('bloque-nombre').value.trim();
+  const porcentaje = parseFloat(document.getElementById('bloque-porcentaje').value);
+  if (!nombre || Number.isNaN(porcentaje)) {
+    mostrarErrorCampo('bloque-error', 'Indica un nombre y un porcentaje válido.');
+    return;
+  }
+  if (!esquemaUnicoId) {
+    mostrarErrorCampo('bloque-error', 'Añade primero un componente normal (crea el esquema de evaluación) antes de poder añadir un bloque.');
+    return;
+  }
+  const boton = e.submitter || e.target.querySelector('button[type="submit"]');
+  boton.classList.add('is-loading');
+  try {
+    await api(`/esquemas/${esquemaUnicoId}/bloques`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre, porcentaje }),
+    });
+    e.target.reset();
+    await cargarCabeceraYResumen();
+  } catch (err) {
+    mostrarErrorCampo('bloque-error', err.message);
   } finally {
     boton.classList.remove('is-loading');
   }

@@ -10,6 +10,7 @@ from routes.anios import anios_bp
 from routes.cuatrimestres import cuatrimestres_bp
 from routes.asignaturas import asignaturas_bp
 from routes.componentes import componentes_bp
+from routes.bloques import bloques_bp
 from routes.esquemas import esquemas_bp
 from routes.apartados import apartados_bp
 from routes.grupos_documento import grupos_documento_bp
@@ -85,6 +86,7 @@ def create_app(auto_seed=True, database_uri=None, documentos_dir=None):
     app.register_blueprint(cuatrimestres_bp)
     app.register_blueprint(asignaturas_bp)
     app.register_blueprint(componentes_bp)
+    app.register_blueprint(bloques_bp)
     app.register_blueprint(esquemas_bp)
     app.register_blueprint(apartados_bp)
     app.register_blueprint(grupos_documento_bp)

@@ -75,6 +75,8 @@ def actualizar_componente(componente_id):
         componente.porcentaje = data["porcentaje"]
     if "nota" in data:
         componente.nota = data["nota"]
+    if "bloque_id" in data:
+        componente.bloque_id = data["bloque_id"]
 
     db.session.commit()
     return jsonify(componente.to_dict())
