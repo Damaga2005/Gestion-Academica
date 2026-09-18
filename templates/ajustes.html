@@ -133,6 +133,12 @@
               <p class="ds-caption" id="bd-huella" style="margin-top:var(--ds-space-2)">
                 Modificada {{ bd.modificada }} · {{ bd.tareas }} tareas · {{ bd.documentos }} documentos
               </p>
+              {% if bd.conflictos %}
+              <p class="ds-caption" id="bd-conflictos" style="margin-top:var(--ds-space-3);color:var(--ds-danger, #c0392b)">
+                ⚠ Syncthing ha guardado {{ bd.conflictos|length }} copia(s) en conflicto ({{ bd.conflictos|join(', ') }}):
+                se editó la app en dos ordenadores a la vez y una versión no se aplicó. Cierra la app en ambos y revisa cuál conservar.
+              </p>
+              {% endif %}
             </section>
 
             <section class="ds-card">

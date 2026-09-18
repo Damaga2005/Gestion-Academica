@@ -1,3 +1,4 @@
+import glob
 import os
 import socket
 from datetime import datetime
@@ -94,7 +95,12 @@ def _info_base_datos():
         modificada = datetime.fromtimestamp(os.path.getmtime(ruta)).strftime("%d/%m/%Y %H:%M")
     except OSError:
         modificada = "—"
+    # Syncthing deja "academico.sync-conflict-<fecha>-<id>.db" cuando dos PCs editaron
+    # el archivo a la vez: es la señal de que una de las dos versiones se ha perdido.
+    base, ext = os.path.splitext(ruta)
+    conflictos = [os.path.basename(f) for f in glob.glob(f"{glob.escape(base)}.sync-conflict-*{glob.escape(ext)}")]
     return {
+        "conflictos": conflictos,
         "ruta": ruta,
         "modificada": modificada,
         "tareas": TareaEvento.query.count(),
