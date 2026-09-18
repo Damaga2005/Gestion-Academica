@@ -117,19 +117,30 @@ BIBLIOGRAFÍA
     por_nombre = {e["nombre"]: e for e in esquemas}
     assert set(por_nombre) == {"Con examen parcial", "Solo examen final"}
 
+    # Nota_laboratorio tiene su propia definición (50/50 = 100%): es un BLOQUE del 40%,
+    # no dos componentes sueltos del 20% (el desglose sigue siendo el mismo, pero la
+    # nota del laboratorio ahora se calcula aparte, como en la guía).
     solo_final = por_nombre["Solo examen final"]
-    pesos = {c["nombre"]: c["porcentaje"] for c in solo_final["componentes"]}
-    assert pesos["Examen final"] == 60
-    assert pesos["Examen lab"] == 20
-    assert pesos["Proyecto"] == 20
-    assert all(c["pendiente_revision"] for c in solo_final["componentes"])
+    assert {c["nombre"]: c["porcentaje"] for c in solo_final["componentes"]} == {"Examen final": 60}
+    [lab] = solo_final["bloques"]
+    assert (lab["nombre"], lab["porcentaje"]) == ("Nota laboratorio", 40)
+    assert {c["nombre"]: c["porcentaje"] for c in lab["componentes"]} == {"Examen lab": 50, "Proyecto": 50}
+    assert all(c["pendiente_revision"] for c in solo_final["componentes"] + lab["componentes"])
 
     con_parcial = por_nombre["Con examen parcial"]
-    pesos2 = {c["nombre"]: c["porcentaje"] for c in con_parcial["componentes"]}
-    assert pesos2["Examen final"] == 40
-    assert pesos2["Examen parcial"] == 20
-    assert pesos2["Examen lab"] == 20
-    assert pesos2["Proyecto"] == 20
+    assert {c["nombre"]: c["porcentaje"] for c in con_parcial["componentes"]} == {"Examen final": 40, "Examen parcial": 20}
+    assert con_parcial["bloques"][0]["porcentaje"] == 40
+
+
+def test_evaluacion_sub_formula_que_no_suma_100_queda_pendiente():
+    texto = """
+SISTEMA DE CALIFICACIÓN
+Nota final = 0.6*Teoria + 0.4*Laboratorio
+Laboratorio = 0.5*Practicas + 0.25*Control
+BIBLIOGRAFÍA
+"""
+    [esquema] = gd.analizar_evaluacion(texto)
+    assert esquema["pendiente_revision"] and esquema["componentes"] == [] and esquema["bloques"] == []
 
 
 def test_evaluacion_rubrica_sin_porcentajes_queda_pendiente():
@@ -272,3 +283,29 @@ def test_importar_componente_sin_porcentaje_rechazado(client_abierto, asignatura
     assert r.status_code == 400
     # No debe quedar ningún esquema a medio crear
     assert client_abierto.get(f"/asignaturas/{asignatura_id}/esquemas").get_json() == []
+
+
+def test_importar_crea_bloques_con_sus_componentes(client_abierto, asignatura_id):
+    r = client_abierto.post(f"/asignaturas/{asignatura_id}/importar-guia-docente", json={
+        "esquemas": [{
+            "nombre": "Evaluación",
+            "componentes": [{"nombre": "Teoría", "tipo": "teoria", "porcentaje": 60}],
+            "bloques": [{"nombre": "Laboratorio", "porcentaje": 40, "componentes": [
+                {"nombre": "P0-P3", "tipo": "laboratorio", "porcentaje": 25},
+                {"nombre": "P4", "tipo": "laboratorio", "porcentaje": 75},
+            ]}],
+        }],
+    })
+    assert r.status_code == 200
+    [esquema] = client_abierto.get(f"/asignaturas/{asignatura_id}/esquemas").get_json()
+    assert [c["nombre"] for c in esquema["componentes"]] == ["Teoría"]
+    [bloque] = esquema["bloques"]
+    assert bloque["porcentaje"] == 40
+    assert [c["porcentaje"] for c in bloque["componentes"]] == [25, 75]
+
+
+def test_importar_bloque_sin_porcentaje_rechazado(client_abierto, asignatura_id):
+    r = client_abierto.post(f"/asignaturas/{asignatura_id}/importar-guia-docente", json={
+        "esquemas": [{"nombre": "E", "componentes": [], "bloques": [{"nombre": "Lab", "componentes": []}]}],
+    })
+    assert r.status_code == 400

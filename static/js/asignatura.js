@@ -715,9 +715,7 @@ function renderComparacionEsquemas(esquemas) {
 }
 
 document.getElementById('btn-anadir-esquema').addEventListener('click', async () => {
-  if (esquemaUnicoId && confirm('¿Partir de una copia del esquema actual (mismos componentes y pesos, sin notas)?
-
-Aceptar = copiar · Cancelar = esquema vacío')) {
+  if (esquemaUnicoId && confirm('¿Partir de una copia del esquema actual (mismos componentes y pesos, sin notas)?\n\nAceptar = copiar · Cancelar = esquema vacío')) {
     try {
       await api(`/esquemas/${esquemaUnicoId}/duplicar`, { method: 'POST' });
       mostrarToast('Esquema duplicado', 'success');
@@ -2101,6 +2099,7 @@ async function abrirModalGuiaDocente(documentoId) {
       esquemas: resultado.esquemas.map((e) => ({
         nombre: e.nombre,
         componentes: e.componentes.map((c) => ({ ...c })),
+        bloques: (e.bloques || []).map((b) => ({ ...b, componentes: b.componentes.map((c) => ({ ...c })) })),
         textoSinAnalizar: e.texto_sin_analizar,
       })),
       tieneProfesores: resultado.asignatura_tiene_profesores,
@@ -2164,7 +2163,8 @@ function filaComponenteGuiaDocente(c, iEsquema, iComp) {
 }
 
 function bloqueEsquemaGuiaDocente(esquema, i) {
-  const suma = esquema.componentes.reduce((s, c) => s + (Number(c.porcentaje) || 0), 0);
+  const suma = esquema.componentes.reduce((s, c) => s + (Number(c.porcentaje) || 0), 0)
+    + (esquema.bloques || []).reduce((s, b) => s + (Number(b.porcentaje) || 0), 0);
   return `
     <div class="gd-esquema-bloque" data-idx="${i}">
       <div class="gd-esquema-encabezado">
@@ -2175,6 +2175,17 @@ function bloqueEsquemaGuiaDocente(esquema, i) {
         </button>
       </div>
       ${esquema.componentes.map((c, iComp) => filaComponenteGuiaDocente(c, i, iComp)).join('')}
+      ${(esquema.bloques || []).map((b, iBloque) => `
+        <div class="gd-fila gd-bloque-detectado" data-i-bloque="${iBloque}">
+          <div>
+            <span class="ds-body">${escapeHtml(b.nombre)} <span class="ds-badge ds-badge-accent">Bloque</span> ${b.porcentaje}%</span>
+            <p class="ds-caption">${b.componentes.map((c) => `${escapeHtml(c.nombre)} ${c.porcentaje}%`).join(' · ')}</p>
+          </div>
+          <span class="gd-etiqueta-pendiente">A revisar</span>
+          <button type="button" class="fila-icono-btn gd-quitar-bloque" title="Quitar bloque">
+            <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-x"></use></svg>
+          </button>
+        </div>`).join('')}
       <button type="button" class="ds-btn ds-btn-secondary gd-anadir-componente" style="margin-top:var(--ds-space-3)">
         <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-plus"></use></svg>
         Añadir componente
@@ -2260,7 +2271,7 @@ function wirModalGuiaDocente() {
 
   // Esquemas
   document.getElementById('gd-anadir-esquema').addEventListener('click', () => {
-    gd.esquemas.push({ nombre: 'Evaluación', componentes: [], textoSinAnalizar: null });
+    gd.esquemas.push({ nombre: 'Evaluación', componentes: [], bloques: [], textoSinAnalizar: null });
     renderModalGuiaDocente();
   });
   body.querySelectorAll('.gd-esquema-bloque').forEach((bloque) => {
@@ -2270,6 +2281,10 @@ function wirModalGuiaDocente() {
       gd.esquemas.splice(iEsquema, 1);
       renderModalGuiaDocente();
     });
+    bloque.querySelectorAll('.gd-quitar-bloque').forEach((btn) => btn.addEventListener('click', () => {
+      gd.esquemas[iEsquema].bloques.splice(Number(btn.closest('[data-i-bloque]').dataset.iBloque), 1);
+      renderModalGuiaDocente();
+    }));
     bloque.querySelector('.gd-anadir-componente').addEventListener('click', () => {
       gd.esquemas[iEsquema].componentes.push({ nombre: '', tipo: 'otro', porcentaje: null, pendiente_revision: true });
       renderModalGuiaDocente();
@@ -2306,8 +2321,9 @@ document.getElementById('btn-confirmar-guia').addEventListener('click', async ()
     .map((e) => ({
       nombre: e.nombre.trim() || 'Evaluación',
       componentes: e.componentes.filter((c) => c.nombre.trim() && c.porcentaje !== null && c.porcentaje !== ''),
+      bloques: (e.bloques || []).map((b) => ({ nombre: b.nombre, porcentaje: b.porcentaje, componentes: b.componentes })),
     }))
-    .filter((e) => e.componentes.length > 0);
+    .filter((e) => e.componentes.length + e.bloques.length > 0);
 
   if (profesores.length === 0 && esquemas.length === 0) {
     estadoEl.textContent = 'No hay nada que importar (añade al menos un profesor o un componente con % de peso).';

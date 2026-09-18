@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy import func
 
-from models import db, Asignatura, Documento, Profesor, EsquemaEvaluacion, ComponenteEvaluacion, TIPOS_COMPONENTE
+from models import db, Asignatura, Documento, Profesor, EsquemaEvaluacion, BloqueEvaluacion, ComponenteEvaluacion, TIPOS_COMPONENTE
 from routes.errors import ApiError
 from utils import ruta_absoluta
 from guia_docente import analizar_guia_docente, extraer_texto
@@ -91,7 +91,13 @@ def importar_guia_docente(asignatura_id):
             if not esquema_datos.get("nombre"):
                 raise ApiError("cada esquema necesita un nombre")
             componentes = esquema_datos.get("componentes") or []
-            for c in componentes:
+            bloques = esquema_datos.get("bloques") or []
+            for b in bloques:
+                if not b.get("nombre"):
+                    raise ApiError("cada bloque necesita un nombre")
+                if b.get("porcentaje") is None:
+                    raise ApiError(f"el bloque '{b['nombre']}' necesita un porcentaje")
+            for c in componentes + [sub for b in bloques for sub in (b.get("componentes") or [])]:
                 if not c.get("nombre"):
                     raise ApiError("cada componente necesita un nombre")
                 if c.get("tipo") not in TIPOS_COMPONENTE:
@@ -109,6 +115,17 @@ def importar_guia_docente(asignatura_id):
                     asignatura_id=asignatura_id, esquema_id=esquema.id,
                     nombre=c["nombre"].strip(), tipo=c["tipo"], porcentaje=c["porcentaje"],
                 ))
+            for j, b in enumerate(bloques):
+                bloque = BloqueEvaluacion(
+                    esquema_id=esquema.id, nombre=b["nombre"].strip(), porcentaje=b["porcentaje"], orden=j,
+                )
+                db.session.add(bloque)
+                db.session.flush()
+                for c in b.get("componentes") or []:
+                    db.session.add(ComponenteEvaluacion(
+                        asignatura_id=asignatura_id, esquema_id=esquema.id, bloque_id=bloque.id,
+                        nombre=c["nombre"].strip(), tipo=c["tipo"], porcentaje=c["porcentaje"],
+                    ))
 
     db.session.commit()
     return jsonify(asignatura.to_dict())

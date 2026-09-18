@@ -236,30 +236,46 @@ def _resolver_formula(texto_formula):
         todos = list(terminos) + list(terminos_cola)
 
         # Sustitución de un nivel: si una variable referenciada tiene a su vez una
-        # asignación propia (y no es la fórmula principal), se sustituye por sus
-        # propios términos multiplicando los coeficientes.
-        expandido = []
+        # asignación propia (y no es la fórmula principal), se convierte en un BLOQUE
+        # (su nota sale de sus propios términos, que deben sumar 100%).
+        componentes = []
+        bloques = []
+        suma_cruda = 0.0
         for coef, var in todos:
             definicion = asignaciones.get(_normaliza(var))
+            sub_terminos = None
             if definicion and _normaliza(var) != _normaliza(orden_variables[0]):
                 sub_terminos = _parsear_terminos(definicion)
                 if sub_terminos is None:
                     return None
-                for sub_coef, sub_var in sub_terminos:
-                    expandido.append((coef * sub_coef, sub_var))
+            if sub_terminos is None:
+                componentes.append({
+                    "nombre": var.replace("_", " ").strip().capitalize(),
+                    "tipo": _inferir_tipo(var),
+                    "porcentaje": round(coef * 100, 2),
+                    "pendiente_revision": True,  # viene de resolver una fórmula, no de un % literal
+                })
+                suma_cruda += coef
+            elif abs(sum(c for c, _ in sub_terminos) * 100 - 100) <= _TOLERANCIA_SUMA_100:
+                bloques.append({
+                    "nombre": var.replace("_", " ").strip().capitalize(),
+                    "porcentaje": round(coef * 100, 2),
+                    "pendiente_revision": True,
+                    "componentes": [{
+                        "nombre": sub_var.replace("_", " ").strip().capitalize(),
+                        "tipo": _inferir_tipo(sub_var),
+                        "porcentaje": round(sub_coef * 100, 2),
+                        "pendiente_revision": True,
+                    } for sub_coef, sub_var in sub_terminos],
+                })
+                suma_cruda += coef
             else:
-                expandido.append((coef, var))
+                return None  # sub-fórmula que no suma 100: no se propone nada inventado
 
-        suma = sum(c for c, _ in expandido) * 100
-        if abs(suma - 100) > _TOLERANCIA_SUMA_100:
+        if abs(suma_cruda * 100 - 100) > _TOLERANCIA_SUMA_100:
             return None  # no cuadra: mejor no proponer números que no suman 100
 
-        componentes = [{
-            "nombre": var.replace("_", " ").strip().capitalize(),
-            "tipo": _inferir_tipo(var),
-            "porcentaje": round(coef * 100, 2),
-            "pendiente_revision": True,  # siempre a revisar: viene de resolver una fórmula, no de un % literal
-        } for coef, var in expandido]
+        expandido = [(c["porcentaje"] / 100, c["nombre"]) for c in componentes]
 
         if len(alternativas_max) > 1:
             # El nombre se decide por CONTENIDO (qué variables tiene esta alternativa
@@ -269,7 +285,7 @@ def _resolver_formula(texto_formula):
             nombre_esquema = "Con examen parcial" if tiene_parcial else "Solo examen final"
         else:
             nombre_esquema = "Evaluación"
-        esquemas.append({"nombre": nombre_esquema, "componentes": componentes})
+        esquemas.append({"nombre": nombre_esquema, "componentes": componentes, "bloques": bloques})
 
     return esquemas
 
@@ -297,6 +313,7 @@ def analizar_evaluacion(texto):
         esquemas.append({
             "nombre": "Evaluación",
             "componentes": componentes_planos,
+            "bloques": [],
             "pendiente_revision": False,
             "texto_sin_analizar": None,
         })
@@ -318,6 +335,7 @@ def analizar_evaluacion(texto):
         esquemas.append({
             "nombre": "Evaluación",
             "componentes": [],
+            "bloques": [],
             "pendiente_revision": True,
             "texto_sin_analizar": bloque,
         })
