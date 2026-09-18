@@ -1,3 +1,4 @@
+import csv
 import io
 import os
 import re
@@ -11,7 +12,7 @@ from datetime import datetime
 from flask import Blueprint, current_app, request, jsonify, send_file
 
 from config import DATA_DIR
-from models import db
+from models import db, Asignatura, Cuatrimestre, calcular_estado_notas
 from routes.errors import ApiError
 
 backup_bp = Blueprint("backup", __name__)
@@ -287,3 +288,24 @@ def importar_backup():
         "requiere_reinicio": True,
         "mensaje": "Backup restaurado correctamente. Reinicia la aplicación para que los cambios surtan efecto.",
     })
+
+
+@backup_bp.get("/exportar/expediente.csv")
+def exportar_expediente_csv():
+    """Una fila por asignatura con su estado y nota. `;` y BOM UTF-8 para que Excel en
+    español lo abra con las columnas y los acentos bien a la primera."""
+    salida = io.StringIO()
+    escritor = csv.writer(salida, delimiter=";")
+    escritor.writerow(["Cuatrimestre", "Siglas", "Asignatura", "ECTS", "Tipo", "Estado", "Nota", "Estado de notas"])
+    filas = Asignatura.query.join(Cuatrimestre).order_by(Cuatrimestre.numero, Asignatura.nombre).all()
+    for a in filas:
+        info = calcular_estado_notas(a)
+        nota = info["nota_actual"]
+        escritor.writerow([
+            a.cuatrimestre.numero, a.siglas or "", a.nombre, str(a.creditos_ects).replace(".", ","), a.tipo, a.estado,
+            "" if nota is None else f"{nota:.2f}".replace(".", ","), info["estado_notas"],
+        ])
+    return send_file(
+        io.BytesIO(("﻿" + salida.getvalue()).encode("utf-8")),
+        mimetype="text/csv", as_attachment=True, download_name="expediente.csv",
+    )
