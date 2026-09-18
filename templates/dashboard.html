@@ -183,8 +183,29 @@
             </div>
           </section>
 
-          <section class="dashboard-section">
-            <h2 class="ds-h2">Esta semana</h2>
+          <section class="dashboard-section" id="seccion-temporizador">
+            <h2 class="ds-h2">Temporizador de estudio</h2>
+            <div class="ds-card" style="display:flex;flex-wrap:wrap;gap:var(--ds-space-5);align-items:center">
+              <span class="ds-display" id="temp-tiempo">25:00</span>
+              <div class="ds-field" style="max-width:150px">
+                <label for="temp-asignatura" class="ds-label">Asignatura</label>
+                <select id="temp-asignatura" class="ds-select"><option value="">(sin asignatura)</option></select>
+              </div>
+              <div class="ds-field" style="max-width:90px">
+                <label for="temp-minutos" class="ds-label">Minutos</label>
+                <input type="number" id="temp-minutos" class="ds-input" min="1" max="180" value="25">
+              </div>
+              <button type="button" id="temp-iniciar" class="ds-btn ds-btn-primary">Iniciar</button>
+              <button type="button" id="temp-terminar" class="ds-btn ds-btn-secondary" disabled>Terminar y guardar</button>
+              <p class="ds-caption" id="temp-resumen" style="flex-basis:100%"></p>
+            </div>
+          </section>
+
+          <section class="dashboard-section" id="seccion-semana">
+            <h2 class="ds-h2" style="display:flex;justify-content:space-between;align-items:center">
+              Esta semana
+              <button type="button" id="btn-imprimir-semana" class="ds-btn ds-btn-secondary detalle-btn-icono" data-tooltip="Imprimir mi semana" aria-label="Imprimir mi semana">🖨️</button>
+            </h2>
             <div class="ds-card">
               <div class="dashboard-semana-grid" id="semana-grid"></div>
             </div>
@@ -327,5 +348,6 @@
   <script src="{{ url_for('static', filename='js/notificaciones-bell.js') }}"></script>
   <script src="{{ url_for('static', filename='js/notas-rapidas.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/temporizador.js') }}"></script>
 </body>
 </html>

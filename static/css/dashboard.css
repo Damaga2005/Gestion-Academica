@@ -325,3 +325,13 @@
     gap: var(--ds-space-1);
   }
 }
+
+/* "Mi semana" en papel (botón 🖨️ de la sección): oculta todo salvo esa sección. */
+@media print {
+  body.imprimiendo-semana * { visibility: hidden !important; }
+  body.imprimiendo-semana #seccion-semana, body.imprimiendo-semana #seccion-semana * { visibility: visible !important; }
+  body.imprimiendo-semana #seccion-semana { position: absolute; left: 0; top: 0; width: 100%; }
+  body.imprimiendo-semana #btn-imprimir-semana { display: none !important; }
+  body.imprimiendo-semana, body.imprimiendo-semana .ds-scope * { background: #fff !important; color: #000 !important; box-shadow: none !important; }
+  @page { size: landscape; margin: 10mm; }
+}

@@ -1390,6 +1390,26 @@ class DiaActividad(db.Model):
     fecha = db.Column(db.Date, primary_key=True)
 
 
+class SesionEstudio(db.Model):
+    """Una sesión del temporizador de estudio (minutos dedicados, opcionalmente a una
+    asignatura). Complementa a DiaActividad: aquella dice QUÉ días hubo actividad;
+    esta, cuánto tiempo."""
+    __tablename__ = "sesion_estudio"
+
+    id = db.Column(db.Integer, primary_key=True)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id", name="fk_sesion_estudio_asignatura_id"), nullable=True)
+    fecha = db.Column(db.Date, nullable=False, default=date.today)
+    minutos = db.Column(db.Integer, nullable=False)
+
+    asignatura = db.relationship("Asignatura")
+
+    @validates("minutos")
+    def validar_minutos(self, key, value):
+        if not isinstance(value, int) or not (1 <= value <= 600):
+            raise ValueError("minutos debe ser un entero entre 1 y 600")
+        return value
+
+
 def registrar_actividad_hoy():
     """Llamar desde cualquier acción que cuente como "estudiar hoy" (spec racha de
     estudio). Idempotente: como máximo una fila por día, sin importar cuántas veces

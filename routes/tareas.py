@@ -117,6 +117,12 @@ def crear_tarea():
     if hora_inicio and hora_fin and hora_fin <= hora_inicio:
         raise ApiError("'hora_fin' debe ser posterior a 'hora_inicio'")
 
+    repeticiones = data.get("repetir_semanas") or 0
+    if not isinstance(repeticiones, int) or not 0 <= repeticiones <= 52:
+        raise ApiError("'repetir_semanas' debe ser un entero entre 0 y 52")
+    if repeticiones and data.get("tipo", "tarea_general") in TIPOS_TAREA_EXAMEN:
+        raise ApiError("un examen no se puede repetir cada semana")
+
     tarea = TareaEvento(
         asignatura_id=asignatura.id if asignatura else None,
         documento_id=documento.id if documento else None,
@@ -134,10 +140,18 @@ def crear_tarea():
         link_relacionado=data.get("link_relacionado"),
     )
     db.session.add(tarea)
+    for i in range(1, repeticiones + 1):  # copias semanales: una fila normal por cada semana
+        db.session.add(TareaEvento(
+            asignatura_id=tarea.asignatura_id, documento_id=tarea.documento_id, titulo=tarea.titulo,
+            fecha=tarea.fecha + timedelta(weeks=i), tipo=tarea.tipo, prioridad=tarea.prioridad,
+            hora_inicio=hora_inicio, hora_fin=hora_fin, aula=tarea.aula, ubicacion=tarea.ubicacion,
+            descripcion=tarea.descripcion, recordatorio=tarea.recordatorio, link_relacionado=tarea.link_relacionado,
+        ))
     db.session.commit()
     _autocrear_espacio_estudio_si_examen(tarea)
 
     respuesta = tarea.to_dict()
+    respuesta["copias_creadas"] = repeticiones
     if hora_inicio and hora_fin:
         respuesta["conflictos"] = detectar_conflictos(
             tarea.fecha, hora_inicio, hora_fin, excluir_tarea_id=tarea.id

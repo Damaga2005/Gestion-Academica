@@ -450,6 +450,8 @@ document.getElementById('tarea-tipo').addEventListener('change', actualizarVisib
 function limpiarFormularioTarea() {
   document.getElementById('form-tarea').reset();
   document.getElementById('tarea-id').value = '';
+  document.getElementById('campo-repetir').style.display = '';
+  document.getElementById('tarea-repetir').value = '0';
   document.getElementById('tarea-conflictos-aviso').style.display = 'none';
   document.getElementById('tarea-form-error').textContent = '';
   poblarSelectDocumentos(null, null);
@@ -472,6 +474,7 @@ async function abrirDialogoEdicion(tarea) {
   limpiarFormularioTarea();
   document.getElementById('dialog-tarea-titulo').textContent = 'Editar tarea/evento';
   document.getElementById('tarea-id').value = tarea.id;
+  document.getElementById('campo-repetir').style.display = 'none';
   document.getElementById('tarea-titulo').value = tarea.titulo;
   document.getElementById('tarea-tipo').value = ['examen_parcial', 'examen_final', 'recuperacion', 'entrega', 'tutoria', 'evento', 'tarea_general'].includes(tarea.tipo) ? tarea.tipo : 'tarea_general';
   document.getElementById('tarea-asignatura').value = tarea.asignatura_id || '';
@@ -617,7 +620,7 @@ document.getElementById('form-tarea').addEventListener('submit', async (e) => {
       tareaGuardada = await api('/tareas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, repetir_semanas: parseInt(document.getElementById('tarea-repetir').value, 10) || 0 }),
       });
     }
 
