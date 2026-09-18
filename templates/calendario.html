@@ -130,6 +130,10 @@
               <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-download"></use></svg>
               Exportar todo (.ics)
             </a>
+            <button type="button" id="btn-importar-ics" class="ds-btn ds-btn-secondary calendario-btn-exportar">
+              <svg class="ds-icon"><use href="{{ url_for('static', filename='vendor/lucide/sprite.svg') }}#lucide-upload"></use></svg>
+              Importar .ics (Atenea)
+            </button>
           </div>
 
           <div id="vista-mensual">
@@ -200,6 +204,20 @@
   </div>
 
   <div class="ds-scope">
+    <dialog id="dialog-importar-ics" class="ds-modal calendario-dialog-evento" style="max-width:min(900px,95vw)">
+      <div>
+        <h3 class="ds-h3">Importar calendario (.ics)</h3>
+        <p class="ds-caption">En Atenea: Calendario → Importar o exportar calendarios → Exportar. Revisa la asignatura de cada tarea antes de importar.</p>
+        <input type="file" id="ics-archivo" class="ds-input" accept=".ics,text/calendar">
+        <div id="ics-vista-previa" style="margin-top:var(--ds-space-4);max-height:50vh;overflow:auto"></div>
+        <p class="ds-field-error" id="ics-error"></p>
+        <menu class="calendario-dialog-menu">
+          <button type="button" id="ics-cancelar" class="ds-btn ds-btn-secondary">Cerrar</button>
+          <button type="button" id="ics-importar" class="ds-btn ds-btn-primary" disabled>Importar seleccionadas</button>
+        </menu>
+      </div>
+    </dialog>
+
     <dialog id="dialog-tarea" class="ds-modal calendario-dialog-evento">
       <form id="form-tarea">
         <h3 class="ds-h3" id="dialog-tarea-titulo">Nueva tarea/evento</h3>
@@ -327,5 +345,6 @@
   <script src="{{ url_for('static', filename='js/notificaciones-bell.js') }}"></script>
   <script src="{{ url_for('static', filename='js/notas-rapidas.js') }}"></script>
   <script src="{{ url_for('static', filename='js/calendario.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/importar-ics.js') }}"></script>
 </body>
 </html>

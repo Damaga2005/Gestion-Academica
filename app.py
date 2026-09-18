@@ -11,6 +11,7 @@ from routes.cuatrimestres import cuatrimestres_bp
 from routes.asignaturas import asignaturas_bp
 from routes.componentes import componentes_bp
 from routes.bloques import bloques_bp
+from routes.importar_ics import importar_ics_bp
 from routes.cambio_externo import cambio_externo_bp, registrar_deteccion_cambio_externo
 from routes.esquemas import esquemas_bp
 from routes.apartados import apartados_bp
@@ -88,6 +89,7 @@ def create_app(auto_seed=True, database_uri=None, documentos_dir=None):
     app.register_blueprint(asignaturas_bp)
     app.register_blueprint(componentes_bp)
     app.register_blueprint(bloques_bp)
+    app.register_blueprint(importar_ics_bp)
     app.register_blueprint(cambio_externo_bp)
     registrar_deteccion_cambio_externo(app)
     app.register_blueprint(esquemas_bp)
