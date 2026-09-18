@@ -73,7 +73,7 @@ def duplicar_esquema(esquema_id):
     def clonar(c, bloque_id=None):
         db.session.add(ComponenteEvaluacion(
             asignatura_id=c.asignatura_id, esquema_id=copia.id, bloque_id=bloque_id,
-            nombre=c.nombre, tipo=c.tipo, porcentaje=c.porcentaje,
+            nombre=c.nombre, tipo=c.tipo, porcentaje=c.porcentaje, nota_minima=c.nota_minima,
         ))
 
     for c in origen.componentes:

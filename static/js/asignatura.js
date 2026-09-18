@@ -754,7 +754,8 @@ function avisoSumaHtml(items) {
 }
 
 // Pide nombre y % con prompt() y los guarda con PUT; cancelar o dejar vacío = no cambiar.
-async function editarNombreYPorcentaje(url, nombreActual, porcentajeActual) {
+// `minimoActual` solo se pasa para componentes (undefined = los bloques no tienen mínimo).
+async function editarNombreYPorcentaje(url, nombreActual, porcentajeActual, minimoActual) {
   const nombre = prompt('Nombre:', nombreActual);
   if (nombre === null) return false;
   const texto = prompt('% de peso:', String(porcentajeActual));
@@ -764,19 +765,27 @@ async function editarNombreYPorcentaje(url, nombreActual, porcentajeActual) {
     mostrarToast('Indica un nombre y un porcentaje válido', 'danger');
     return false;
   }
-  await api(url, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nombre: nombre.trim(), porcentaje }),
-  });
+  const cuerpo = { nombre: nombre.trim(), porcentaje };
+  if (minimoActual !== undefined) {
+    const textoMin = prompt('Nota mínima para aprobar (vacío = sin mínimo):', minimoActual);
+    if (textoMin === null) return false;
+    const minimo = textoMin.trim() === '' ? null : parseFloat(textoMin.replace(',', '.'));
+    if (Number.isNaN(minimo)) {
+      mostrarToast('La nota mínima no es válida', 'danger');
+      return false;
+    }
+    cuerpo.nota_minima = minimo;
+  }
+  await api(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) });
   return true;
 }
 
 function filaComponenteHtml(c) {
   return `
-    <div class="detalle-fila" data-id="${c.id}" data-nombre="${escapeHtml(c.nombre)}" data-porcentaje="${c.porcentaje}">
+    <div class="detalle-fila" data-id="${c.id}" data-nombre="${escapeHtml(c.nombre)}" data-porcentaje="${c.porcentaje}" data-minimo="${c.nota_minima ?? ''}">
       <div class="evaluacion-fila-nombre">
         <span class="ds-body">${escapeHtml(c.nombre)}</span>
-        <p class="ds-caption">${ETIQUETA_TIPO_COMPONENTE[c.tipo] || c.tipo} · ${c.porcentaje}%</p>
+        <p class="ds-caption">${ETIQUETA_TIPO_COMPONENTE[c.tipo] || c.tipo} · ${c.porcentaje}%${c.nota_minima != null ? ` · mín. ${c.nota_minima}` : ''}${c.nota_minima != null && c.nota != null && c.nota < c.nota_minima ? ' <strong style="color:var(--ds-danger, #c0392b)">⚠ por debajo del mínimo</strong>' : ''}</p>
       </div>
       <input type="number" class="ds-input evaluacion-fila-nota campo-nota" step="0.01" placeholder="Nota" value="${c.nota ?? ''}">
       <div class="fila-acciones">
@@ -854,7 +863,7 @@ function activarEventosEvaluacion(contenedor, onCambio) {
       await onCambio();
     });
     fila.querySelector('.btn-editar-eval').addEventListener('click', async () => {
-      if (await editarNombreYPorcentaje(`/componentes/${id}`, fila.dataset.nombre, fila.dataset.porcentaje)) await onCambio();
+      if (await editarNombreYPorcentaje(`/componentes/${id}`, fila.dataset.nombre, fila.dataset.porcentaje, fila.dataset.minimo)) await onCambio();
     });
     fila.querySelectorAll('.btn-mover').forEach((b) => b.addEventListener('click', async () => {
       await api(`/componentes/${id}/mover`, {

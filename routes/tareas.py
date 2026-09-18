@@ -1,5 +1,5 @@
 import calendar as calendar_module
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 
 from flask import Blueprint, request, jsonify
 
@@ -187,6 +187,15 @@ def actualizar_tarea(tarea_id):
 
     db.session.commit()
     _autocrear_espacio_estudio_si_examen(tarea)
+    return jsonify(tarea.to_dict())
+
+
+@tareas_bp.post("/tareas/<int:tarea_id>/posponer")
+def posponer_tarea(tarea_id):
+    """Un día más tarde; si ya estaba atrasada, pasa a mañana (no a 'ayer + 1')."""
+    tarea = TareaEvento.query.get_or_404(tarea_id)
+    tarea.fecha = max(tarea.fecha, date.today()) + timedelta(days=1)
+    db.session.commit()
     return jsonify(tarea.to_dict())
 
 

@@ -86,3 +86,17 @@ def test_marcar_hecha_saca_la_tarea_de_las_notificaciones(client_abierto):
 
 def test_horario_tiene_boton_de_imprimir(client_abierto):
     assert "btn-imprimir-horario" in client_abierto.get("/vista/horario").get_data(as_text=True)
+
+
+def test_posponer_tarea_un_dia_y_atrasada_pasa_a_manana(client_abierto):
+    en_3 = _tarea(client_abierto, 3)
+    r = client_abierto.post(f"/tareas/{en_3}/posponer").get_json()
+    assert r["fecha"] == (date.today() + timedelta(days=4)).isoformat()
+    atrasada = _tarea(client_abierto, -10)
+    r = client_abierto.post(f"/tareas/{atrasada}/posponer").get_json()
+    assert r["fecha"] == (date.today() + timedelta(days=1)).isoformat()
+    assert client_abierto.post("/tareas/99999/posponer").status_code == 404
+
+
+def test_calendario_tiene_boton_de_imprimir(client_abierto):
+    assert "btn-imprimir-calendario" in client_abierto.get("/vista/calendario").get_data(as_text=True)

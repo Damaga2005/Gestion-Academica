@@ -324,6 +324,9 @@ class ComponenteEvaluacion(db.Model):
     tipo = db.Column(db.String(20), nullable=False, default="otro")
     porcentaje = db.Column(db.Float, nullable=False)
     nota = db.Column(db.Float, nullable=True)
+    # Nota mínima exigida en este componente para poder aprobar la asignatura (p. ej. un
+    # 4 en el examen final, aunque la media ponderada llegue a 5). NULL = sin mínimo.
+    nota_minima = db.Column(db.Float, nullable=True)
     # Los nuevos van al final (valor alto); mover_en_lista renumera 0..n-1 al reordenar.
     orden = db.Column(db.Integer, nullable=False, default=1_000_000)
 
@@ -343,6 +346,15 @@ class ComponenteEvaluacion(db.Model):
             raise ValueError("porcentaje debe estar entre 0 y 100")
         return value
 
+    @validates("nota_minima")
+    def validar_nota_minima(self, key, value):
+        if value is not None and not (0 <= float(value) <= 10):
+            raise ValueError("nota_minima debe estar entre 0 y 10")
+        return value
+
+    def incumple_minimo(self):
+        return self.nota is not None and self.nota_minima is not None and self.nota < self.nota_minima
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -353,6 +365,7 @@ class ComponenteEvaluacion(db.Model):
             "tipo": self.tipo,
             "porcentaje": self.porcentaje,
             "nota": self.nota,
+            "nota_minima": self.nota_minima,
         }
 
 
@@ -557,6 +570,7 @@ def calcular_estado_notas(asignatura):
     evaluaciones_realizadas = 0
     evaluaciones_pendientes = 0
     porcentaje_evaluado = 0.0
+    minimo_incumplido = False  # algún componente con nota_minima por debajo de ella (esquema aplicado)
 
     if asignatura.nota_final is not None:
         nota = asignatura.nota_final
@@ -574,6 +588,7 @@ def calcular_estado_notas(asignatura):
         if candidatos:
             esquema, resultado = max(candidatos, key=lambda par: par[1]["media_ponderada"])
             porcentaje_evaluado = resultado["porcentaje_evaluado"]
+            minimo_incumplido = any(c.incumple_minimo() for c in esquema.componentes)
             efectivos = esquema.componentes_efectivos_objs()
             evaluaciones_realizadas = sum(1 for c in efectivos if c.nota is not None)
             evaluaciones_pendientes = sum(1 for c in efectivos if c.nota is None)
@@ -582,7 +597,7 @@ def calcular_estado_notas(asignatura):
                 evaluada = True
 
     if evaluada:
-        estado_notas = "aprobada" if nota >= NOTA_MINIMA_APROBADO else "suspendida"
+        estado_notas = "aprobada" if nota >= NOTA_MINIMA_APROBADO and not minimo_incumplido else "suspendida"
     elif evaluaciones_realizadas > 0:
         estado_notas = "en_progreso"
     else:
@@ -594,6 +609,7 @@ def calcular_estado_notas(asignatura):
         "evaluaciones_realizadas": evaluaciones_realizadas,
         "evaluaciones_pendientes": evaluaciones_pendientes,
         "porcentaje_evaluado": porcentaje_evaluado,
+        "minimo_incumplido": minimo_incumplido,
     }
 
 

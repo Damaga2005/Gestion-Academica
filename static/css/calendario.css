@@ -323,3 +323,13 @@
   font-weight: var(--ds-font-weight-button);
   color: var(--ds-color-text-secondary);
 }
+
+/* Calendario en papel (botón 🖨️): imprime la vista activa (mensual/semanal/agenda),
+   negro sobre blanco y sin menús, controles ni diálogos. */
+@media print {
+  .ds-sidebar, .ds-page-header-actions, #toggle-tema, .calendario-filtros, .calendario-nav-btn,
+  .calendario-btn-nueva, dialog { display: none !important; }
+  .ds-scope, .ds-shell, .ds-shell-main, .ds-shell-content { all: unset; display: block; }
+  body, .ds-scope * { background: #fff !important; color: #000 !important; box-shadow: none !important; }
+  @page { size: landscape; margin: 10mm; }
+}

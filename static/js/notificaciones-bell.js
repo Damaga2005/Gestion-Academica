@@ -35,12 +35,23 @@ function nbRenderLista(notificaciones) {
           <span class="ds-caption ds-text-secondary">${nbEscapeHtml(n.mensaje)}</span>
         </span>
       </a>
-      ${n.tipo === 'tarea' ? '<button type="button" class="nb-item-descartar nb-item-hecha" title="Marcar como hecha" aria-label="Marcar como hecha">✓</button>' : ''}
+      ${n.tipo === 'tarea' ? '<button type="button" class="nb-item-descartar nb-item-posponer" title="Posponer un día" aria-label="Posponer un día">⏭</button><button type="button" class="nb-item-descartar nb-item-hecha" title="Marcar como hecha" aria-label="Marcar como hecha">✓</button>' : ''}
       <button type="button" class="nb-item-descartar" title="Descartar por hoy" aria-label="Descartar por hoy">
         <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-x"></use></svg>
       </button>
     </div>
   `).join('');
+  lista.querySelectorAll('.nb-item-posponer').forEach((boton) => {
+    boton.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const meta = document.querySelector('meta[name="csrf-token"]');
+      await fetch(`/tareas/${boton.closest('.nb-item').dataset.entidadId}/posponer`, {
+        method: 'POST', headers: { 'X-CSRFToken': meta ? meta.content : '' },
+      });
+      nbCargar();
+    });
+  });
   lista.querySelectorAll('.nb-item-hecha').forEach((boton) => {
     boton.addEventListener('click', async (e) => {
       e.preventDefault();
@@ -54,7 +65,7 @@ function nbRenderLista(notificaciones) {
       nbCargar();
     });
   });
-  lista.querySelectorAll('.nb-item-descartar:not(.nb-item-hecha)').forEach((boton) => {
+  lista.querySelectorAll('.nb-item-descartar:not(.nb-item-hecha):not(.nb-item-posponer)').forEach((boton) => {
     boton.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();

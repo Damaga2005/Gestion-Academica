@@ -77,6 +77,11 @@ def actualizar_componente(componente_id):
         if not isinstance(data["porcentaje"], (int, float)) or not 0 <= data["porcentaje"] <= 100:
             raise ApiError("'porcentaje' debe estar entre 0 y 100")
         componente.porcentaje = data["porcentaje"]
+    if "nota_minima" in data:
+        v = data["nota_minima"]
+        if v is not None and (not isinstance(v, (int, float)) or not 0 <= v <= 10):
+            raise ApiError("'nota_minima' debe estar entre 0 y 10")
+        componente.nota_minima = v
     if "nota" in data:
         componente.nota = data["nota"]
     if "bloque_id" in data:
