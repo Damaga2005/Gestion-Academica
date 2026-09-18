@@ -205,12 +205,27 @@ function renderEntregas(tareas) {
           ${t.documento_id ? '<span class="ds-badge" title="Tiene un PDF vinculado">📄</span>' : ''}
           <span class="ds-badge">${ETIQUETA_TIPO_TAREA[t.tipo] || 'Tarea'}</span>
           <span class="ds-badge ${BADGE_POR_NIVEL[nivel]}">${texto}</span>
+          <button type="button" class="fila-icono-btn entrega-hecha" data-id="${t.id}" title="Marcar como hecha" aria-label="Marcar como hecha">✓</button>
         </span>
       </li>
     `;
   }).join('');
   reanimar(lista);
 }
+
+document.getElementById('entregas-list')?.addEventListener('click', async (e) => {
+  const boton = e.target.closest('.entrega-hecha');
+  if (!boton) return;
+  try {
+    await api(`/tareas/${boton.dataset.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ completada: true }),
+    });
+    mostrarToast('Marcada como hecha', 'success');
+    await cargarEntregas();
+  } catch (err) {
+    mostrarToast(err.message, 'danger');
+  }
+});
 
 async function cargarEntregas() {
   const tareas = await api('/tareas?completada=false');

@@ -146,3 +146,13 @@
   .horario-solo-escritorio { display: none; }
   .horario-solo-movil { display: block; }
 }
+
+/* Horario en papel (botón 🖨️): texto negro sobre blanco sea cual sea el tema, sin
+   menús ni botones, y sin cortar una clase por la mitad entre páginas. */
+@media print {
+  .ds-sidebar, .ds-page-header-actions, #toggle-tema { display: none !important; }
+  .ds-scope, .ds-shell, .ds-shell-main, .ds-shell-content { all: unset; display: block; }
+  body, .ds-scope * { background: #fff !important; color: #000 !important; box-shadow: none !important; }
+  .ds-card { border: 1px solid #999 !important; break-inside: avoid; }
+  @page { size: landscape; margin: 12mm; }
+}

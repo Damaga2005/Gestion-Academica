@@ -35,12 +35,26 @@ function nbRenderLista(notificaciones) {
           <span class="ds-caption ds-text-secondary">${nbEscapeHtml(n.mensaje)}</span>
         </span>
       </a>
+      ${n.tipo === 'tarea' ? '<button type="button" class="nb-item-descartar nb-item-hecha" title="Marcar como hecha" aria-label="Marcar como hecha">✓</button>' : ''}
       <button type="button" class="nb-item-descartar" title="Descartar por hoy" aria-label="Descartar por hoy">
         <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-x"></use></svg>
       </button>
     </div>
   `).join('');
-  lista.querySelectorAll('.nb-item-descartar').forEach((boton) => {
+  lista.querySelectorAll('.nb-item-hecha').forEach((boton) => {
+    boton.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const meta = document.querySelector('meta[name="csrf-token"]');
+      await fetch(`/tareas/${boton.closest('.nb-item').dataset.entidadId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': meta ? meta.content : '' },
+        body: JSON.stringify({ completada: true }),
+      });
+      nbCargar();
+    });
+  });
+  lista.querySelectorAll('.nb-item-descartar:not(.nb-item-hecha)').forEach((boton) => {
     boton.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();

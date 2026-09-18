@@ -74,3 +74,15 @@ def test_importar_ics_guarda_el_recordatorio(client_abierto):
     assert tarea["recordatorio"] == 3
     malo = dict(ev, titulo="Malo", recordatorio=-1)
     assert client_abierto.post("/calendario/importar-ics", json={"eventos": [malo]}).status_code == 400
+
+
+def test_marcar_hecha_saca_la_tarea_de_las_notificaciones(client_abierto):
+    tarea_id = _tarea(client_abierto, 1)
+    assert tarea_id in {n["entidad_id"] for n in client_abierto.get("/notificaciones").get_json() if n["tipo"] == "tarea"}
+    assert client_abierto.put(f"/tareas/{tarea_id}", json={"completada": True}).status_code == 200
+    assert tarea_id not in {n["entidad_id"] for n in client_abierto.get("/notificaciones").get_json() if n["tipo"] == "tarea"}
+    assert tarea_id not in {t["id"] for t in client_abierto.get("/tareas?completada=false").get_json()}
+
+
+def test_horario_tiene_boton_de_imprimir(client_abierto):
+    assert "btn-imprimir-horario" in client_abierto.get("/vista/horario").get_data(as_text=True)
