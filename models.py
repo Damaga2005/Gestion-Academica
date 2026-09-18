@@ -447,6 +447,15 @@ class EsquemaEvaluacion(db.Model):
         order_by="BloqueEvaluacion.orden"
     )
 
+    def componentes_efectivos_objs(self):
+        """Sueltos + un objeto virtual por bloque (con su nota ya agregada): lo que de
+        verdad pesa sobre el 100% del esquema. Los hijos de un bloque NO van aquí."""
+        sueltos = [c for c in self.componentes if c.bloque_id is None]
+        return sueltos + [
+            SimpleNamespace(porcentaje=b.porcentaje, nota=calcular_resultado_componentes(b.componentes)["media_ponderada"])
+            for b in self.bloques
+        ]
+
     def to_dict(self, incluir_componentes=True):
         # "Sueltos": componentes directos sobre el 100% del esquema (comportamiento de
         # siempre). Cada bloque cuenta como un componente más de cara al resultado del
@@ -538,21 +547,22 @@ def calcular_estado_notas(asignatura):
     if asignatura.nota_final is not None:
         nota = asignatura.nota_final
         evaluada = True
-        componentes = [c for e in asignatura.esquemas for c in e.componentes] or asignatura.componentes
+        componentes = [c for e in asignatura.esquemas for c in e.componentes_efectivos_objs()] or asignatura.componentes
         evaluaciones_realizadas = sum(1 for c in componentes if c.nota is not None)
         evaluaciones_pendientes = sum(1 for c in componentes if c.nota is None)
         porcentaje_evaluado = 100.0
     else:
         nota = None
         evaluada = False
-        resultados = [(e, calcular_resultado_componentes(e.componentes)) for e in asignatura.esquemas]
+        resultados = [(e, calcular_resultado_componentes(e.componentes_efectivos_objs())) for e in asignatura.esquemas]
         candidatos = [(e, r) for e, r in resultados if r["media_ponderada"] is not None]
 
         if candidatos:
             esquema, resultado = max(candidatos, key=lambda par: par[1]["media_ponderada"])
             porcentaje_evaluado = resultado["porcentaje_evaluado"]
-            evaluaciones_realizadas = sum(1 for c in esquema.componentes if c.nota is not None)
-            evaluaciones_pendientes = sum(1 for c in esquema.componentes if c.nota is None)
+            efectivos = esquema.componentes_efectivos_objs()
+            evaluaciones_realizadas = sum(1 for c in efectivos if c.nota is not None)
+            evaluaciones_pendientes = sum(1 for c in efectivos if c.nota is None)
             if resultado["peso_total"] > 0 and resultado["peso_evaluado"] >= resultado["peso_total"]:
                 nota = resultado["media_ponderada"]
                 evaluada = True

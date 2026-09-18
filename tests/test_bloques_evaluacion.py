@@ -151,3 +151,18 @@ def test_mover_componente_a_un_bloque(client_abierto, esquema_id, asignatura_id)
 def test_bloque_porcentaje_fuera_de_rango_rechazado(client_abierto, esquema_id):
     r = client_abierto.post(f"/esquemas/{esquema_id}/bloques", json={"nombre": "X", "porcentaje": 150})
     assert r.status_code == 400
+
+
+def test_estado_notas_cuenta_el_bloque_como_una_unidad(client_abierto, esquema_id, asignatura_id):
+    # Suelto 60% con nota + bloque 40% con hijos 50/50 y notas: antes los hijos se
+    # sumaban como sueltos (peso 160%) y la asignatura nunca salía como evaluada.
+    _crear_componente_suelto(client_abierto, esquema_id, 60, nota=10)
+    bloque_id = _crear_bloque(client_abierto, esquema_id, "Laboratorio", 40)
+    _crear_componente_bloque(client_abierto, bloque_id, 50, nota=4)
+    _crear_componente_bloque(client_abierto, bloque_id, 50, nota=4)
+
+    asig = client_abierto.get(f"/asignaturas/{asignatura_id}").get_json()
+    assert asig["estado_notas"] == "aprobada"
+    assert asig["nota_actual"] == 7.6  # 10*0.6 + 4*0.4
+    assert asig["evaluaciones_realizadas"] == 2  # suelto + bloque
+    assert asig["evaluaciones_pendientes"] == 0
