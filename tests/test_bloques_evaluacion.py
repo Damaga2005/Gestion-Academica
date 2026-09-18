@@ -184,3 +184,50 @@ def test_duplicar_esquema_copia_estructura_sin_notas(client_abierto, esquema_id,
     # El original conserva sus notas.
     original = client_abierto.get(f"/asignaturas/{asignatura_id}/esquemas").get_json()[0]
     assert original["resultado"]["media_ponderada"] == 7.2
+
+
+def _mover(client, ruta, direccion):
+    r = client.post(ruta, json={"direccion": direccion})
+    assert r.status_code == 204
+
+
+def test_mover_componentes_sueltos(client_abierto, esquema_id, asignatura_id):
+    a = _crear_componente_suelto(client_abierto, esquema_id, 30)
+    b = _crear_componente_suelto(client_abierto, esquema_id, 30)
+    c = _crear_componente_suelto(client_abierto, esquema_id, 40)
+    ids = lambda: [x["id"] for x in _esquema(client_abierto, asignatura_id)["componentes"]]
+    assert ids() == [a, b, c]
+
+    _mover(client_abierto, f"/componentes/{c}/mover", "arriba")
+    assert ids() == [a, c, b]
+    _mover(client_abierto, f"/componentes/{a}/mover", "arriba")  # extremo: sin efecto
+    assert ids() == [a, c, b]
+    _mover(client_abierto, f"/componentes/{a}/mover", "abajo")
+    assert ids() == [c, a, b]
+    # Uno nuevo siempre entra al final, también tras reordenar.
+    d = _crear_componente_suelto(client_abierto, esquema_id, 0)
+    assert ids() == [c, a, b, d]
+
+
+def test_mover_solo_afecta_a_su_contenedor(client_abierto, esquema_id, asignatura_id):
+    suelto = _crear_componente_suelto(client_abierto, esquema_id, 60)
+    bloque_id = _crear_bloque(client_abierto, esquema_id, "Lab", 40)
+    x = _crear_componente_bloque(client_abierto, bloque_id, 50)
+    y = _crear_componente_bloque(client_abierto, bloque_id, 50)
+
+    _mover(client_abierto, f"/componentes/{y}/mover", "arriba")
+    esquema = _esquema(client_abierto, asignatura_id)
+    assert [c["id"] for c in esquema["bloques"][0]["componentes"]] == [y, x]
+    assert [c["id"] for c in esquema["componentes"]] == [suelto]
+
+
+def test_mover_bloques(client_abierto, esquema_id, asignatura_id):
+    b1 = _crear_bloque(client_abierto, esquema_id, "Uno", 50)
+    b2 = _crear_bloque(client_abierto, esquema_id, "Dos", 50)
+    _mover(client_abierto, f"/bloques/{b2}/mover", "arriba")
+    assert [b["id"] for b in _esquema(client_abierto, asignatura_id)["bloques"]] == [b2, b1]
+
+
+def test_mover_direccion_invalida(client_abierto, esquema_id):
+    c = _crear_componente_suelto(client_abierto, esquema_id, 100)
+    assert client_abierto.post(f"/componentes/{c}/mover", json={"direccion": "izquierda"}).status_code == 400

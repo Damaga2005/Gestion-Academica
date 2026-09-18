@@ -755,6 +755,8 @@ function filaComponenteHtml(c) {
       </div>
       <input type="number" class="ds-input evaluacion-fila-nota campo-nota" step="0.01" placeholder="Nota" value="${c.nota ?? ''}">
       <div class="fila-acciones">
+        <button type="button" class="fila-icono-btn btn-mover" data-dir="arriba" title="Subir" aria-label="Subir">▲</button>
+        <button type="button" class="fila-icono-btn btn-mover" data-dir="abajo" title="Bajar" aria-label="Bajar">▼</button>
         <button type="button" class="fila-icono-btn btn-borrar-componente" title="Eliminar">
           <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
         </button>
@@ -763,12 +765,16 @@ function filaComponenteHtml(c) {
   `;
 }
 
+// Bloques desplegados por el usuario: se conservan al recargar tras subir/bajar filas.
+const bloquesExpandidos = new Set();
+
 function filaBloqueHtml(b) {
   const nota = b.resultado.media_ponderada;
+  const abierto = bloquesExpandidos.has(String(b.id));
   return `
     <div class="evaluacion-bloque" data-bloque-id="${b.id}" data-bloque-nombre="${escapeHtml(b.nombre)}">
       <div class="detalle-fila evaluacion-fila-bloque">
-        <button type="button" class="evaluacion-bloque-toggle" aria-expanded="false" title="Ver componentes del bloque">
+        <button type="button" class="evaluacion-bloque-toggle ${abierto ? 'is-expandido' : ''}" aria-expanded="${abierto}" title="Ver componentes del bloque">
           <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-chevron-right"></use></svg>
         </button>
         <div class="evaluacion-fila-nombre">
@@ -777,12 +783,14 @@ function filaBloqueHtml(b) {
         </div>
         <span class="evaluacion-fila-nota-calculada" data-tooltip="Nota calculada a partir de sus componentes">${nota != null ? nota.toFixed(2) : '—'}</span>
         <div class="fila-acciones">
-          <button type="button" class="fila-icono-btn btn-borrar-bloque" title="Eliminar bloque">
+          <button type="button" class="fila-icono-btn btn-mover" data-dir="arriba" title="Subir" aria-label="Subir">▲</button>
+        <button type="button" class="fila-icono-btn btn-mover" data-dir="abajo" title="Bajar" aria-label="Bajar">▼</button>
+        <button type="button" class="fila-icono-btn btn-borrar-bloque" title="Eliminar bloque">
             <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
           </button>
         </div>
       </div>
-      <div class="evaluacion-bloque-sub" hidden>
+      <div class="evaluacion-bloque-sub" ${abierto ? '' : 'hidden'}>
         ${b.componentes.length === 0 ? '<p class="sin-elementos">Sin componentes en este bloque todavía.</p>' : b.componentes.map(filaComponenteHtml).join('')}
         <form class="detalle-form-anadir form-nuevo-componente-bloque">
           <div class="ds-field">
@@ -817,6 +825,12 @@ function activarEventosEvaluacion(contenedor, onCambio) {
       });
       await onCambio();
     });
+    fila.querySelectorAll('.btn-mover').forEach((b) => b.addEventListener('click', async () => {
+      await api(`/componentes/${id}/mover`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ direccion: b.dataset.dir }),
+      });
+      await onCambio();
+    }));
     fila.querySelector('.btn-borrar-componente').addEventListener('click', async () => {
       if (!confirm('¿Eliminar este componente de evaluación? Esta acción no se puede deshacer.')) return;
       await api(`/componentes/${id}`, { method: 'DELETE' });
@@ -833,7 +847,14 @@ function activarEventosEvaluacion(contenedor, onCambio) {
       sub.hidden = !sub.hidden;
       boton.setAttribute('aria-expanded', String(!sub.hidden));
       boton.classList.toggle('is-expandido', !sub.hidden);
+      if (sub.hidden) bloquesExpandidos.delete(bloqueId); else bloquesExpandidos.add(bloqueId);
     });
+    bloqueEl.querySelectorAll('.evaluacion-fila-bloque .btn-mover').forEach((b) => b.addEventListener('click', async () => {
+      await api(`/bloques/${bloqueId}/mover`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ direccion: b.dataset.dir }),
+      });
+      await onCambio();
+    }));
     bloqueEl.querySelector('.btn-borrar-bloque').addEventListener('click', async () => {
       if (!confirm(`¿Eliminar el bloque "${bloqueEl.dataset.bloqueNombre}" y todos sus componentes? Esta acción no se puede deshacer.`)) return;
       await api(`/bloques/${bloqueId}`, { method: 'DELETE' });

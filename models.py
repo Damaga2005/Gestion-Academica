@@ -324,6 +324,8 @@ class ComponenteEvaluacion(db.Model):
     tipo = db.Column(db.String(20), nullable=False, default="otro")
     porcentaje = db.Column(db.Float, nullable=False)
     nota = db.Column(db.Float, nullable=True)
+    # Los nuevos van al final (valor alto); mover_en_lista renumera 0..n-1 al reordenar.
+    orden = db.Column(db.Integer, nullable=False, default=1_000_000)
 
     asignatura = db.relationship("Asignatura", back_populates="componentes")
     esquema = db.relationship("EsquemaEvaluacion", back_populates="componentes")
@@ -373,7 +375,7 @@ class BloqueEvaluacion(db.Model):
     esquema = db.relationship("EsquemaEvaluacion", back_populates="bloques")
     componentes = db.relationship(
         "ComponenteEvaluacion", back_populates="bloque", cascade="all, delete-orphan",
-        order_by="ComponenteEvaluacion.id"
+        order_by="(ComponenteEvaluacion.orden, ComponenteEvaluacion.id)"
     )
 
     @validates("porcentaje")
@@ -394,6 +396,18 @@ class BloqueEvaluacion(db.Model):
         if incluir_componentes:
             data["componentes"] = [c.to_dict() for c in self.componentes]
         return data
+
+
+def mover_en_lista(items, item, direccion):
+    """Sube ("arriba") o baja ("abajo") `item` dentro de `items` (ya en su orden actual)
+    y renumera `orden` como 0..n-1. Sin efecto en los extremos."""
+    lista = list(items)
+    i = lista.index(item)
+    j = i - 1 if direccion == "arriba" else i + 1
+    if 0 <= j < len(lista):
+        lista[i], lista[j] = lista[j], lista[i]
+    for n, it in enumerate(lista):
+        it.orden = n
 
 
 def calcular_resultado_componentes(componentes):
@@ -440,7 +454,7 @@ class EsquemaEvaluacion(db.Model):
     asignatura = db.relationship("Asignatura", back_populates="esquemas")
     componentes = db.relationship(
         "ComponenteEvaluacion", back_populates="esquema", cascade="all, delete-orphan",
-        order_by="ComponenteEvaluacion.id"
+        order_by="(ComponenteEvaluacion.orden, ComponenteEvaluacion.id)"
     )
     bloques = db.relationship(
         "BloqueEvaluacion", back_populates="esquema", cascade="all, delete-orphan",

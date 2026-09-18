@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 
-from models import db, BloqueEvaluacion, ComponenteEvaluacion, EsquemaEvaluacion
+from models import db, BloqueEvaluacion, ComponenteEvaluacion, EsquemaEvaluacion, mover_en_lista
 from routes.errors import ApiError
 
 bloques_bp = Blueprint("bloques", __name__)
@@ -67,3 +67,28 @@ def crear_componente_en_bloque(bloque_id):
     db.session.add(componente)
     db.session.commit()
     return jsonify(componente.to_dict()), 201
+
+
+def _direccion(data):
+    if data.get("direccion") not in ("arriba", "abajo"):
+        raise ApiError("'direccion' debe ser 'arriba' o 'abajo'")
+    return data["direccion"]
+
+
+@bloques_bp.post("/bloques/<int:bloque_id>/mover")
+def mover_bloque(bloque_id):
+    bloque = BloqueEvaluacion.query.get_or_404(bloque_id)
+    mover_en_lista(bloque.esquema.bloques, bloque, _direccion(request.get_json(silent=True) or {}))
+    db.session.commit()
+    return "", 204
+
+
+@bloques_bp.post("/componentes/<int:componente_id>/mover")
+def mover_componente(componente_id):
+    componente = ComponenteEvaluacion.query.get_or_404(componente_id)
+    hermanos = ComponenteEvaluacion.query.filter_by(
+        esquema_id=componente.esquema_id, bloque_id=componente.bloque_id
+    ).order_by(ComponenteEvaluacion.orden, ComponenteEvaluacion.id).all()
+    mover_en_lista(hermanos, componente, _direccion(request.get_json(silent=True) or {}))
+    db.session.commit()
+    return "", 204
