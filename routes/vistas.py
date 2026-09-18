@@ -1,8 +1,10 @@
+import os
 import socket
+from datetime import datetime
 
 from flask import Blueprint, render_template, current_app
 
-from models import Anio, Asignatura
+from models import Anio, Asignatura, Documento, TareaEvento
 
 vistas_bp = Blueprint("vistas", __name__)
 
@@ -83,12 +85,30 @@ def vista_modo_examen(espacio_id):
     return render_template("modo_examen.html", espacio_id=espacio_id)
 
 
+def _info_base_datos():
+    """Ruta y 'huella' de la BD en uso, para comparar de un vistazo qué archivo abre
+    la app en cada ordenador (mismo contenido = mismas cifras y misma fecha)."""
+    uri = current_app.config["SQLALCHEMY_DATABASE_URI"]
+    ruta = uri.replace("sqlite:///", "", 1) if uri.startswith("sqlite:///") else uri
+    try:
+        modificada = datetime.fromtimestamp(os.path.getmtime(ruta)).strftime("%d/%m/%Y %H:%M")
+    except OSError:
+        modificada = "—"
+    return {
+        "ruta": ruta,
+        "modificada": modificada,
+        "tareas": TareaEvento.query.count(),
+        "documentos": Documento.query.count(),
+    }
+
+
 @vistas_bp.get("/vista/ajustes")
 def vista_ajustes():
     return render_template(
         "ajustes.html",
         ip_local=_detectar_ip_local(),
         documentos_dir=current_app.config["DOCUMENTOS_DIR"],
+        bd=_info_base_datos(),
     )
 
 

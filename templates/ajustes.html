@@ -128,6 +128,11 @@
               </h2>
               <p class="ds-caption ajustes-bloque-ayuda">Carpeta donde se guardan los documentos subidos</p>
               <code class="ajustes-codigo">{{ documentos_dir }}</code>
+              <p class="ds-caption ajustes-bloque-ayuda" style="margin-top:var(--ds-space-4)">Base de datos en uso</p>
+              <code class="ajustes-codigo" id="bd-ruta">{{ bd.ruta }}</code>
+              <p class="ds-caption" id="bd-huella" style="margin-top:var(--ds-space-2)">
+                Modificada {{ bd.modificada }} · {{ bd.tareas }} tareas · {{ bd.documentos }} documentos
+              </p>
             </section>
 
             <section class="ds-card">
