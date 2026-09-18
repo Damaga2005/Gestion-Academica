@@ -151,3 +151,15 @@ def test_media_curso_agrega_correctamente(client_abierto, cuatrimestre_id):
     assert despues["nota_mas_alta"] == 9.0
     assert despues["nota_mas_baja"] == 3.0
     assert despues["media_general"] == pytest.approx((9.0 + 3.0) / 2)
+
+
+def test_media_curso_ponderada_por_ects(client_abierto, cuatrimestre_id):
+    a = client_abierto.post("/asignaturas", json={"cuatrimestre_id": cuatrimestre_id, "nombre": "Pesa 9", "creditos_ects": 9}).get_json()["id"]
+    b = client_abierto.post("/asignaturas", json={"cuatrimestre_id": cuatrimestre_id, "nombre": "Pesa 3", "creditos_ects": 3}).get_json()["id"]
+    client_abierto.put(f"/asignaturas/{a}", json={"nota_final": 8.0})
+    client_abierto.put(f"/asignaturas/{b}", json={"nota_final": 4.0})
+
+    data = client_abierto.get("/asignaturas/media-curso").get_json()
+    # (9*8 + 3*4) / 12 = 7.0 (la simple daría 6.0); el seed de tests no trae notas.
+    assert data["media_ponderada_ects"] == pytest.approx(7.0)
+    assert data["media_general"] == pytest.approx(6.0)

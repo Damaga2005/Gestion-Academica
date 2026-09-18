@@ -99,8 +99,12 @@ def media_curso():
     suspendidas = sum(1 for e in estados if e["estado_notas"] == "suspendida")
     pendientes_evaluar = sum(1 for e in estados if e["estado_notas"] in ("en_progreso", "sin_evaluar"))
     notas = [e["nota_actual"] for e in estados if e["nota_actual"] is not None]
+    # Media del expediente: cada nota pesa según sus créditos (como la nota media oficial).
+    con_nota = [(a.creditos_ects, e["nota_actual"]) for a, e in zip(asignaturas, estados) if e["nota_actual"] is not None]
+    ects_con_nota = sum(c for c, _ in con_nota)
 
     return jsonify({
+        "media_ponderada_ects": round(sum(c * n for c, n in con_nota) / ects_con_nota, 2) if ects_con_nota else None,
         "total": len(asignaturas),
         "aprobadas": aprobadas,
         "suspendidas": suspendidas,

@@ -311,6 +311,8 @@ async function cargarMediaCurso() {
     const resumen = await api('/asignaturas/media-curso');
     document.getElementById('media-curso-valor').textContent =
       resumen.media_general != null ? formatoNota(resumen.media_general) : '—';
+    document.getElementById('media-curso-ponderada').textContent =
+      resumen.media_ponderada_ects != null ? formatoNota(resumen.media_ponderada_ects) : '—';
     document.getElementById('media-curso-total').textContent = resumen.total;
     document.getElementById('media-curso-aprobadas').textContent = resumen.aprobadas;
     document.getElementById('media-curso-suspendidas').textContent = resumen.suspendidas;
