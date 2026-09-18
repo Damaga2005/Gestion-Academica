@@ -166,3 +166,21 @@ def test_estado_notas_cuenta_el_bloque_como_una_unidad(client_abierto, esquema_i
     assert asig["nota_actual"] == 7.6  # 10*0.6 + 4*0.4
     assert asig["evaluaciones_realizadas"] == 2  # suelto + bloque
     assert asig["evaluaciones_pendientes"] == 0
+
+
+def test_duplicar_esquema_copia_estructura_sin_notas(client_abierto, esquema_id, asignatura_id):
+    _crear_componente_suelto(client_abierto, esquema_id, 60, nota=8)
+    bloque_id = _crear_bloque(client_abierto, esquema_id, "Laboratorio", 40)
+    _crear_componente_bloque(client_abierto, bloque_id, 100, nota=6)
+
+    r = client_abierto.post(f"/esquemas/{esquema_id}/duplicar")
+    assert r.status_code == 201
+    copia = r.get_json()
+    assert copia["nombre"].endswith("(copia)")
+    assert len(copia["componentes"]) == 1 and copia["componentes"][0]["nota"] is None
+    assert copia["bloques"][0]["porcentaje"] == 40
+    assert copia["bloques"][0]["componentes"][0]["nota"] is None
+    assert copia["resultado"]["media_ponderada"] is None
+    # El original conserva sus notas.
+    original = client_abierto.get(f"/asignaturas/{asignatura_id}/esquemas").get_json()[0]
+    assert original["resultado"]["media_ponderada"] == 7.2

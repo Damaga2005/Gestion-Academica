@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 
-from models import db, Asignatura, EsquemaEvaluacion, ComponenteEvaluacion, esquemas_con_ganador, REGLAS_ESQUEMA
+from models import db, Asignatura, EsquemaEvaluacion, BloqueEvaluacion, ComponenteEvaluacion, esquemas_con_ganador, REGLAS_ESQUEMA
 from routes.errors import ApiError
 
 esquemas_bp = Blueprint("esquemas", __name__)
@@ -58,6 +58,36 @@ def borrar_esquema(esquema_id):
     db.session.delete(esquema)
     db.session.commit()
     return "", 204
+
+
+@esquemas_bp.post("/esquemas/<int:esquema_id>/duplicar")
+def duplicar_esquema(esquema_id):
+    """Copia la estructura (bloques y componentes, con sus pesos) SIN notas: sirve
+    para probar una fórmula alternativa partiendo de la actual."""
+    origen = EsquemaEvaluacion.query.get_or_404(esquema_id)
+    orden = max(e.orden for e in origen.asignatura.esquemas) + 1
+    copia = EsquemaEvaluacion(asignatura_id=origen.asignatura_id, nombre=f"{origen.nombre} (copia)", orden=orden)
+    db.session.add(copia)
+    db.session.flush()
+
+    def clonar(c, bloque_id=None):
+        db.session.add(ComponenteEvaluacion(
+            asignatura_id=c.asignatura_id, esquema_id=copia.id, bloque_id=bloque_id,
+            nombre=c.nombre, tipo=c.tipo, porcentaje=c.porcentaje,
+        ))
+
+    for c in origen.componentes:
+        if c.bloque_id is None:
+            clonar(c)
+    for b in origen.bloques:
+        nuevo = BloqueEvaluacion(esquema_id=copia.id, nombre=b.nombre, porcentaje=b.porcentaje, orden=b.orden)
+        db.session.add(nuevo)
+        db.session.flush()
+        for c in b.componentes:
+            clonar(c, nuevo.id)
+
+    db.session.commit()
+    return jsonify(copia.to_dict()), 201
 
 
 @esquemas_bp.put("/asignaturas/<int:asignatura_id>/regla-esquemas")

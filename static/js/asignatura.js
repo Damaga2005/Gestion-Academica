@@ -554,6 +554,9 @@ function renderComparacionEsquemas(esquemas) {
       <div class="esquema-card-header">
         <h3 class="ds-h3">${escapeHtml(esquema.nombre)}</h3>
         ${esquema.aplicado ? '<span class="ds-badge ds-badge-success">Se aplicaría</span>' : ''}
+        <button type="button" class="fila-icono-btn btn-duplicar-esquema" title="Duplicar esquema (sin notas)">
+          <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-copy"></use></svg>
+        </button>
         <button type="button" class="fila-icono-btn btn-borrar-esquema" title="Eliminar esquema">
           <svg class="ds-icon"><use href="/static/vendor/lucide/sprite.svg#lucide-trash-2"></use></svg>
         </button>
@@ -638,6 +641,16 @@ function renderComparacionEsquemas(esquemas) {
     actualizarCalculadora();
     tarjeta.querySelector('.campo-objetivo-esquema').addEventListener('input', actualizarCalculadora);
 
+    tarjeta.querySelector('.btn-duplicar-esquema').addEventListener('click', async () => {
+      try {
+        await api(`/esquemas/${esquemaId}/duplicar`, { method: 'POST' });
+        mostrarToast('Esquema duplicado', 'success');
+        await cargarCabeceraYResumen();
+      } catch (err) {
+        mostrarToast(err.message, 'danger');
+      }
+    });
+
     tarjeta.querySelector('.btn-borrar-esquema').addEventListener('click', async () => {
       if (!confirm(`¿Eliminar el esquema "${esquema.nombre}" y todos sus componentes? Esta acción no se puede deshacer.`)) return;
       const meta = document.querySelector('meta[name="csrf-token"]');
@@ -702,6 +715,18 @@ function renderComparacionEsquemas(esquemas) {
 }
 
 document.getElementById('btn-anadir-esquema').addEventListener('click', async () => {
+  if (esquemaUnicoId && confirm('¿Partir de una copia del esquema actual (mismos componentes y pesos, sin notas)?
+
+Aceptar = copiar · Cancelar = esquema vacío')) {
+    try {
+      await api(`/esquemas/${esquemaUnicoId}/duplicar`, { method: 'POST' });
+      mostrarToast('Esquema duplicado', 'success');
+      await cargarCabeceraYResumen();
+    } catch (err) {
+      mostrarToast(err.message, 'danger');
+    }
+    return;
+  }
   const nombre = prompt('Nombre del nuevo esquema (ej. "Fórmula alternativa"):');
   if (!nombre || !nombre.trim()) return;
   try {
