@@ -90,3 +90,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Escape') dropdown.hidden = true;
   });
 });
+
+// Aviso si otro proceso (p. ej. Syncthing desde otro PC) modifica la BD mientras esta
+// pantalla está abierta: lo que se ve puede estar desfasado hasta recargar.
+setInterval(async () => {
+  if (document.getElementById('aviso-bd-externa')) return;
+  try {
+    const res = await fetch('/bd/cambio-externo');
+    if (!res.ok || !(await res.json()).cambiado) return;
+  } catch (e) { return; }
+  const aviso = document.createElement('div');
+  aviso.id = 'aviso-bd-externa';
+  aviso.className = 'ds-card';
+  aviso.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;gap:12px;align-items:center;padding:12px 16px';
+  aviso.innerHTML = '<span class="ds-body">Los datos han cambiado en disco (¿otro ordenador?).</span><button type="button" class="ds-btn ds-btn-primary">Recargar</button>';
+  aviso.querySelector('button').addEventListener('click', () => location.reload());
+  document.body.appendChild(aviso);
+}, 30000);
