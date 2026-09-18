@@ -1218,6 +1218,13 @@ class ConfiguracionApp(db.Model):
     dias_asignatura_abandonada = db.Column(db.Integer, nullable=False, default=14)
     widgets_orden = db.Column(db.String(200), nullable=False, default=",".join(WIDGETS_POR_DEFECTO))
     widgets_ocultos = db.Column(db.String(200), nullable=True)
+    objetivo_media = db.Column(db.Float, nullable=True)  # nota media que quiere sacar el usuario (0-10)
+
+    @validates("objetivo_media")
+    def validar_objetivo_media(self, key, value):
+        if value is not None and not (0 <= float(value) <= 10):
+            raise ValueError("objetivo_media debe estar entre 0 y 10")
+        return value
 
     @validates("tema")
     def validar_tema(self, key, value):
@@ -1249,6 +1256,7 @@ class ConfiguracionApp(db.Model):
             "dias_asignatura_abandonada": self.dias_asignatura_abandonada,
             "widgets_orden": self.lista_widgets_orden(),
             "widgets_ocultos": self.lista_widgets_ocultos(),
+            "objetivo_media": self.objetivo_media,
         }
 
 

@@ -326,6 +326,43 @@ async function cargarMediaCurso() {
   }
 }
 
+async function cargarMediaPorCuatrimestre() {
+  try {
+    const filas = await api('/asignaturas/media-por-cuatrimestre');
+    const con = filas.filter((f) => f.media != null);
+    document.getElementById('media-por-cuatrimestre').innerHTML = con.length
+      ? con.map((f) => `<span title="${f.con_nota}/${f.total} asignaturas con nota">C${f.numero}: <strong>${formatoNota(f.media)}</strong></span>`).join(' · ')
+      : '—';
+  } catch (err) { /* sin desglose */ }
+}
+
+async function cargarObjetivoMedia() {
+  try {
+    const r = await api('/asignaturas/objetivo-media');
+    const input = document.getElementById('objetivo-media');
+    if (document.activeElement !== input) input.value = r.objetivo ?? '';
+    const texto = document.getElementById('objetivo-media-resultado');
+    if (r.objetivo == null) texto.textContent = 'Fija un objetivo para ver qué nota necesitas en lo que te queda.';
+    else if (r.nota_necesaria == null) texto.textContent = 'No queda ninguna asignatura por evaluar.';
+    else if (!r.alcanzable) texto.textContent = `Objetivo inalcanzable: harían falta más de 10 de media en las ${r.ects_pendientes} ECTS que quedan.`;
+    else if (r.nota_necesaria === 0) texto.textContent = 'Objetivo ya asegurado, saques lo que saques.';
+    else texto.textContent = `Necesitas un ${formatoNota(r.nota_necesaria)} de media en las ${r.ects_pendientes} ECTS que te quedan.`;
+  } catch (err) { /* sin objetivo */ }
+}
+
+document.getElementById('objetivo-media').addEventListener('change', async (e) => {
+  const v = e.target.value.trim();
+  try {
+    await api('/configuracion', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ objetivo_media: v === '' ? null : parseFloat(v.replace(',', '.')) }),
+    });
+    await cargarObjetivoMedia();
+  } catch (err) {
+    mostrarToast(err.message, 'danger');
+  }
+});
+
 // --- Esta semana: horario recurrente + tareas/exámenes de la semana en curso,
 // unificados (antes había que mirar Horario y Calendario por separado) ---
 
@@ -486,6 +523,8 @@ cargarAsignaturas();
 cargarEntregas();
 cargarContinuar();
 cargarMediaCurso();
+cargarMediaPorCuatrimestre();
+cargarObjetivoMedia();
 cargarSemana();
 cargarRepasoHoy();
 cargarHitos();

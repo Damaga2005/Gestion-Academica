@@ -209,6 +209,10 @@
         <h3 class="ds-h3">Importar calendario (.ics)</h3>
         <p class="ds-caption">En Atenea: Calendario → Importar o exportar calendarios → Exportar. Revisa la asignatura de cada tarea antes de importar.</p>
         <input type="file" id="ics-archivo" class="ds-input" accept=".ics,text/calendar">
+        <div class="ds-field" style="max-width:260px;margin-top:var(--ds-space-3)">
+          <label for="ics-recordatorio" class="ds-label">Avisar días antes (vacío = ajuste general)</label>
+          <input type="number" id="ics-recordatorio" class="ds-input" min="0" max="365" step="1" value="2">
+        </div>
         <div id="ics-vista-previa" style="margin-top:var(--ds-space-4);max-height:50vh;overflow:auto"></div>
         <p class="ds-field-error" id="ics-error"></p>
         <menu class="calendario-dialog-menu">

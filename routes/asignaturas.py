@@ -115,6 +115,58 @@ def media_curso():
     })
 
 
+def _media_ponderada(pares):
+    """pares = [(ects, nota)] → media ponderada por ECTS (None si no hay ninguno)."""
+    ects = sum(c for c, _ in pares)
+    return round(sum(c * n for c, n in pares) / ects, 2) if ects else None
+
+
+@asignaturas_bp.get("/asignaturas/media-por-cuatrimestre")
+def media_por_cuatrimestre():
+    resultado = []
+    for cuatri in Cuatrimestre.query.order_by(Cuatrimestre.numero).all():
+        asignaturas = [a for a in cuatri.asignaturas if a.estado != "no_elegida"]
+        if not asignaturas:
+            continue
+        con_nota = [
+            (a.creditos_ects, e["nota_actual"])
+            for a, e in ((a, calcular_estado_notas(a)) for a in asignaturas) if e["nota_actual"] is not None
+        ]
+        resultado.append({
+            "numero": cuatri.numero,
+            "media": _media_ponderada(con_nota),
+            "con_nota": len(con_nota),
+            "total": len(asignaturas),
+        })
+    return jsonify(resultado)
+
+
+@asignaturas_bp.get("/asignaturas/objetivo-media")
+def objetivo_media():
+    """Qué media hace falta en las asignaturas que aún no tienen nota para acabar con
+    el objetivo del usuario (ponderado por ECTS, sobre todas las asignaturas elegidas)."""
+    from routes.configuracion import obtener_configuracion
+
+    objetivo = obtener_configuracion().objetivo_media
+    asignaturas = Asignatura.query.filter(Asignatura.estado != "no_elegida").all()
+    estados = [calcular_estado_notas(a) for a in asignaturas]
+    con_nota = [(a.creditos_ects, e["nota_actual"]) for a, e in zip(asignaturas, estados) if e["nota_actual"] is not None]
+    ects_pendientes = sum(a.creditos_ects for a, e in zip(asignaturas, estados) if e["nota_actual"] is None)
+    ects_hechos = sum(c for c, _ in con_nota)
+
+    necesaria = None
+    if objetivo is not None and ects_pendientes > 0:
+        puntos_hechos = sum(c * n for c, n in con_nota)
+        necesaria = round((objetivo * (ects_hechos + ects_pendientes) - puntos_hechos) / ects_pendientes, 2)
+    return jsonify({
+        "objetivo": objetivo,
+        "media_actual": _media_ponderada(con_nota),
+        "ects_pendientes": ects_pendientes,
+        "nota_necesaria": None if necesaria is None else max(necesaria, 0),
+        "alcanzable": None if necesaria is None else necesaria <= 10,
+    })
+
+
 @asignaturas_bp.get("/asignaturas/<string:identificador>")
 def obtener_asignatura(identificador):
     """

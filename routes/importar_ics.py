@@ -163,11 +163,14 @@ def importar():
         asignatura_id = ev.get("asignatura_id")
         if asignatura_id is not None and db.session.get(Asignatura, asignatura_id) is None:
             raise ApiError("asignatura no encontrada")
+        recordatorio = ev.get("recordatorio")
+        if recordatorio is not None and (not isinstance(recordatorio, int) or not 0 <= recordatorio <= 365):
+            raise ApiError("'recordatorio' debe ser un número de días entre 0 y 365")
         if _ya_existe(titulo, fecha):
             omitidas += 1
             continue
         db.session.add(TareaEvento(
-            asignatura_id=asignatura_id, titulo=titulo, fecha=fecha,
+            asignatura_id=asignatura_id, titulo=titulo, fecha=fecha, recordatorio=recordatorio,
             tipo=ev.get("tipo", "tarea_general"), hora_fin=_parse_hora(ev.get("hora_fin"), "hora_fin"),
         ))
         creadas += 1

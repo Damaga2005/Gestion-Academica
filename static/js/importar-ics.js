@@ -64,12 +64,13 @@ document.getElementById('ics-vista-previa').addEventListener('change', (e) => {
 });
 
 document.getElementById('ics-importar').addEventListener('click', async () => {
+  const recordar = document.getElementById('ics-recordatorio').value;
   const seleccion = [...document.querySelectorAll('#ics-vista-previa tr')]
     .filter((tr) => tr.querySelector('.ics-check').checked)
     .map((tr) => {
       const e = eventosIcs[parseInt(tr.dataset.i, 10)];
       const asig = tr.querySelector('.ics-asignatura').value;
-      return { titulo: e.titulo, fecha: e.fecha, hora_fin: e.hora_fin, tipo: tr.querySelector('.ics-tipo').value, asignatura_id: asig ? parseInt(asig, 10) : null };
+      return { titulo: e.titulo, fecha: e.fecha, hora_fin: e.hora_fin, tipo: tr.querySelector('.ics-tipo').value, asignatura_id: asig ? parseInt(asig, 10) : null, recordatorio: recordar === '' ? null : parseInt(recordar, 10) };
     });
   try {
     const r = await api('/calendario/importar-ics', {

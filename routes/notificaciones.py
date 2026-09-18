@@ -59,7 +59,7 @@ def calcular_notificaciones():
                            f"({tarea.fecha.isoformat()})",
                 "url": url,
             })
-        elif dias_restantes <= config.dias_aviso_examen:
+        elif dias_restantes <= (tarea.recordatorio if tarea.recordatorio is not None else config.dias_aviso_examen):
             nivel = "rojo" if dias_restantes < 3 else "naranja"
             cuando = "hoy" if dias_restantes == 0 else f"en {dias_restantes} día{'s' if dias_restantes != 1 else ''}"
             notificaciones.append({
