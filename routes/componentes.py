@@ -68,10 +68,14 @@ def actualizar_componente(componente_id):
     data = request.get_json(silent=True) or {}
 
     if "nombre" in data:
+        if not str(data["nombre"] or "").strip():
+            raise ApiError("'nombre' no puede estar vacío")
         componente.nombre = data["nombre"]
     if "tipo" in data:
         componente.tipo = data["tipo"]
     if "porcentaje" in data:
+        if not isinstance(data["porcentaje"], (int, float)) or not 0 <= data["porcentaje"] <= 100:
+            raise ApiError("'porcentaje' debe estar entre 0 y 100")
         componente.porcentaje = data["porcentaje"]
     if "nota" in data:
         componente.nota = data["nota"]

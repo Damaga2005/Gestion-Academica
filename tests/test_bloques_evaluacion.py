@@ -231,3 +231,24 @@ def test_mover_bloques(client_abierto, esquema_id, asignatura_id):
 def test_mover_direccion_invalida(client_abierto, esquema_id):
     c = _crear_componente_suelto(client_abierto, esquema_id, 100)
     assert client_abierto.post(f"/componentes/{c}/mover", json={"direccion": "izquierda"}).status_code == 400
+
+
+def test_editar_componente_nombre_y_porcentaje(client_abierto, esquema_id):
+    c = _crear_componente_suelto(client_abierto, esquema_id, 50)
+    r = client_abierto.put(f"/componentes/{c}", json={"nombre": "Parcial 1", "porcentaje": 35})
+    assert r.status_code == 200 and (r.get_json()["nombre"], r.get_json()["porcentaje"]) == ("Parcial 1", 35)
+
+
+def test_editar_componente_valida_nombre_y_porcentaje(client_abierto, esquema_id):
+    c = _crear_componente_suelto(client_abierto, esquema_id, 50)
+    assert client_abierto.put(f"/componentes/{c}", json={"nombre": "  "}).status_code == 400
+    assert client_abierto.put(f"/componentes/{c}", json={"porcentaje": 150}).status_code == 400
+    assert client_abierto.put(f"/componentes/{c}", json={"porcentaje": "mucho"}).status_code == 400
+    assert client_abierto.put(f"/componentes/{c}", json={"nota": 7}).status_code == 200
+
+
+def test_editar_bloque_nombre_y_porcentaje(client_abierto, esquema_id):
+    b = _crear_bloque(client_abierto, esquema_id, "Lab", 40)
+    r = client_abierto.put(f"/bloques/{b}", json={"nombre": "Laboratorio", "porcentaje": 30})
+    assert (r.get_json()["nombre"], r.get_json()["porcentaje"]) == ("Laboratorio", 30)
+    assert client_abierto.put(f"/bloques/{b}", json={"porcentaje": 130}).status_code == 400
