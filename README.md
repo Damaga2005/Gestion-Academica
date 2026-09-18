@@ -44,7 +44,9 @@ graph TD
 ## ✨ Funcionalidades Principales
 
 ### 📊 1. Dashboard Ejecutivo y Widgets Personalizables
-- **Visión Global del Cuatrimestre:** Métricas clave en tiempo real: créditos superados, nota media ponderada de expediente, progreso del cuatrimestre actual y alertas de entregas inminentes.
+- **Visión Global del Cuatrimestre:** Métricas clave en tiempo real: créditos superados, media simple y ponderada por ECTS, media por cuatrimestre, progreso del cuatrimestre actual y alertas de entregas inminentes.
+- **Objetivo de Media:** Fija una nota objetivo y la app calcula qué media necesitas en las ECTS que te quedan.
+- **Temporizador de Estudio:** Sesiones cronometradas por asignatura que suman a la racha de estudio y a un resumen de minutos de hoy y de la semana.
 - **Widgets Reordenables:** Acceso directo a notas rápidas, próximas evaluaciones, materias activas y accesos directos al Campus Virtual (Atenea / Moodle).
 - **Buscador Global Instantáneo:** Localiza asignaturas, apuntes, conceptos, temas o profesores en milisegundos con un atajo de teclado.
 
@@ -53,7 +55,10 @@ graph TD
 ### 🧮 2. Motor Avanzado de Evaluación y Calculadora de Notas
 - **Soporte para Múltiples Esquemas de Evaluación:** Configura fórmulas alternativas de evaluación (ej. *Opción A: Evaluación continua con parciales* vs. *Opción B: 100% examen final*). La aplicación calcula y selecciona automáticamente la mejor nota para el alumno.
 - **Calculadora "¿Qué nota necesito?":** Indica exactamente qué calificación mínima debes obtener en las entregas restantes o en el examen final para alcanzar tu objetivo (Aprobado 5.0, Notable 7.0, Sobresaliente 9.0).
-- **Desglose de Componentes:** Ponderación flexible de teoría, prácticas de laboratorio, proyectos, exámenes parciales y finales con control de notas de corte.
+- **Desglose de Componentes:** Ponderación flexible de teoría, prácticas de laboratorio, proyectos, exámenes parciales y finales, editable y reordenable, con aviso si los pesos no suman 100 %.
+- **Bloques de Evaluación (nota jerárquica):** Un grupo como *Laboratorio 40 %* calcula su propia nota a partir de sus prácticas y controles, tal como lo definen las guías docentes de la UPC. La importación desde la guía en PDF los propone automáticamente.
+- **Nota Mínima por Componente:** Si un examen exige un 4, la asignatura cuenta como suspendida aunque la media llegue a 5.
+- **Duplicar Esquemas:** Copia la estructura sin notas para probar una fórmula alternativa.
 
 ---
 
@@ -78,14 +83,17 @@ graph TD
 ---
 
 ### 🧠 6. Calendario de Exámenes y Repaso Espaciado
-- **Agenda Temporal:** Calendario mensual y semanal con fechas clave de parciales, entregas de prácticas y fechas límite.
+- **Agenda Temporal:** Calendario mensual, semanal y en agenda con fechas clave de parciales, entregas de prácticas y fechas límite. Las tareas se pueden repetir cada semana, posponer y marcar como hechas desde la campanita de avisos.
+- **Importar desde Atenea:** Carga el `.ics` exportado del calendario de Atenea/Moodle con previsualización, asignatura sugerida y recordatorio automático.
+- **Impresión:** Horario, calendario y "Esta semana" se pueden imprimir en papel.
 - **Sistema de Repaso Espaciado (SRS):** Tarjetas de preguntas clave con intervalos de repaso basados en algoritmos de memoria para consolidar conceptos antes de los exámenes.
 
 ---
 
 ### 🔒 7. Seguridad y Control de Acceso Local
 - **Bloqueo Opcional con Clave (`GREELEC_LOCK_KEY`):** Protege la interfaz con contraseña al utilizar el ordenador en redes Wi-Fi públicas o bibliotecas universitarias.
-- **Backups Automáticos y Exportación en ZIP:** Copia de seguridad en un solo clic de la base de datos y toda la biblioteca de documentos.
+- **Backups Automáticos y Exportación en ZIP:** Copia de seguridad en un solo clic de la base de datos y toda la biblioteca de documentos. El expediente se puede exportar además a CSV para Excel.
+- **Uso en Varios Ordenadores:** Ajustes muestra qué base de datos abre la app (ruta, fecha y huella de contenido), avisa de copias en conflicto de Syncthing y de cambios externos en disco mientras la app está abierta.
 
 ---
 
@@ -170,12 +178,21 @@ gestion_academica/
 ├── seed.py                    # Script de sembrado de datos iniciales del grado
 ├── escritorio.py              # Lanzador nativo de ventana de escritorio (PyWebView)
 ├── build.ps1                  # Script de automatización de compilación a .exe
+├── changelog.py               # Registro de cambios que muestra la propia app
 ├── routes/                    # Controladores modulares (Blueprints)
-│   ├── asignaturas.py         # Fichas, prerrequisitos y optativas
-│   ├── evaluacion.py          # Esquemas de notas y cálculos
-│   ├── calendario.py          # Calendario y eventos
+│   ├── asignaturas.py         # Fichas, prerrequisitos, optativas, medias y objetivo
+│   ├── esquemas.py            # Esquemas de evaluación (crear, duplicar, regla)
+│   ├── bloques.py             # Bloques de evaluación y reordenación
+│   ├── componentes.py         # Componentes, notas y notas mínimas
+│   ├── guia_docente.py        # Importar profesores y esquemas de la guía docente
+│   ├── tareas.py              # Calendario: tareas, repetición y posponer
+│   ├── importar_ics.py        # Importar tareas desde un .ics (Atenea)
+│   ├── horarios.py            # Horario semanal recurrente
+│   ├── estudio.py             # Temporizador de estudio
 │   ├── documentos.py          # Repositorio de apuntes y archivos
-│   └── api.py                 # Endpoints REST para widgets interactivos
+│   ├── backup.py              # Backups, exportar/importar y CSV del expediente
+│   └── ...                    # Notificaciones, racha, búsqueda, ajustes, etc.
+├── tests/                     # Suite de pruebas (pytest)
 ├── templates/                 # Vistas HTML con motor Jinja2 y componentes
 ├── static/                    # Hojas de estilo CSS (Apple Dark), iconos y scripts JS
 ├── migrations/                # Historial de migraciones versionadas con Alembic

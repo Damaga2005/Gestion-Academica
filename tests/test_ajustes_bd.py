@@ -12,3 +12,8 @@ def test_ajustes_avisa_si_hay_copia_en_conflicto(client_abierto, tmp_path, monke
     monkeypatch.setitem(client_abierto.application.config, "SQLALCHEMY_DATABASE_URI", f"sqlite:///{bd}")
     with client_abierto.application.app_context():
         assert len(vistas._info_base_datos()["conflictos"]) == 1
+
+
+def test_changelog_muestra_la_ultima_fase(client_abierto):
+    html = client_abierto.get("/vista/changelog").get_data(as_text=True)
+    assert "Fase 11" in html and "Bloques de evaluación" in html

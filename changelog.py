@@ -5,6 +5,28 @@ al principio de CAMBIOS cada vez que se implemente una fase o funcionalidad nuev
 
 CAMBIOS = [
     {
+        "version": "0.7",
+        "titulo": "Fase 11 — Evaluación jerárquica, importadores y hábito de estudio",
+        "cambios": [
+            "Bloques de evaluación: un grupo (p. ej. Laboratorio 40%) cuya nota se calcula sola a partir de sus componentes",
+            "Editar nombre y peso de componentes y bloques, reordenarlos (▲▼) y aviso si los pesos no suman 100%",
+            "Nota mínima por componente: aunque la media llegue a 5, suspende si un componente queda por debajo de su mínimo",
+            "Duplicar un esquema de evaluación (estructura sin notas) para probar fórmulas alternativas",
+            "La guía docente en PDF ahora importa las sub-fórmulas como bloques",
+            "Importar tareas desde el .ics de Atenea, con previsualización, asignatura sugerida y aviso previo",
+            "El recordatorio de cada tarea manda de verdad sobre el ajuste general de avisos",
+            "Marcar como hecha y posponer un día desde el Resumen y la campanita",
+            "Repetir una tarea cada semana (hasta 52 veces)",
+            "Temporizador de estudio en el Resumen: cada sesión suma a la racha y a un resumen de minutos",
+            "Media ponderada por ECTS, media por cuatrimestre y objetivo de media con la nota que necesitas",
+            "Exportar el expediente a CSV desde Ajustes",
+            "Imprimir el horario, el calendario y \"Esta semana\"",
+            "Ajustes muestra qué base de datos usa la app, y avisa de copias en conflicto de Syncthing",
+            "Aviso si la base de datos cambia en disco mientras la app está abierta (otro ordenador)",
+            "Corregido: el estado de notas contaba los componentes de un bloque como sueltos",
+        ],
+    },
+    {
         "version": "0.6",
         "titulo": "Fase 10 — Integridad de datos y línea de tiempo",
         "cambios": [
